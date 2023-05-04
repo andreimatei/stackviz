@@ -1,4 +1,4 @@
-package stacksviz
+package datasource
 
 import (
 	"context"

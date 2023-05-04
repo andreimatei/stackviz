@@ -1,4 +1,4 @@
-package stacksviz
+package datasource
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	tvutil "github.com/google/traceviz/server/go/util"
 	weightedtree "github.com/google/traceviz/server/go/weighted_tree"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/hashicorp/golang-lru/v2/simplelru"
 	pp "github.com/maruel/panicparse/v2/stack"
 	"hash/fnv"
@@ -25,7 +26,11 @@ const (
 )
 
 type DataSource struct {
-	fetcher stacksFetcher
+	fetcher StacksFetcher
+}
+
+func NewDataSource(fetcher StacksFetcher) *DataSource {
+	return &DataSource{fetcher: fetcher}
 }
 
 // collection represents a single fetched log trace, along with any metadata it
@@ -36,7 +41,7 @@ type collection struct {
 
 // StacksFetcher describes types capable of fetching stack traces by collection
 // name.
-type stacksFetcher interface {
+type StacksFetcher interface {
 	// Fetch fetches the stacks specified by collectionName, returning a
 	// LogTrace or an error if a failure is encountered.
 	Fetch(ctx context.Context, collectionName string) (collection, error)
@@ -49,7 +54,18 @@ type stacksFetcherImpl struct {
 	lru simplelru.LRUCache[string, collection]
 }
 
-var _ stacksFetcher = &stacksFetcherImpl{}
+var _ StacksFetcher = &stacksFetcherImpl{}
+
+func NewStacksFetcher(dir string) StacksFetcher {
+	lru, err := lru.New[string, collection](100)
+	if err != nil {
+		panic(err)
+	}
+	return &stacksFetcherImpl{
+		rootDir: dir,
+		lru:     lru,
+	}
+}
 
 func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionName string) (collection, error) {
 	// Check the cache first.
@@ -305,8 +321,9 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		case rawEntriesQuery:
 			err = ds.handleRawEntriesQuery(col, nil /* !!! filters */, series, req.Options)
 		// !!!
-		//case stacksTreeQuery:
-		//	err = handleStacksTreeQuery(coll, qf, series, req.Options)
+		case stacksTreeQuery:
+			// !!! err = handleStacksTreeQuery(coll, qf, series, req.Options)
+			return nil
 		default:
 			err = fmt.Errorf("unsupported data query")
 		}
