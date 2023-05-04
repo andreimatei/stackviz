@@ -322,6 +322,9 @@ func (ds *DataSource) HandleDataSeriesRequests(
 			err = ds.handleRawEntriesQuery(col, nil /* !!! filters */, series, req.Options)
 		// !!!
 		case stacksTreeQuery:
+			builder := drb.DataSeries(req)
+			tree := ds.buildTree(col.snapshot)
+			tree.toWeightedTree(builder)
 			// !!! err = handleStacksTreeQuery(coll, qf, series, req.Options)
 			return nil
 		default:
