@@ -1,0 +1,37 @@
+goroutine 1614 [running]:
+runtime/pprof.writeGoroutineStacks({0x7f4467471000, 0xc002f47e50})
+	/home/andrei/goroot/src/runtime/pprof/pprof.go:692 +0x70
+runtime/pprof.writeGoroutine({0x7f4467471000?, 0xc002f47e50?}, 0xc0001000e0?)
+	/home/andrei/goroot/src/runtime/pprof/pprof.go:681 +0x2b
+runtime/pprof.(*Profile).WriteTo(0x5619b40?, {0x7f4467471000?, 0xc002f47e50?}, 0xc?)
+	/home/andrei/goroot/src/runtime/pprof/pprof.go:330 +0x14b
+net/http/pprof.handler.ServeHTTP({0xc000bc42e1, 0x9}, {0x887ad90, 0xc002f47e50}, 0x702f67756265642f?)
+	/home/andrei/goroot/src/net/http/pprof/pprof.go:253 +0x4a5
+net/http/pprof.Index({0x887ad90?, 0xc002f47e50}, 0xc002f7ba00)
+	/home/andrei/goroot/src/net/http/pprof/pprof.go:371 +0x13e
+net/http.HandlerFunc.ServeHTTP(0x5251260?, {0x887ad90?, 0xc002f47e50?}, 0x7?)
+	/home/andrei/goroot/src/net/http/server.go:2109 +0x2f
+github.com/cockroachdb/cockroach/pkg/server/debug.(*Server).ServeHTTP(0x43a4df?, {0x887ad90, 0xc002f47e50}, 0x0?)
+	/home/andrei/src/github.com/cockroachdb/cockroach/pkg/server/debug/server.go:272 +0x4a
+net/http.(*ServeMux).ServeHTTP(0xbd472e0?, {0x887ad90, 0xc002f47e50}, 0xc002f7ba00)
+	/home/andrei/goroot/src/net/http/server.go:2487 +0x149
+net/http.HandlerFunc.ServeHTTP(0x4ffbbc0?, {0x887ad90?, 0xc002f47e50?}, 0x4?)
+	/home/andrei/goroot/src/net/http/server.go:2109 +0x2f
+github.com/NYTimes/gziphandler.NewGzipLevelAndMinSize.func1.1({0x889a410, 0xc002701340}, 0xc000100f70?)
+	/home/andrei/src/github.com/cockroachdb/cockroach/vendor/github.com/NYTimes/gziphandler/gzip.go:253 +0x1f6
+net/http.HandlerFunc.ServeHTTP(0xc00634b6d8?, {0x889a410?, 0xc002701340?}, 0xc000100f70?)
+	/home/andrei/goroot/src/net/http/server.go:2109 +0x2f
+github.com/cockroachdb/cockroach/pkg/server.(*nodeProxy).nodeProxyHandler(0xc000fd4c80, {0x889a410, 0xc002701340}, 0xc002f7ba00, 0xc00634b7c0)
+	/home/andrei/src/github.com/cockroachdb/cockroach/pkg/server/node_http_router.go:63 +0xe4
+github.com/cockroachdb/cockroach/pkg/server.(*httpServer).baseHandler(0xc002360500, {0x889a410, 0xc002701340}, 0xc00634b818?)
+	/home/andrei/src/github.com/cockroachdb/cockroach/pkg/server/server_http.go:312 +0x287
+github.com/cockroachdb/cockroach/pkg/server.(*serverController).httpMux(0xc00222bb90, {0x889a410, 0xc002701340}, 0xc002f7ba00)
+	/home/andrei/src/github.com/cockroachdb/cockroach/pkg/server/server_controller_http.go:106 +0x562
+net/http.HandlerFunc.ServeHTTP(0xc000bc42eb?, {0x889a410?, 0xc002701340?}, 0x49920e?)
+	/home/andrei/goroot/src/net/http/server.go:2109 +0x2f
+net/http.serverHandler.ServeHTTP({0xc00479e930?}, {0x889a410, 0xc002701340}, 0xc002f7ba00)
+	/home/andrei/goroot/src/net/http/server.go:2947 +0x30c
+net/http.(*conn).serve(0xc002dec960, {0x889e410, 0xc001034060})
+	/home/andrei/goroot/src/net/http/server.go:1991 +0x607
+created by net/http.(*Server).Serve
+	/home/andrei/goroot/src/net/http/server.go:3102 +0x4db
