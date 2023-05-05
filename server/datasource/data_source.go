@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/google/traceviz/server/go/label"
 	tvutil "github.com/google/traceviz/server/go/util"
 	weightedtree "github.com/google/traceviz/server/go/weighted_tree"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -101,18 +102,26 @@ func (f *stacksFetcherImpl) readStacks(r io.Reader) (collection, error) {
 	return collection{snapshot: snap}, nil
 }
 
+// treeNode is a node in a trie of stack traces. Each node represents a
+// function; its children are other functions called by the node's function in
+// one or more stacks.
 type treeNode struct {
+	// functionName identifies that function represented by this node.
 	functionName string
 	file         string
 	line         int
-	path         []weightedtree.ScopeID
-	children     []treeNode
-	// numGoroutines counts how many goroutines have their stack go through this
-	// tree node. This is the sum of numGoroutines for all the children, plus
-	// the goroutines that have this function as their leaf.
-	numGoroutines int
+	// path is the path from the root to this node, represented by hashes of
+	// each ancestor's function.
+	path     []weightedtree.ScopeID
+	children []treeNode
+	// numLeafGoroutines counts how many goroutines have this node as their leaf
+	// function. This results in the "self magnitude" of the node when rendered
+	// as a flame graph - i.e. how much weight it needs to have in addition to
+	// the sum of the children's weights.
+	numLeafGoroutines int
 }
 
+// scopeID returns the identifier for this node.
 func (t *treeNode) scopeID() weightedtree.ScopeID {
 	if len(t.path) > 0 {
 		return t.path[len(t.path)-1]
@@ -158,12 +167,14 @@ func (t *treeNode) prettyPrintInner(indent int) {
 	for i := 0; i < indent; i++ {
 		sb.WriteRune('\t')
 	}
-	fmt.Printf("%s(%d) %s (%s:%d) (%v)\n", sb.String(), t.numGoroutines, t.functionName, t.file, t.line, t.path)
+	fmt.Printf("%s(%d) %s (%s:%d) (%v)\n", sb.String(), t.numLeafGoroutines, t.functionName, t.file, t.line, t.path)
 	for i := range t.children {
 		t.children[i].prettyPrintInner(indent + 1)
 	}
 }
 
+// findChild finds the child of t for a call at file:line. If such a child
+// doesn't exist, returns nil.
 func (t *treeNode) findChild(file string, line int) *treeNode {
 	for i := range t.children {
 		c := &t.children[i]
@@ -174,20 +185,38 @@ func (t *treeNode) findChild(file string, line int) *treeNode {
 	return nil
 }
 
+// addStack adds the stack to the tree rooted at t, creating new nodes for calls
+// that don't yet exist.
+func (t *treeNode) addStack(stack []pp.Call) {
+	if len(stack) == 0 {
+		// t is a leaf for the stack that we just finished processing.
+		t.numLeafGoroutines++
+		return
+	}
+	child := t.findChild(stack[0].RemoteSrcPath, stack[0].Line)
+	if child != nil {
+		child.addStack(stack[1:])
+	} else {
+		t.createPath(stack)
+	}
+}
+
 // createPath adds children to t recursively such that the tree gets the path
 // t -> stack[0] -> stack[1] -> ...
 func (t *treeNode) createPath(stack []pp.Call) {
 	if len(stack) == 0 {
+		// The stack had t as a leaf function.
+		t.numLeafGoroutines++
 		return
 	}
 	call := stack[0]
 	t.children = append(t.children, treeNode{
-		functionName:  call.Func.Complete,
-		file:          call.RemoteSrcPath,
-		line:          call.Line,
-		path:          append(t.path, computeScopeID(call.Func.Complete, call.RemoteSrcPath, uint32(call.Line))),
-		children:      nil,
-		numGoroutines: 1,
+		functionName:      call.Func.Complete,
+		file:              call.RemoteSrcPath,
+		line:              call.Line,
+		path:              append(t.path, computeScopeID(call.Func.Complete, call.RemoteSrcPath, uint32(call.Line))),
+		children:          nil,
+		numLeafGoroutines: 0,
 	})
 	t.children[len(t.children)-1].createPath(stack[1:])
 }
@@ -202,21 +231,25 @@ func computeScopeID(funcName string, file string, line uint32) weightedtree.Scop
 	return weightedtree.ScopeID(hash.Sum64())
 }
 
+// nodeBuilder abstracts the differences between a weightedtree.Tree and a
+// weightedtree.Node, allowing either to be used to construct a tree.
+type nodeBuilder interface {
+	Node(selfMagnitude float64, properties ...tvutil.PropertyUpdate) *weightedtree.Node
+}
+
 // toWeightedTree uses the provided dataBuilder to transforms a treeNode (and
 // its children, recursively) into a weighted tree.
 func (t *treeNode) toWeightedTree(dataBuilder tvutil.DataBuilder) {
 	renderSettings := &weightedtree.RenderSettings{
 		FrameHeightPx: 20,
 	}
-	wt := weightedtree.New(dataBuilder, renderSettings)
-	root := wt.Node(float64(t.numGoroutines))
-	t.toWeightedTreeInner(root)
+	t.toWeightedTreeInner(weightedtree.New(dataBuilder, renderSettings))
 }
 
 // toWeightedTreeInner creates a node in wt corresponding to t, and recurses in
 // t's children.
-func (t *treeNode) toWeightedTreeInner(wt *weightedtree.Node) {
-	node := wt.Node(float64(t.numGoroutines), tvutil.StringProperty(nameKey, t.functionName))
+func (t *treeNode) toWeightedTreeInner(builder nodeBuilder) {
+	node := builder.Node(float64(t.numLeafGoroutines), tvutil.StringProperty(nameKey, t.functionName), label.Format(t.functionName))
 	for i := range t.children {
 		t.children[i].toWeightedTreeInner(node)
 	}
@@ -230,14 +263,14 @@ func toWeightedTree(view *weightedtree.SubtreeNode, dataBuilder tvutil.DataBuild
 	}
 	wt := weightedtree.New(dataBuilder, renderSettings)
 	t := view.TreeNode.(*treeNode)
-	root := wt.Node(float64(t.numGoroutines), tvutil.StringProperty(nameKey, "root"))
+	root := wt.Node(float64(t.numLeafGoroutines), tvutil.StringProperty(nameKey, "root"), label.Format(t.functionName))
 	toWeightedTreeInner(root, view)
 }
 
 func toWeightedTreeInner(builderNode *weightedtree.Node, view *weightedtree.SubtreeNode) {
 	for _, c := range view.Children {
 		t := c.TreeNode.(*treeNode)
-		n := builderNode.Node(float64(t.numGoroutines), tvutil.StringProperty(nameKey, t.functionName))
+		n := builderNode.Node(float64(t.numLeafGoroutines), tvutil.StringProperty(nameKey, t.functionName), label.Format(t.functionName))
 		toWeightedTreeInner(n, c)
 	}
 }
@@ -258,28 +291,15 @@ func (ds *DataSource) buildTree(snap *pp.Snapshot) *treeNode {
 		for i := range s.Signature.Stack.Calls {
 			stack[l-i-1] = s.Signature.Stack.Calls[i]
 		}
-		ds.addStackToTree(root, stack)
+		root.addStack(stack)
 	}
 	return root
 }
 
-// SupportedDataSeriesQueries returns the DataSeriesRequest query names
-// supported by DataSource.
+// SupportedDataSeriesQueries implements the traceviz datasource interface. It
+// returns the supported query names DataSeriesRequest.
 func (ds *DataSource) SupportedDataSeriesQueries() []string {
 	return []string{rawEntriesQuery, stacksTreeQuery}
-}
-
-func (ds *DataSource) addStackToTree(root *treeNode, stack []pp.Call) {
-	if len(stack) == 0 {
-		return
-	}
-	child := root.findChild(stack[0].RemoteSrcPath, stack[0].Line)
-	if child != nil {
-		child.numGoroutines++
-		ds.addStackToTree(child, stack[1:])
-	} else {
-		root.createPath(stack)
-	}
 }
 
 // HandleDataSeriesRequests handles the provided set of DataSeriesRequests, with
@@ -351,10 +371,10 @@ func (ds *DataSource) fetchCollection(ctx context.Context, collectionName string
 func compareByNumGoroutines(a, b weightedtree.TreeNode) (int, error) {
 	aa := a.(*treeNode)
 	bb := b.(*treeNode)
-	if aa.numGoroutines < bb.numGoroutines {
+	if aa.numLeafGoroutines < bb.numLeafGoroutines {
 		return -1, nil
 	}
-	if aa.numGoroutines == bb.numGoroutines {
+	if aa.numLeafGoroutines == bb.numLeafGoroutines {
 		return 0, nil
 	}
 	return 1, nil

@@ -35,7 +35,7 @@ func TestBuildTree(t *testing.T) {
 		rootDir: path.Dir(filename),
 		lru:     lru,
 	}}
-	col, err := src.fetcher.Fetch(ctx, "cockroachdb_example_snapshot.txt")
+	col, err := src.fetcher.Fetch(ctx, "example.txt")
 	require.NoError(t, err)
 	require.NotNil(t, col.snapshot)
 	tree := src.buildTree(col.snapshot)
