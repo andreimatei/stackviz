@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -23,7 +24,9 @@ const (
 	stacksTreeQuery = "stacks.tree"
 
 	collectionNameKey = "collection_name"
+	pathPrefixKey     = "path_prefix"
 	nameKey           = "name"
+	pathKey           = "path"
 )
 
 type DataSource struct {
@@ -119,6 +122,7 @@ type treeNode struct {
 	// as a flame graph - i.e. how much weight it needs to have in addition to
 	// the sum of the children's weights.
 	numLeafGoroutines int
+	numGoroutines     int
 }
 
 // scopeID returns the identifier for this node.
@@ -134,6 +138,14 @@ var _ weightedtree.TreeNode = &treeNode{}
 // Path is part of the weightedtree.TreeNode interface.
 func (t *treeNode) Path() []weightedtree.ScopeID {
 	return t.path
+}
+
+func (t *treeNode) pathAsStrings() []string {
+	path := make([]string, len(t.Path()))
+	for i, p := range t.Path() {
+		path[i] = strconv.FormatUint(uint64(p), 10)
+	}
+	return path
 }
 
 // Children is part of the weightedtree.TreeNode interface.
@@ -188,6 +200,7 @@ func (t *treeNode) findChild(file string, line int) *treeNode {
 // addStack adds the stack to the tree rooted at t, creating new nodes for calls
 // that don't yet exist.
 func (t *treeNode) addStack(stack []pp.Call) {
+	t.numGoroutines++
 	if len(stack) == 0 {
 		// t is a leaf for the stack that we just finished processing.
 		t.numLeafGoroutines++
@@ -204,6 +217,7 @@ func (t *treeNode) addStack(stack []pp.Call) {
 // createPath adds children to t recursively such that the tree gets the path
 // t -> stack[0] -> stack[1] -> ...
 func (t *treeNode) createPath(stack []pp.Call) {
+	t.numGoroutines++
 	if len(stack) == 0 {
 		// The stack had t as a leaf function.
 		t.numLeafGoroutines++
@@ -249,7 +263,13 @@ func (t *treeNode) toWeightedTree(dataBuilder tvutil.DataBuilder) {
 // toWeightedTreeInner creates a node in wt corresponding to t, and recurses in
 // t's children.
 func (t *treeNode) toWeightedTreeInner(builder nodeBuilder) {
-	node := builder.Node(float64(t.numLeafGoroutines), tvutil.StringProperty(nameKey, t.functionName), label.Format(t.functionName))
+	node := builder.Node(float64(t.numLeafGoroutines),
+		tvutil.StringProperty(nameKey, t.functionName),
+		tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
+		// !!! use StringsProperty instead?
+		// tvutil.StringProperty(pathKey, pathBuilder.String()),
+		label.Format(t.functionName),
+	)
 	for i := range t.children {
 		t.children[i].toWeightedTreeInner(node)
 	}
@@ -263,14 +283,20 @@ func toWeightedTree(view *weightedtree.SubtreeNode, dataBuilder tvutil.DataBuild
 	}
 	wt := weightedtree.New(dataBuilder, renderSettings)
 	t := view.TreeNode.(*treeNode)
-	root := wt.Node(float64(t.numLeafGoroutines), tvutil.StringProperty(nameKey, "root"), label.Format(t.functionName))
+	root := wt.Node(float64(t.numLeafGoroutines),
+		tvutil.StringProperty(nameKey, "root"),
+		tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
+		label.Format(t.functionName))
 	toWeightedTreeInner(root, view)
 }
 
 func toWeightedTreeInner(builderNode *weightedtree.Node, view *weightedtree.SubtreeNode) {
 	for _, c := range view.Children {
 		t := c.TreeNode.(*treeNode)
-		n := builderNode.Node(float64(t.numLeafGoroutines), tvutil.StringProperty(nameKey, t.functionName), label.Format(t.functionName))
+		n := builderNode.Node(float64(t.numLeafGoroutines),
+			tvutil.StringProperty(nameKey, t.functionName),
+			tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
+			label.Format(t.functionName))
 		toWeightedTreeInner(n, c)
 	}
 }
@@ -320,6 +346,17 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	if err != nil {
 		return fmt.Errorf("required filter option '%s' must be a string", collectionNameKey)
 	}
+
+	pathPrefixVal, ok := globalFilters[pathPrefixKey]
+	var pathPrefix []string
+	if ok {
+		pathPrefix, err = tvutil.ExpectStringsValue(pathPrefixVal)
+		if err != nil {
+			return fmt.Errorf("required filter option '%s' must be a string list", pathPrefix)
+		}
+		fmt.Printf("!!! path prefix: %s\n", pathPrefix)
+	}
+
 	// Fetch the collection, from the cache if it's there.
 	col, err := ds.fetchCollection(ctx, collectionName)
 	if err != nil {
@@ -344,7 +381,19 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		case stacksTreeQuery:
 			builder := drb.DataSeries(req)
 			tree := ds.buildTree(col.snapshot)
-			tree.toWeightedTree(builder)
+			if pathPrefix != nil {
+				path := make([]weightedtree.ScopeID, len(pathPrefix))
+				for i, p := range pathPrefix {
+					sid, err := strconv.ParseUint(p, 10, 64)
+					if err != nil {
+						return err
+					}
+					path[i] = weightedtree.ScopeID(sid)
+				}
+				ds.filterByPathPrefix(tree, path, builder)
+			} else {
+				tree.toWeightedTree(builder)
+			}
 			// !!! err = handleStacksTreeQuery(coll, qf, series, req.Options)
 			return nil
 		default:
@@ -371,17 +420,17 @@ func (ds *DataSource) fetchCollection(ctx context.Context, collectionName string
 func compareByNumGoroutines(a, b weightedtree.TreeNode) (int, error) {
 	aa := a.(*treeNode)
 	bb := b.(*treeNode)
-	if aa.numLeafGoroutines < bb.numLeafGoroutines {
+	if aa.numGoroutines < bb.numGoroutines {
 		return -1, nil
 	}
-	if aa.numLeafGoroutines == bb.numLeafGoroutines {
+	if aa.numGoroutines == bb.numGoroutines {
 		return 0, nil
 	}
 	return 1, nil
 }
 
 func (ds *DataSource) filterByPathPrefix(tree *treeNode, path []weightedtree.ScopeID, builder tvutil.DataBuilder) {
-	filtered, err := weightedtree.Walk(tree, compareByNumGoroutines, weightedtree.PathPrefix(path...), weightedtree.ElidePrefix())
+	filtered, err := weightedtree.Walk(tree, compareByNumGoroutines, weightedtree.PathPrefix(path...))
 	if err != nil {
 		panic(err)
 	}

@@ -11,6 +11,12 @@
         <value key="collection_name">
           <string>cockroachdb_example_snapshot.txt</string>
         </value>
+        <value key="dummy">
+          <string>dummy initial value</string>
+        </value>
+        <value key="path_prefix">
+          <string-list></string-list>
+        </value>
       </value-map>
     </global-state>
 
@@ -27,6 +33,7 @@
       -->
       <value-map>
         <value key="collection_name"><global-ref key="collection_name"></global-ref></value>
+        <value key="path_prefix"><global-ref key="path_prefix"></global-ref></value>
       </value-map>
     </data-query>
   </app-core>
@@ -46,11 +53,32 @@
                 <string></string>
               </equals>
             </not>
-            <changed><global-ref key="collection_name"></global-ref></changed>
+            <or>
+              <changed><global-ref key="collection_name"></global-ref></changed>
+              <changed><global-ref key="path_prefix"></global-ref></changed>
+            </or>
           </and>
         </reaction>
       </interactions>
     </data-series>
+
+
+    <interactions>
+      <action target="node" type="click">
+        <toggle-or-set>
+          <global-ref key="dummy"></global-ref>
+          <local-ref key="name"></local-ref>
+        </toggle-or-set>
+      </action>
+
+      <action target="node" type="click">
+        <toggle-or-set>
+          <global-ref key="path_prefix"></global-ref>
+          <local-ref key="path"></local-ref>
+        </toggle-or-set>
+      </action>
+    </interactions>
+
   </weighted-tree>
 
   <!--   <mat-card class="band">
