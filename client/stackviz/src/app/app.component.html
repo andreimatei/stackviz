@@ -1,14 +1,60 @@
-<div>
+<div class="app">
+  <app-core>
+    <!--
+      Define the global key-value mapping, with it initial values.  This global state provides
+      communication between components.
+    -->
+    <global-state>
+      <value-map>
+        <!-- The collection loader finds collections at this name under
+             google3/third_party/traceviz/codelab/logviz/server/logs/. -->
+        <value key="collection_name">
+          <string>cockroachdb_example_snapshot.txt</string>
+        </value>
+      </value-map>
+    </global-state>
 
-<div>
-  test1
-</div>
+    <!--
+      A handler for Data queries issued to a connected backend via HTTP.
+      Multiple components may use this to subscribe to DataSeries streams;
+      these will be automatically updated as new data becomes available.
+    -->
+    <data-query [debounceMs]="50">
+      <!--
+        The set of filters to attach to DataRequests.  Each specified global
+        value is provided with each DataRequest under the provided query key.
+        Note that backend data series providers may ignore some global filters.
+      -->
+      <value-map>
+        <value key="collection_name"><global-ref key="collection_name"></global-ref></value>
+      </value-map>
+    </data-query>
+  </app-core>
 
-  <app-core></app-core>
+  <weighted-tree>
+    <data-series>
+      <query>
+        <string>stacks.tree</string>
+      </query>
 
+      <interactions>
+        <reaction target="data-series" type="fetch">
+          <and>
+            <not>
+              <equals>
+                <global-ref key="collection_name"></global-ref>
+                <string></string>
+              </equals>
+            </not>
+            <changed><global-ref key="collection_name"></global-ref></changed>
+          </and>
+        </reaction>
+      </interactions>
+    </data-series>
+  </weighted-tree>
 
-<div>
-  test2
-</div>
-
+  <!--   <mat-card class="band">
+    <mat-card-title>Global State Monitor</mat-card-title>
+    <global-state-monitor></global-state-monitor>
+  </mat-card> -->
 </div>
