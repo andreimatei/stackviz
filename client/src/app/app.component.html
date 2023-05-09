@@ -11,9 +11,6 @@
         <value key="collection_name">
           <string>cockroachdb_example_snapshot.txt</string>
         </value>
-        <value key="dummy">
-          <string>dummy initial value</string>
-        </value>
         <value key="path_prefix">
           <string-list></string-list>
         </value>
@@ -64,13 +61,6 @@
 
 
     <interactions>
-      <action target="node" type="click">
-        <set>
-          <global-ref key="dummy"></global-ref>
-          <local-ref key="name"></local-ref>
-        </set>
-      </action>
-
       <action target="node" type="click">
         <set>
           <global-ref key="path_prefix"></global-ref>
