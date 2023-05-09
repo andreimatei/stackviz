@@ -398,7 +398,15 @@ func (ds *DataSource) handleStacksTreeQuery(
 		}
 		path[i] = weightedtree.ScopeID(sid)
 	}
-	ds.filterByPathPrefix(tree, path, wt, colorSpace)
+	filtered, err := weightedtree.Walk(
+		tree,
+		compareByFunctionName, // within a level, sort alphabetically
+		weightedtree.PathPrefix(path...),
+	)
+	if err != nil {
+		panic(err)
+	}
+	toWeightedTree(filtered, wt, colorSpace)
 	return nil
 }
 
@@ -413,24 +421,14 @@ func (ds *DataSource) fetchCollection(ctx context.Context, collectionName string
 	return col, nil
 }
 
-func compareByNumGoroutines(a, b weightedtree.TreeNode) (int, error) {
+// compareByFunctionName compares the function names of two nodes
+// lexicographically, returning 1 if a < b and -1 if b < a. This corresponds to
+// a descending sorting; this function is intended to be used with
+// weightedtree.Walk(), which explores "higher" nodes first so, in order to get
+// alphabetic sorting, we invert the regular comparison.
+func compareByFunctionName(a, b weightedtree.TreeNode) (int, error) {
 	aa := a.(*treeNode)
 	bb := b.(*treeNode)
-	if aa.numGoroutines < bb.numGoroutines {
-		return -1, nil
-	}
-	if aa.numGoroutines == bb.numGoroutines {
-		return 0, nil
-	}
-	return 1, nil
-}
-
-func (ds *DataSource) filterByPathPrefix(
-	tree *treeNode, path []weightedtree.ScopeID, wt *weightedtree.Tree, colorSpace *color.Space,
-) {
-	filtered, err := weightedtree.Walk(tree, compareByNumGoroutines, weightedtree.PathPrefix(path...))
-	if err != nil {
-		panic(err)
-	}
-	toWeightedTree(filtered, wt, colorSpace)
+	res := -strings.Compare(aa.functionName, bb.functionName)
+	return res, nil
 }
