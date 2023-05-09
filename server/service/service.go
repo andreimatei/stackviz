@@ -17,7 +17,7 @@ type Service struct {
 
 func New(assetRoot, collectionRoot string) (*Service, error) {
 	cf := datasource.NewStacksFetcher(collectionRoot)
-	ds := datasource.NewDataSource(cf)
+	ds := datasource.New(cf)
 	qd, err := querydispatcher.New(ds)
 	if err != nil {
 		return nil, err

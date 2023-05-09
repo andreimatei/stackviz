@@ -33,11 +33,14 @@ const (
 	pathKey           = "path"
 )
 
+// DataSource implements the querydispatcher.dataSource that deals with
+// goroutine stacks.
 type DataSource struct {
 	fetcher StacksFetcher
 }
 
-func NewDataSource(fetcher StacksFetcher) *DataSource {
+// New builds a DataSource.
+func New(fetcher StacksFetcher) *DataSource {
 	return &DataSource{fetcher: fetcher}
 }
 
@@ -64,6 +67,8 @@ type stacksFetcherImpl struct {
 
 var _ StacksFetcher = &stacksFetcherImpl{}
 
+// NewStacksFetcher creates a new StacksFetcher that will read collections from
+// the specified directory.
 func NewStacksFetcher(dir string) StacksFetcher {
 	lru, err := lru.New[string, collection](100)
 	if err != nil {
