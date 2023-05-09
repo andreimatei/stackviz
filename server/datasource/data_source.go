@@ -2,8 +2,10 @@ package datasource
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"github.com/google/traceviz/server/go/color"
 	"github.com/google/traceviz/server/go/label"
 	tvutil "github.com/google/traceviz/server/go/util"
 	weightedtree "github.com/google/traceviz/server/go/weighted_tree"
@@ -13,8 +15,10 @@ import (
 	"hash/fnv"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -253,11 +257,8 @@ type nodeBuilder interface {
 
 // toWeightedTree uses the provided dataBuilder to transforms a treeNode (and
 // its children, recursively) into a weighted tree.
-func (t *treeNode) toWeightedTree(dataBuilder tvutil.DataBuilder) {
-	renderSettings := &weightedtree.RenderSettings{
-		FrameHeightPx: 20,
-	}
-	t.toWeightedTreeInner(weightedtree.New(dataBuilder, renderSettings))
+func (t *treeNode) toWeightedTree(wt *weightedtree.Tree) {
+	t.toWeightedTreeInner(wt)
 }
 
 // toWeightedTreeInner creates a node in wt corresponding to t, and recurses in
@@ -277,28 +278,49 @@ func (t *treeNode) toWeightedTreeInner(builder nodeBuilder) {
 
 // toWeightedTree uses the provided dataBuilder to transforms a treeNode (and
 // its children, recursively) into a weighted tree.
-func toWeightedTree(view *weightedtree.SubtreeNode, dataBuilder tvutil.DataBuilder) {
-	renderSettings := &weightedtree.RenderSettings{
-		FrameHeightPx: 20,
-	}
-	wt := weightedtree.New(dataBuilder, renderSettings)
+func toWeightedTree(view *weightedtree.SubtreeNode, wt *weightedtree.Tree, colorSpace *color.Space) {
 	t := view.TreeNode.(*treeNode)
 	root := wt.Node(float64(t.numLeafGoroutines),
 		tvutil.StringProperty(nameKey, "root"),
 		tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
+		colorSpace.PrimaryColor(functionNameToColor("root")), // an arbitrary color
 		label.Format(t.functionName))
-	toWeightedTreeInner(root, view)
+	toWeightedTreeInner(root, view, colorSpace)
 }
 
-func toWeightedTreeInner(builderNode *weightedtree.Node, view *weightedtree.SubtreeNode) {
+func toWeightedTreeInner(builderNode *weightedtree.Node, view *weightedtree.SubtreeNode, colorSpace *color.Space) {
 	for _, c := range view.Children {
 		t := c.TreeNode.(*treeNode)
 		n := builderNode.Node(float64(t.numLeafGoroutines),
 			tvutil.StringProperty(nameKey, t.functionName),
 			tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
+			colorSpace.PrimaryColor(functionNameToColor(t.functionName)),
 			label.Format(t.functionName))
-		toWeightedTreeInner(n, c)
+		toWeightedTreeInner(n, c, colorSpace)
 	}
+}
+
+// functionNameToColor takes in a function name (including the package) and
+// returns a float between [0,1] signifying the color that should be used to
+// fill boxes corresponding to this function. The result is supposed to be used
+// to index into a color space.
+// The same color will be returned for all functions in a package (if the
+// package name can be identified). This matches pprof behavior.
+func functionNameToColor(functionName string) float64 {
+	// pkgRE extracts package name, It looks for the first "." or "::" that
+	// occurs after the last "/". (Searching after the last / allows us to
+	// correctly handle names that look like "some.url.com/foo.bar".)
+	pkgRE := regexp.MustCompile(`^((.*/)?[\w\d_]+)(\.|::)([^/]*)$`)
+	var pkg string
+	m := pkgRE.FindStringSubmatch(functionName)
+	if m == nil {
+		pkg = functionName
+	} else {
+		pkg = m[1]
+	}
+	h := sha256.Sum256([]byte(pkg))
+	hash := binary.LittleEndian.Uint32(h[:])
+	return float64(hash) / math.MaxUint32
 }
 
 // buildTree builds a trie out of the stack traces in snap.
@@ -372,15 +394,28 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	//}
 
 	for _, req := range reqs {
-		series := drb.DataSeries(req)
 		var err error
 		switch req.QueryName {
 		case rawEntriesQuery:
-			err = ds.handleRawEntriesQuery(col, nil /* !!! filters */, series, req.Options)
-		// !!!
+			//series := drb.DataSeries(req)
+			//err = ds.handleRawEntriesQuery(col, nil /* !!! filters */, series, req.Options)
+			panic("!!!")
 		case stacksTreeQuery:
 			builder := drb.DataSeries(req)
 			tree := ds.buildTree(col.snapshot)
+
+			renderSettings := &weightedtree.RenderSettings{
+				FrameHeightPx: 20,
+			}
+			wt := weightedtree.New(builder, renderSettings)
+			// Include the color space.
+			// This represents the color range yellow-ish (a bit towards orange)
+			// to red-ish (a bit towards orange).
+			// TODO(andrei): Try expressing this in the HSL color scheme in the
+			// hope that a human can read it more easily.
+			var colorSpace = color.NewSpace("yellow-to-red", "#E1A81E", "#E35A1C")
+			wt.With(colorSpace.Define())
+
 			if pathPrefix != nil {
 				path := make([]weightedtree.ScopeID, len(pathPrefix))
 				for i, p := range pathPrefix {
@@ -390,9 +425,9 @@ func (ds *DataSource) HandleDataSeriesRequests(
 					}
 					path[i] = weightedtree.ScopeID(sid)
 				}
-				ds.filterByPathPrefix(tree, path, builder)
+				ds.filterByPathPrefix(tree, path, wt, colorSpace)
 			} else {
-				tree.toWeightedTree(builder)
+				tree.toWeightedTree(wt)
 			}
 			// !!! err = handleStacksTreeQuery(coll, qf, series, req.Options)
 			return nil
@@ -429,12 +464,14 @@ func compareByNumGoroutines(a, b weightedtree.TreeNode) (int, error) {
 	return 1, nil
 }
 
-func (ds *DataSource) filterByPathPrefix(tree *treeNode, path []weightedtree.ScopeID, builder tvutil.DataBuilder) {
+func (ds *DataSource) filterByPathPrefix(
+	tree *treeNode, path []weightedtree.ScopeID, wt *weightedtree.Tree, colorSpace *color.Space,
+) {
 	filtered, err := weightedtree.Walk(tree, compareByNumGoroutines, weightedtree.PathPrefix(path...))
 	if err != nil {
 		panic(err)
 	}
-	toWeightedTree(filtered, builder)
+	toWeightedTree(filtered, wt, colorSpace)
 }
 
 func (ds *DataSource) handleRawEntriesQuery(col collection, qf interface{}, series tvutil.DataBuilder, options map[string]*tvutil.V) error {
