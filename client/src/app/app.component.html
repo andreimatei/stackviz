@@ -67,6 +67,12 @@
           <local-ref key="path"></local-ref>
         </set>
       </action>
+      <reaction target="node" type="highlight">
+        <includes>
+          <local-ref key="name"></local-ref>
+          <string>sync.runtime_notifyListWait</string>
+        </includes>
+      </reaction>
     </interactions>
 
   </weighted-tree>
