@@ -255,48 +255,17 @@ type nodeBuilder interface {
 	Node(selfMagnitude float64, properties ...tvutil.PropertyUpdate) *weightedtree.Node
 }
 
-// toWeightedTree uses the provided dataBuilder to transforms a treeNode (and
+// toWeightedTree uses the provided builder to transforms a SubtreeNode (and
 // its children, recursively) into a weighted tree.
-func (t *treeNode) toWeightedTree(wt *weightedtree.Tree) {
-	t.toWeightedTreeInner(wt)
-}
-
-// toWeightedTreeInner creates a node in wt corresponding to t, and recurses in
-// t's children.
-func (t *treeNode) toWeightedTreeInner(builder nodeBuilder) {
-	node := builder.Node(float64(t.numLeafGoroutines),
+func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSpace *color.Space) {
+	t := node.TreeNode.(*treeNode)
+	n := builder.Node(float64(t.numLeafGoroutines),
 		tvutil.StringProperty(nameKey, t.functionName),
 		tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
-		// !!! use StringsProperty instead?
-		// tvutil.StringProperty(pathKey, pathBuilder.String()),
-		label.Format(t.functionName),
-	)
-	for i := range t.children {
-		t.children[i].toWeightedTreeInner(node)
-	}
-}
-
-// toWeightedTree uses the provided dataBuilder to transforms a treeNode (and
-// its children, recursively) into a weighted tree.
-func toWeightedTree(view *weightedtree.SubtreeNode, wt *weightedtree.Tree, colorSpace *color.Space) {
-	t := view.TreeNode.(*treeNode)
-	root := wt.Node(float64(t.numLeafGoroutines),
-		tvutil.StringProperty(nameKey, "root"),
-		tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
-		colorSpace.PrimaryColor(functionNameToColor("root")), // an arbitrary color
+		colorSpace.PrimaryColor(functionNameToColor(t.functionName)),
 		label.Format(t.functionName))
-	toWeightedTreeInner(root, view, colorSpace)
-}
-
-func toWeightedTreeInner(builderNode *weightedtree.Node, view *weightedtree.SubtreeNode, colorSpace *color.Space) {
-	for _, c := range view.Children {
-		t := c.TreeNode.(*treeNode)
-		n := builderNode.Node(float64(t.numLeafGoroutines),
-			tvutil.StringProperty(nameKey, t.functionName),
-			tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
-			colorSpace.PrimaryColor(functionNameToColor(t.functionName)),
-			label.Format(t.functionName))
-		toWeightedTreeInner(n, c, colorSpace)
+	for _, c := range node.Children {
+		toWeightedTree(c, n, colorSpace)
 	}
 }
 
@@ -369,16 +338,6 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		return fmt.Errorf("required filter option '%s' must be a string", collectionNameKey)
 	}
 
-	pathPrefixVal, ok := globalFilters[pathPrefixKey]
-	var pathPrefix []string
-	if ok {
-		pathPrefix, err = tvutil.ExpectStringsValue(pathPrefixVal)
-		if err != nil {
-			return fmt.Errorf("required filter option '%s' must be a string list", pathPrefix)
-		}
-		fmt.Printf("!!! path prefix: %s\n", pathPrefix)
-	}
-
 	// Fetch the collection, from the cache if it's there.
 	col, err := ds.fetchCollection(ctx, collectionName)
 	if err != nil {
@@ -386,58 +345,60 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		return err
 	}
 	log.Printf("Loaded collection %s", collectionName)
-	// !!!
-	//// Build the queryFilters, just once, for all DataSeriesRequests.
-	//qf, err := filterFromGlobalFilters(coll.lt, globalFilters)
-	//if err != nil {
-	//	return err
-	//}
 
 	for _, req := range reqs {
+		builder := drb.DataSeries(req)
 		var err error
 		switch req.QueryName {
-		case rawEntriesQuery:
-			//series := drb.DataSeries(req)
-			//err = ds.handleRawEntriesQuery(col, nil /* !!! filters */, series, req.Options)
-			panic("!!!")
 		case stacksTreeQuery:
-			builder := drb.DataSeries(req)
-			tree := ds.buildTree(col.snapshot)
-
-			renderSettings := &weightedtree.RenderSettings{
-				FrameHeightPx: 20,
-			}
-			wt := weightedtree.New(builder, renderSettings)
-			// Include the color space.
-			// This represents the color range yellow-ish (a bit towards orange)
-			// to red-ish (a bit towards orange).
-			// TODO(andrei): Try expressing this in the HSL color scheme in the
-			// hope that a human can read it more easily.
-			var colorSpace = color.NewSpace("yellow-to-red", "#E1A81E", "#E35A1C")
-			wt.With(colorSpace.Define())
-
-			if pathPrefix != nil {
-				path := make([]weightedtree.ScopeID, len(pathPrefix))
-				for i, p := range pathPrefix {
-					sid, err := strconv.ParseUint(p, 10, 64)
-					if err != nil {
-						return err
-					}
-					path[i] = weightedtree.ScopeID(sid)
+			pathPrefixVal, ok := globalFilters[pathPrefixKey]
+			var pathPrefix []string
+			if ok {
+				pathPrefix, err = tvutil.ExpectStringsValue(pathPrefixVal)
+				if err != nil {
+					return fmt.Errorf("required filter option '%s' must be a string list", pathPrefix)
 				}
-				ds.filterByPathPrefix(tree, path, wt, colorSpace)
-			} else {
-				tree.toWeightedTree(wt)
+				fmt.Printf("!!! path prefix: %s\n", pathPrefix)
 			}
-			// !!! err = handleStacksTreeQuery(coll, qf, series, req.Options)
-			return nil
+			return ds.handleStacksTreeQuery(col, pathPrefix, builder)
 		default:
-			err = fmt.Errorf("unsupported data query")
+			err = fmt.Errorf("unsupported data query: %s", req.QueryName)
 		}
 		if err != nil {
 			return fmt.Errorf("error handling data query %s: %w", req.QueryName, err)
 		}
 	}
+	return nil
+}
+
+// handleStacksTreeQuery uses the provided builder to construct the response to
+// the "stacks tree" query. The collection is filtered according to the
+// specified path prefix and turned into a weighted tree.
+func (ds *DataSource) handleStacksTreeQuery(
+	col collection, pathPrefix []string, builder tvutil.DataBuilder,
+) error {
+	tree := ds.buildTree(col.snapshot)
+	renderSettings := &weightedtree.RenderSettings{
+		FrameHeightPx: 20,
+	}
+	wt := weightedtree.New(builder, renderSettings)
+	// Include the color space.
+	// This represents the color range yellow-ish (a bit towards orange) to
+	// red-ish (a bit towards orange).
+	// TODO(andrei): Try expressing this in the HSL color scheme in the hope
+	// that a human can read it more easily.
+	var colorSpace = color.NewSpace("yellow-to-red", "#E1A81E", "#E35A1C")
+	wt.With(colorSpace.Define())
+
+	path := make([]weightedtree.ScopeID, len(pathPrefix))
+	for i, p := range pathPrefix {
+		sid, err := strconv.ParseUint(p, 10, 64)
+		if err != nil {
+			return err
+		}
+		path[i] = weightedtree.ScopeID(sid)
+	}
+	ds.filterByPathPrefix(tree, path, wt, colorSpace)
 	return nil
 }
 
@@ -472,8 +433,4 @@ func (ds *DataSource) filterByPathPrefix(
 		panic(err)
 	}
 	toWeightedTree(filtered, wt, colorSpace)
-}
-
-func (ds *DataSource) handleRawEntriesQuery(col collection, qf interface{}, series tvutil.DataBuilder, options map[string]*tvutil.V) error {
-	return nil
 }
