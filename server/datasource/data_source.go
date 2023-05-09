@@ -30,6 +30,8 @@ const (
 	collectionNameKey = "collection_name"
 	pathPrefixKey     = "path_prefix"
 	nameKey           = "name"
+	detailsFormatKey  = "detail_format"
+	fullNameKey       = "full_name"
 	pathKey           = "path"
 )
 
@@ -118,10 +120,9 @@ func (f *stacksFetcherImpl) readStacks(r io.Reader) (collection, error) {
 // function; its children are other functions called by the node's function in
 // one or more stacks.
 type treeNode struct {
-	// functionName identifies that function represented by this node.
-	functionName string
-	file         string
-	line         int
+	function pp.Func
+	file     string
+	line     int
 	// path is the path from the root to this node, represented by hashes of
 	// each ancestor's function.
 	path     []weightedtree.ScopeID
@@ -188,7 +189,7 @@ func (t *treeNode) prettyPrintInner(indent int) {
 	for i := 0; i < indent; i++ {
 		sb.WriteRune('\t')
 	}
-	fmt.Printf("%s(%d) %s (%s:%d) (%v)\n", sb.String(), t.numLeafGoroutines, t.functionName, t.file, t.line, t.path)
+	fmt.Printf("%s(%d) %s (%s:%d) (%v)\n", sb.String(), t.numLeafGoroutines, t.function.Complete, t.file, t.line, t.path)
 	for i := range t.children {
 		t.children[i].prettyPrintInner(indent + 1)
 	}
@@ -234,7 +235,7 @@ func (t *treeNode) createPath(stack []pp.Call) {
 	}
 	call := stack[0]
 	t.children = append(t.children, treeNode{
-		functionName:      call.Func.Complete,
+		function:          call.Func,
 		file:              call.RemoteSrcPath,
 		line:              call.Line,
 		path:              append(t.path, computeScopeID(call.Func.Complete, call.RemoteSrcPath, uint32(call.Line))),
@@ -265,10 +266,12 @@ type nodeBuilder interface {
 func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSpace *color.Space) {
 	t := node.TreeNode.(*treeNode)
 	n := builder.Node(float64(t.numLeafGoroutines),
-		tvutil.StringProperty(nameKey, t.functionName),
+		tvutil.StringProperty(nameKey, t.function.DirName+"."+t.function.Name),
 		tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
-		colorSpace.PrimaryColor(functionNameToColor(t.functionName)),
-		label.Format(t.functionName))
+		tvutil.StringsProperty(fullNameKey, t.function.Complete),
+		tvutil.StringProperty(detailsFormatKey, fmt.Sprintf("$(%s)", fullNameKey)),
+		colorSpace.PrimaryColor(functionNameToColor(t.function.Complete)),
+		label.Format(fmt.Sprintf("$(%s)", nameKey)))
 	for _, c := range node.Children {
 		toWeightedTree(c, n, colorSpace)
 	}
@@ -300,7 +303,10 @@ func functionNameToColor(functionName string) float64 {
 // buildTree builds a trie out of the stack traces in snap.
 func (ds *DataSource) buildTree(snap *pp.Snapshot) *treeNode {
 	root := &treeNode{
-		functionName: "root",
+		function: pp.Func{
+			Complete: "root",
+			Name:     "root",
+		},
 		// The root doesn't have a path, as per weightedtree.TreeNode
 		// convention.
 		path: nil,
@@ -434,6 +440,6 @@ func (ds *DataSource) fetchCollection(ctx context.Context, collectionName string
 func compareByFunctionName(a, b weightedtree.TreeNode) (int, error) {
 	aa := a.(*treeNode)
 	bb := b.(*treeNode)
-	res := -strings.Compare(aa.functionName, bb.functionName)
+	res := -strings.Compare(aa.function.Complete, bb.function.Complete)
 	return res, nil
 }
