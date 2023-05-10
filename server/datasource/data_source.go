@@ -267,7 +267,7 @@ func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSp
 	t := node.TreeNode.(*treeNode)
 	n := builder.Node(float64(t.numLeafGoroutines),
 		tvutil.StringProperty(nameKey, t.function.DirName+"."+t.function.Name),
-		tvutil.StringsProperty(pathKey, t.pathAsStrings()...),
+		weightedtree.Path(t),
 		tvutil.StringsProperty(fullNameKey, t.function.Complete),
 		tvutil.StringProperty(detailsFormatKey, fmt.Sprintf("$(%s)", fullNameKey)),
 		colorSpace.PrimaryColor(functionNameToColor(t.function.Complete)),
