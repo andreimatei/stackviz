@@ -1,7 +1,6 @@
-import { Component } from '@angular/core';
+import {AfterContentInit, Component, ContentChild} from '@angular/core';
 
-import { AppCoreService } from 'traceviz/dist/ngx-traceviz-lib';
-import { StringValue } from 'traceviz-core';
+import { AppCoreService, InteractionsDirective } from 'traceviz/dist/ngx-traceviz-lib';
 
 /** The application component of the LogViz client. */
 @Component({
@@ -9,7 +8,7 @@ import { StringValue } from 'traceviz-core';
   templateUrl: './app.component.html',
   styleUrls: ['app.component.css'],
 })
-export class AppComponent {
+export class AppComponent implements AfterContentInit {
   constructor(public readonly appCoreService: AppCoreService) {
   }
 

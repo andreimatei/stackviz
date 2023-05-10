@@ -14,6 +14,9 @@
         <value key="path_prefix">
           <string-list></string-list>
         </value>
+        <value key="filter">
+          <string></string>
+        </value>
       </value-map>
     </global-state>
 
@@ -31,9 +34,21 @@
       <value-map>
         <value key="collection_name"><global-ref key="collection_name"></global-ref></value>
         <value key="path_prefix"><global-ref key="path_prefix"></global-ref></value>
+        <value key="filter"><global-ref key="filter"></global-ref></value>
       </value-map>
     </data-query>
   </app-core>
+
+  <textbox>
+    <interactions>
+      <action target="textbox" type="text_changed">
+        <set>
+          <global-ref key="filter"></global-ref>
+          <local-ref key="value"></local-ref>
+        </set>
+      </action>
+    </interactions>
+  </textbox>
 
   <weighted-tree>
     <data-series>
@@ -53,6 +68,7 @@
             <or>
               <changed><global-ref key="collection_name"></global-ref></changed>
               <changed><global-ref key="path_prefix"></global-ref></changed>
+              <changed><global-ref key="filter"></global-ref></changed>
             </or>
           </and>
         </reaction>
@@ -77,8 +93,4 @@
 
   </weighted-tree>
 
-  <!--   <mat-card class="band">
-    <mat-card-title>Global State Monitor</mat-card-title>
-    <global-state-monitor></global-state-monitor>
-  </mat-card> -->
 </div>

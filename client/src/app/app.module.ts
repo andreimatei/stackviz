@@ -8,10 +8,11 @@ import {CoreModule} from 'traceviz/dist/ngx-traceviz-lib';
 import { DataTableModule } from 'traceviz/dist/ngx-traceviz-lib';
 import { WeightedTreeModule } from 'traceviz/dist/ngx-traceviz-lib';
 import { AppComponent } from './app.component';
+import { ComponentsModule } from "./components/components.module";
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
   ],
   imports: [
     BrowserModule,
@@ -22,6 +23,7 @@ import { AppComponent } from './app.component';
     MatCardModule,
     MatPaginatorModule,
     WeightedTreeModule,
+    ComponentsModule,
   ],
   providers: [],
   bootstrap: [AppComponent]
