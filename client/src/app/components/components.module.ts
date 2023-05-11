@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TextboxComponent } from "./textbox/textbox.component";
+import { ReactiveFormsModule } from '@angular/forms';
 
 export { TextboxComponent } from "./textbox/textbox.component"
 
@@ -9,7 +10,8 @@ export { TextboxComponent } from "./textbox/textbox.component"
     TextboxComponent
   ],
   imports: [
-    CommonModule
+    CommonModule,
+    ReactiveFormsModule,
   ],
   exports: [
     TextboxComponent
