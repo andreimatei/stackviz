@@ -1,6 +1,6 @@
 import {AfterContentInit, Component, ContentChild} from '@angular/core';
 
-import { AppCoreService, InteractionsDirective } from 'traceviz/dist/ngx-traceviz-lib';
+import { AppCoreService } from 'traceviz/dist/ngx-traceviz-lib';
 
 /** The application component of the LogViz client. */
 @Component({
@@ -12,6 +12,5 @@ export class AppComponent implements AfterContentInit {
   constructor(public readonly appCoreService: AppCoreService) {
   }
 
-  ngAfterContentInit(): void {
-  }
+  ngAfterContentInit(): void {}
 }

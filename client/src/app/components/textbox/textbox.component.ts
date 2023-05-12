@@ -2,7 +2,7 @@ import {Component, ContentChild} from '@angular/core';
 import { FormControl } from '@angular/forms';
 
 import { InteractionsDirective } from 'traceviz/dist/ngx-traceviz-lib';
-import { Interactions, ValueMap, StringValue } from 'traceviz-core';
+import { Interactions, ValueMap, StringValue } from 'traceviz-client-core';
 
 const TEXTBOX = 'textbox';
 const TEXT_CHANGED = 'text_changed';
@@ -32,7 +32,6 @@ export class TextboxComponent {
     this.interactions?.checkForSupportedActions(supportedActions);
 
     this.formControl.valueChanges.subscribe(value => {
-      console.log("!!! change: ", value)
       this.interactions?.update(TEXTBOX, TEXT_CHANGED, new ValueMap(new Map([['value', new StringValue(value!)]])));
     });
   }

@@ -32,7 +32,7 @@ const (
 	nameKey           = "name"
 	detailsFormatKey  = "detail_format"
 	fullNameKey       = "full_name"
-	pathKey           = "path"
+	filterKey         = "filter"
 )
 
 // DataSource implements the querydispatcher.dataSource that deals with
@@ -362,16 +362,24 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		var err error
 		switch req.QueryName {
 		case stacksTreeQuery:
+			var filter string
+			filterVal, ok := globalFilters[filterKey]
+			if ok {
+				filter, err = tvutil.ExpectStringValue(filterVal)
+				if err != nil {
+					return fmt.Errorf("filter '%s' must be a string list", filter)
+				}
+			}
 			pathPrefixVal, ok := globalFilters[pathPrefixKey]
 			var pathPrefix []string
 			if ok {
 				pathPrefix, err = tvutil.ExpectStringsValue(pathPrefixVal)
 				if err != nil {
-					return fmt.Errorf("required filter option '%s' must be a string list", pathPrefix)
+					return fmt.Errorf("filter '%s' must be a string list", pathPrefix)
 				}
-				fmt.Printf("!!! path prefix: %s\n", pathPrefix)
 			}
-			return ds.handleStacksTreeQuery(col, pathPrefix, builder)
+			fmt.Printf("!!! query. filter: %s, path prefix: %s\n", filter, pathPrefix)
+			return ds.handleStacksTreeQuery(col, filter, pathPrefix, builder)
 		default:
 			err = fmt.Errorf("unsupported data query: %s", req.QueryName)
 		}
@@ -382,13 +390,29 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	return nil
 }
 
+func (ds *DataSource) filterStacks(snap *pp.Snapshot, filter string) *pp.Snapshot {
+	if filter == "" {
+		return snap
+	}
+	res := new(pp.Snapshot)
+	*res = *snap // shallow copy
+	res.Goroutines = nil
+	for _, g := range snap.Goroutines {
+		if ds.stackMatchesFilter(g, filter) {
+			res.Goroutines = append(res.Goroutines, g)
+		}
+	}
+	return res
+}
+
 // handleStacksTreeQuery uses the provided builder to construct the response to
 // the "stacks tree" query. The collection is filtered according to the
 // specified path prefix and turned into a weighted tree.
 func (ds *DataSource) handleStacksTreeQuery(
-	col collection, pathPrefix []string, builder tvutil.DataBuilder,
+	col collection, filter string, pathPrefix []string, builder tvutil.DataBuilder,
 ) error {
-	tree := ds.buildTree(col.snapshot)
+	snap := ds.filterStacks(col.snapshot, filter)
+	tree := ds.buildTree(snap)
 	renderSettings := &weightedtree.RenderSettings{
 		FrameHeightPx: 20,
 	}
@@ -430,6 +454,15 @@ func (ds *DataSource) fetchCollection(ctx context.Context, collectionName string
 		return collection{}, err
 	}
 	return col, nil
+}
+
+func (ds *DataSource) stackMatchesFilter(g *pp.Goroutine, filter string) bool {
+	for i := range g.Stack.Calls {
+		if strings.Contains(g.Stack.Calls[i].Func.Complete, filter) {
+			return true
+		}
+	}
+	return false
 }
 
 // compareByFunctionName compares the function names of two nodes
