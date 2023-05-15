@@ -4,7 +4,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MatCardModule } from '@angular/material/card';
 import { MatPaginatorModule } from '@angular/material/paginator';
-import { CoreModule, DataTableModule, WeightedTreeModule } from 'traceviz/dist/ngx-traceviz-lib';
+import { CoreModule, DataTableModule, WeightedTreeModule, TextFieldModule } from 'traceviz/dist/ngx-traceviz-lib';
 import { AppComponent } from './app.component';
 import { ComponentsModule } from "./components/components.module";
 
@@ -22,6 +22,7 @@ import { ComponentsModule } from "./components/components.module";
     MatPaginatorModule,
     WeightedTreeModule,
     ComponentsModule,
+    TextFieldModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

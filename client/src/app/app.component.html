@@ -39,16 +39,16 @@
     </data-query>
   </app-core>
 
-  <textbox>
+  <text-field>
     <interactions>
-      <action target="textbox" type="text_changed">
+      <action target="text_field" type="update">
         <set>
           <global-ref key="filter"></global-ref>
-          <local-ref key="value"></local-ref>
+          <local-ref key="contents"></local-ref>
         </set>
       </action>
     </interactions>
-  </textbox>
+  </text-field>
 
   <weighted-tree>
     <data-series>
