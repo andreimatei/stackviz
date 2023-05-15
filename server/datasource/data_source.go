@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"github.com/google/traceviz/server/go/category"
 	"github.com/google/traceviz/server/go/color"
 	"github.com/google/traceviz/server/go/label"
+	"github.com/google/traceviz/server/go/table"
 	tvutil "github.com/google/traceviz/server/go/util"
 	weightedtree "github.com/google/traceviz/server/go/weighted_tree"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -24,8 +26,8 @@ import (
 )
 
 const (
-	rawEntriesQuery = "stacks.raw_entries"
 	stacksTreeQuery = "stacks.tree"
+	stacksRawQuery  = "stacks.raw"
 
 	collectionNameKey = "collection_name"
 	pathPrefixKey     = "path_prefix"
@@ -233,19 +235,23 @@ func (t *treeNode) createPath(stack []pp.Call) {
 		t.numLeafGoroutines++
 		return
 	}
-	call := stack[0]
+	call := &stack[0]
 	t.children = append(t.children, treeNode{
 		function:          call.Func,
 		file:              call.RemoteSrcPath,
 		line:              call.Line,
-		path:              append(t.path, computeScopeID(call.Func.Complete, call.RemoteSrcPath, uint32(call.Line))),
+		path:              append(t.path, computeScopeID(call)),
 		children:          nil,
 		numLeafGoroutines: 0,
 	})
 	t.children[len(t.children)-1].createPath(stack[1:])
 }
 
-func computeScopeID(funcName string, file string, line uint32) weightedtree.ScopeID {
+func computeScopeID(call *pp.Call) weightedtree.ScopeID {
+	return computeScopeIDInner(call.Func.Complete, call.RemoteSrcPath, uint32(call.Line))
+}
+
+func computeScopeIDInner(funcName string, file string, line uint32) weightedtree.ScopeID {
 	hash := fnv.New64()
 	hash.Write([]byte(funcName))
 	hash.Write([]byte(file))
@@ -327,7 +333,7 @@ func (ds *DataSource) buildTree(snap *pp.Snapshot) *treeNode {
 // SupportedDataSeriesQueries implements the traceviz datasource interface. It
 // returns the supported query names DataSeriesRequest.
 func (ds *DataSource) SupportedDataSeriesQueries() []string {
-	return []string{rawEntriesQuery, stacksTreeQuery}
+	return []string{stacksRawQuery, stacksTreeQuery}
 }
 
 // HandleDataSeriesRequests handles the provided set of DataSeriesRequests, with
@@ -357,39 +363,54 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	}
 	log.Printf("Loaded collection %s", collectionName)
 
+	var filter string
+	filterVal, ok := globalFilters[filterKey]
+	if ok {
+		filter, err = tvutil.ExpectStringValue(filterVal)
+		if err != nil {
+			return fmt.Errorf("filter '%s' must be a string list", filter)
+		}
+	}
+	pathPrefixVal, ok := globalFilters[pathPrefixKey]
+	var pathPrefix []string
+	if ok {
+		pathPrefix, err = tvutil.ExpectStringsValue(pathPrefixVal)
+		if err != nil {
+			return fmt.Errorf("filter '%s' must be a string list", pathPrefix)
+		}
+	}
+	fmt.Printf("!!! query. filter: %s, path prefix: %s\n", filter, pathPrefix)
+
+	snap := ds.filterStacks(col.snapshot, filter)
+	path := make([]weightedtree.ScopeID, len(pathPrefix))
+	for i, p := range pathPrefix {
+		sid, err := strconv.ParseUint(p, 10, 64)
+		if err != nil {
+			return err
+		}
+		path[i] = weightedtree.ScopeID(sid)
+	}
+	snap = ds.filterStacksByPrefix(snap, path)
+	log.Printf("!!! goroutines after prefix filter: %d", len(snap.Goroutines))
+
 	for _, req := range reqs {
 		builder := drb.DataSeries(req)
-		var err error
 		switch req.QueryName {
 		case stacksTreeQuery:
-			var filter string
-			filterVal, ok := globalFilters[filterKey]
-			if ok {
-				filter, err = tvutil.ExpectStringValue(filterVal)
-				if err != nil {
-					return fmt.Errorf("filter '%s' must be a string list", filter)
-				}
+			if err := ds.handleStacksTreeQuery(snap, path, builder); err != nil {
+				return err
 			}
-			pathPrefixVal, ok := globalFilters[pathPrefixKey]
-			var pathPrefix []string
-			if ok {
-				pathPrefix, err = tvutil.ExpectStringsValue(pathPrefixVal)
-				if err != nil {
-					return fmt.Errorf("filter '%s' must be a string list", pathPrefix)
-				}
-			}
-			fmt.Printf("!!! query. filter: %s, path prefix: %s\n", filter, pathPrefix)
-			return ds.handleStacksTreeQuery(col, filter, pathPrefix, builder)
+		case stacksRawQuery:
+			ds.handleStacksRawQuery(snap, builder)
 		default:
-			err = fmt.Errorf("unsupported data query: %s", req.QueryName)
-		}
-		if err != nil {
-			return fmt.Errorf("error handling data query %s: %w", req.QueryName, err)
+			return fmt.Errorf("unsupported data query: %s", req.QueryName)
 		}
 	}
 	return nil
 }
 
+// filterStacks returns a new Snapshot containing the goroutines in snap that
+// contain at least a frame that matches filter.
 func (ds *DataSource) filterStacks(snap *pp.Snapshot, filter string) *pp.Snapshot {
 	if filter == "" {
 		return snap
@@ -405,14 +426,44 @@ func (ds *DataSource) filterStacks(snap *pp.Snapshot, filter string) *pp.Snapsho
 	return res
 }
 
+// filterStacksByPrefix returns a new Snapshot containing the goroutines in snap
+// that have the given prefix.
+func (ds *DataSource) filterStacksByPrefix(snap *pp.Snapshot, prefix []weightedtree.ScopeID) *pp.Snapshot {
+	if len(prefix) == 0 {
+		return snap
+	}
+	res := new(pp.Snapshot)
+	*res = *snap // shallow copy
+	res.Goroutines = nil
+	for _, g := range snap.Goroutines {
+		if ds.stackMatchesPrefix(g, prefix) {
+			res.Goroutines = append(res.Goroutines, g)
+		}
+	}
+	return res
+}
+
 // handleStacksTreeQuery uses the provided builder to construct the response to
-// the "stacks tree" query. The collection is filtered according to the
-// specified path prefix and turned into a weighted tree.
+// the "stacks tree" query, turning a snapshot into a weighted tree. This
+// function will filter the snapshot by the provided prefix path. Even if the
+// snapshot is already filtered, the path should still be specified (if there is
+// one), such that the prefix nodes in the resulting tree are correctly marked
+// as such.
 func (ds *DataSource) handleStacksTreeQuery(
-	col collection, filter string, pathPrefix []string, builder tvutil.DataBuilder,
+	snap *pp.Snapshot,
+	path []weightedtree.ScopeID,
+	builder tvutil.DataBuilder,
 ) error {
-	snap := ds.filterStacks(col.snapshot, filter)
 	tree := ds.buildTree(snap)
+	filtered, err := weightedtree.Walk(
+		tree,
+		compareByFunctionName, // within a level, sort alphabetically
+		weightedtree.PathPrefix(path...),
+	)
+	if err != nil {
+		return err
+	}
+
 	renderSettings := &weightedtree.RenderSettings{
 		FrameHeightPx: 20,
 	}
@@ -424,25 +475,27 @@ func (ds *DataSource) handleStacksTreeQuery(
 	// that a human can read it more easily.
 	var colorSpace = color.NewSpace("yellow-to-red", "#E1A81E", "#E35A1C")
 	wt.With(colorSpace.Define())
-
-	path := make([]weightedtree.ScopeID, len(pathPrefix))
-	for i, p := range pathPrefix {
-		sid, err := strconv.ParseUint(p, 10, 64)
-		if err != nil {
-			return err
-		}
-		path[i] = weightedtree.ScopeID(sid)
-	}
-	filtered, err := weightedtree.Walk(
-		tree,
-		compareByFunctionName, // within a level, sort alphabetically
-		weightedtree.PathPrefix(path...),
-	)
-	if err != nil {
-		panic(err)
-	}
 	toWeightedTree(filtered, wt, colorSpace)
 	return nil
+}
+
+var stackCategory = category.New("stack", "Stack", "Backtrace")
+
+func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, builder tvutil.DataBuilder) {
+	renderSettings := &table.RenderSettings{
+		RowHeightPx: 20,
+		FontSizePx:  14,
+	}
+	stackCol := table.Column(stackCategory)
+
+	for i := range snap.Goroutines {
+		g := snap.Goroutines[i]
+		tab := table.New(builder.Child(), renderSettings, stackCol)
+		for j := range g.Stack.Calls {
+			c := &g.Stack.Calls[j]
+			tab.Row(table.FormattedCell(stackCol, c.Func.Complete))
+		}
+	}
 }
 
 // fetchCollection returns the specified collection from the LRU if it's
@@ -463,6 +516,25 @@ func (ds *DataSource) stackMatchesFilter(g *pp.Goroutine, filter string) bool {
 		}
 	}
 	return false
+}
+
+func (ds *DataSource) stackMatchesPrefix(g *pp.Goroutine, prefix []weightedtree.ScopeID) bool {
+	if len(g.Stack.Calls) < len(prefix) {
+		return false
+	}
+	for i := range prefix {
+		//if i == 0 {
+		//	log.Printf("!!! first func in stack %s (%d) with %d", c.Func.Complete, computeScopeID(c), prefix[i])
+		//}
+		c := &g.Stack.Calls[len(g.Stack.Calls)-i-1]
+		//if strings.Contains(c.Func.Complete, "internalClientAdapter") {
+		//	log.Printf("!!! comparing %s (%d) with %d", c.Func.Complete, computeScopeID(c), prefix[i])
+		//}
+		if computeScopeID(c) != prefix[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // compareByFunctionName compares the function names of two nodes

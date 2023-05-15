@@ -39,7 +39,7 @@
     </data-query>
   </app-core>
 
-  <text-field label="Filter" placeholder="enter module or function name" updateOnEnter=false>
+  <text-field label="Filter" placeholder="filter by package or function name" updateOnEnter=false>
     <interactions>
       <action target="text_field" type="update">
         <set>
@@ -93,4 +93,29 @@
 
   </weighted-tree>
 
+  <stacks>
+    <data-series>
+      <query>
+        <string>stacks.raw</string>
+      </query>
+
+      <interactions>
+        <reaction target="data-series" type="fetch">
+          <and>
+            <not>
+              <equals>
+                <global-ref key="collection_name"></global-ref>
+                <string></string>
+              </equals>
+            </not>
+            <or>
+              <changed><global-ref key="collection_name"></global-ref></changed>
+              <changed><global-ref key="path_prefix"></global-ref></changed>
+              <changed><global-ref key="filter"></global-ref></changed>
+            </or>
+          </and>
+        </reaction>
+      </interactions>
+    </data-series>
+  </stacks>
 </div>

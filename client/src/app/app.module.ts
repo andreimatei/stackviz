@@ -7,6 +7,7 @@ import { MatPaginatorModule } from '@angular/material/paginator';
 import { CoreModule, DataTableModule, WeightedTreeModule, TextFieldModule } from 'traceviz/dist/ngx-traceviz-lib';
 import { AppComponent } from './app.component';
 import { ComponentsModule } from "./components/components.module";
+import { StacksComponent } from "./components/stacks/stacks.component";
 
 @NgModule({
   declarations: [
@@ -23,6 +24,7 @@ import { ComponentsModule } from "./components/components.module";
     WeightedTreeModule,
     ComponentsModule,
     TextFieldModule,
+    StacksComponent,
   ],
   providers: [],
   bootstrap: [AppComponent]
