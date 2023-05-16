@@ -519,7 +519,6 @@ func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines
 				table.FormattedCell(fileLineCol, fmt.Sprintf("%s:%d", c.SrcName, c.Line)),
 				table.FormattedCell(funcCol, c.Func.Name),
 			)
-			// !!! tab.Row(table.FormattedCell(stackCol, c.Func.Complete))
 		}
 	}
 
