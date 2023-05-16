@@ -493,14 +493,16 @@ func (ds *DataSource) handleStacksTreeQuery(
 	return nil
 }
 
-var stackCategory = category.New("stack", "Stack", "Backtrace")
+var stackCol = table.Column(category.New("stack", "Backtrace", "The goroutine's stack backtrace"))
+var pkgCol = table.Column(category.New("package", "Package", "The name of the package that the function lives in."))
+var fileLineCol = table.Column(category.New("fileLine", "file:line", "The source location."))
+var funcCol = table.Column(category.New("function", "Function", "The name of the function."))
 
 func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines int, builder tvutil.DataBuilder) {
 	renderSettings := &table.RenderSettings{
 		RowHeightPx: 20,
 		FontSizePx:  14,
 	}
-	stackCol := table.Column(stackCategory)
 	builder.With(tvutil.IntegerProperty(numTotalGoroutinesKey, int64(numTotalGoroutines)))
 	builder.With(tvutil.IntegerProperty(numFilteredGoroutinesKey, int64(numTotalGoroutines-len(snap.Goroutines))))
 	agg := snap.Aggregate(pp.AnyValue)
@@ -509,10 +511,15 @@ func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines
 	rawBuilder := builder.Child()
 
 	for _, b := range agg.Buckets {
+		tab := table.New(aggBuilder.Child(), renderSettings, pkgCol, fileLineCol, funcCol).With(tvutil.IntegerProperty(numGoroutinesInBucketKey, int64(len(b.IDs))))
 		for j := range b.Stack.Calls {
-			tab := table.New(aggBuilder.Child(), renderSettings, stackCol).With(tvutil.IntegerProperty(numGoroutinesInBucketKey, int64(len(b.IDs))))
 			c := &b.Stack.Calls[j]
-			tab.Row(table.FormattedCell(stackCol, c.Func.Complete))
+			tab.Row(
+				table.FormattedCell(pkgCol, c.Func.DirName),
+				table.FormattedCell(fileLineCol, fmt.Sprintf("%s:%d", c.SrcName, c.Line)),
+				table.FormattedCell(funcCol, c.Func.Name),
+			)
+			// !!! tab.Row(table.FormattedCell(stackCol, c.Func.Complete))
 		}
 	}
 

@@ -1,7 +1,4 @@
-import {
-  Component,
-  ContentChild
-} from '@angular/core';
+import { Component, ContentChild, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   AppCoreService,
@@ -9,9 +6,7 @@ import {
   DataTableModule,
   InteractionsDirective
 } from 'traceviz/dist/ngx-traceviz-lib';
-import {
-  MatTabsModule,
-} from '@angular/material/tabs'
+import { MatTabsModule, } from '@angular/material/tabs'
 import { AppCore, ConfigurationError, ResponseNode, Severity } from 'traceviz-client-core';
 import { Subject } from "rxjs";
 import { takeUntil } from 'rxjs/operators';
@@ -19,9 +14,10 @@ import { takeUntil } from 'rxjs/operators';
 const SOURCE = 'data-table';
 
 @Component({
-  selector: 'stacks',
+  selector: 'app-stacks',
   standalone: true,
   imports: [CommonModule, DataTableModule, MatTabsModule],
+  //encapsulation: ViewEncapsulation.ShadowDom,
   template: `
     <div>
       {{ numStacks }} stacks
@@ -34,7 +30,7 @@ const SOURCE = 'data-table';
           <ul>
             <li *ngFor="let stack of aggStacks">
               {{ stack.properties.expectNumber("num_gs_in_bucket") }} goroutine(s):
-              <data-table [data]="stack" ></data-table>
+              <data-table [data]="stack" [style]="  "></data-table>
             </li>
           </ul>
         </mat-tab>
@@ -58,8 +54,10 @@ const SOURCE = 'data-table';
       margin: 0; /* Remove margins */
     }
     li {
-        border-bottom: 1px solid black;
-    }`
+      border-bottom: 1px solid black;
+    }
+    data-table::part(table) {background: #f4f4f4; border: 1px solid #dcdcdc; width: unset; min-width: 350px;}
+    `
   ]
 })
 export class StacksComponent {
