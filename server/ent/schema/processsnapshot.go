@@ -1,7 +1,9 @@
 package schema
 
 import (
+	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 )
 
@@ -13,7 +15,6 @@ type ProcessSnapshot struct {
 // Fields of the ProcessSnapshot.
 func (ProcessSnapshot) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int64("id"),
 		field.String("process_id"),
 		field.Text("snapshot"),
 	}
@@ -22,4 +23,11 @@ func (ProcessSnapshot) Fields() []ent.Field {
 // Edges of the ProcessSnapshot.
 func (ProcessSnapshot) Edges() []ent.Edge {
 	return nil
+}
+
+func (ProcessSnapshot) Annotations() []schema.Annotation {
+	return []schema.Annotation{
+		entgql.QueryField(),
+		entgql.Mutations(entgql.MutationCreate()),
+	}
 }

@@ -15,7 +15,7 @@ import (
 type ProcessSnapshot struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int64 `json:"id,omitempty"`
+	ID int `json:"id,omitempty"`
 	// ProcessID holds the value of the "process_id" field.
 	ProcessID string `json:"process_id,omitempty"`
 	// Snapshot holds the value of the "snapshot" field.
@@ -55,7 +55,7 @@ func (ps *ProcessSnapshot) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			ps.ID = int64(value.Int64)
+			ps.ID = int(value.Int64)
 		case processsnapshot.FieldProcessID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field process_id", values[i])

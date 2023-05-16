@@ -1,7 +1,9 @@
 package schema
 
 import (
+	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
@@ -14,7 +16,6 @@ type Collection struct {
 // Fields of the Collection.
 func (Collection) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("id").Positive(),
 		field.String("name"),
 	}
 }
@@ -23,5 +24,12 @@ func (Collection) Fields() []ent.Field {
 func (Collection) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("process_snapshots", ProcessSnapshot.Type),
+	}
+}
+
+func (Collection) Annotations() []schema.Annotation {
+	return []schema.Annotation{
+		entgql.QueryField(),
+		entgql.Mutations(entgql.MutationCreate()),
 	}
 }

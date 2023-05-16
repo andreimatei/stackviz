@@ -4,10 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	graphqlhandler "github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
 	"os"
+	server "stacksviz"
 	"stacksviz/ent"
 	"stacksviz/ent/collection"
 	"stacksviz/service"
@@ -20,6 +23,7 @@ var (
 )
 
 func main() {
+	ctx := context.Background()
 	flag.Parse()
 
 	client, err := ent.Open("sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
@@ -28,8 +32,12 @@ func main() {
 	}
 	defer client.Close()
 	// Run the auto migration tool.
-	if err := client.Schema.Create(context.Background()); err != nil {
+	if err := client.Schema.Create(ctx); err != nil {
 		log.Fatalf("failed creating schema resources: %v", err)
+	}
+
+	if _, err := CreateCollection(ctx, client); err != nil {
+		log.Fatal(err)
 	}
 
 	service, err := service.New(*resourceRoot, *stacksDir)
@@ -40,15 +48,19 @@ func main() {
 	mux := http.DefaultServeMux
 	service.RegisterHandlers(mux)
 	mux.Handle("/", http.FileServer(http.Dir(*resourceRoot)))
-	fmt.Printf("Serving on port %d\n", *port)
-	http.ListenAndServe(
-		fmt.Sprintf(":%d", *port),
-		mux,
-	)
+
+	// Create the Graphql server and register it and the playground.
+	graphqlServer := graphqlhandler.NewDefaultServer(server.NewSchema(client))
+	mux.Handle("/playground", playground.Handler("GraphQL playground", "/query"))
+	mux.Handle("/query", graphqlServer)
+
+	// Start the HTTP server.
+	fmt.Printf("Serving on port %d\n. Go to http://localhost:7410/playground for a GraphQL playground.", *port)
+	http.ListenAndServe(fmt.Sprintf(":%d", *port), mux)
 }
 
 func CreateCollection(ctx context.Context, client *ent.Client) (*ent.Collection, error) {
-	stacks, err := os.ReadFile("cockroachdb_example_snapshot.txt")
+	stacks, err := os.ReadFile("datasource/cockroachdb_example_snapshot.txt")
 	if err != nil {
 		return nil, fmt.Errorf("failed reading file: %w", err)
 	}
@@ -56,7 +68,6 @@ func CreateCollection(ctx context.Context, client *ent.Client) (*ent.Collection,
 	var snaps []*ent.ProcessSnapshot
 	for i := 1; i <= 2; i++ {
 		s, err := client.ProcessSnapshot.Create().
-			SetID(int64(i)).
 			SetProcessID("node-1").
 			SetSnapshot(string(stacks)).
 			Save(ctx)
@@ -67,9 +78,8 @@ func CreateCollection(ctx context.Context, client *ent.Client) (*ent.Collection,
 	}
 
 	c, err := client.Collection.Create().
-		SetID(1).
 		SetName("crdb-20230516-155400").
-		AddProcessSnapshots().
+		AddProcessSnapshots(snaps...).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating collection: %w", err)

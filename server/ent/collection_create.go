@@ -26,21 +26,15 @@ func (cc *CollectionCreate) SetName(s string) *CollectionCreate {
 	return cc
 }
 
-// SetID sets the "id" field.
-func (cc *CollectionCreate) SetID(i int) *CollectionCreate {
-	cc.mutation.SetID(i)
-	return cc
-}
-
 // AddProcessSnapshotIDs adds the "process_snapshots" edge to the ProcessSnapshot entity by IDs.
-func (cc *CollectionCreate) AddProcessSnapshotIDs(ids ...int64) *CollectionCreate {
+func (cc *CollectionCreate) AddProcessSnapshotIDs(ids ...int) *CollectionCreate {
 	cc.mutation.AddProcessSnapshotIDs(ids...)
 	return cc
 }
 
 // AddProcessSnapshots adds the "process_snapshots" edges to the ProcessSnapshot entity.
 func (cc *CollectionCreate) AddProcessSnapshots(p ...*ProcessSnapshot) *CollectionCreate {
-	ids := make([]int64, len(p))
+	ids := make([]int, len(p))
 	for i := range p {
 		ids[i] = p[i].ID
 	}
@@ -84,11 +78,6 @@ func (cc *CollectionCreate) check() error {
 	if _, ok := cc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Collection.name"`)}
 	}
-	if v, ok := cc.mutation.ID(); ok {
-		if err := collection.IDValidator(v); err != nil {
-			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Collection.id": %w`, err)}
-		}
-	}
 	return nil
 }
 
@@ -103,10 +92,8 @@ func (cc *CollectionCreate) sqlSave(ctx context.Context) (*Collection, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != _node.ID {
-		id := _spec.ID.Value.(int64)
-		_node.ID = int(id)
-	}
+	id := _spec.ID.Value.(int64)
+	_node.ID = int(id)
 	cc.mutation.id = &_node.ID
 	cc.mutation.done = true
 	return _node, nil
@@ -117,10 +104,6 @@ func (cc *CollectionCreate) createSpec() (*Collection, *sqlgraph.CreateSpec) {
 		_node = &Collection{config: cc.config}
 		_spec = sqlgraph.NewCreateSpec(collection.Table, sqlgraph.NewFieldSpec(collection.FieldID, field.TypeInt))
 	)
-	if id, ok := cc.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = id
-	}
 	if value, ok := cc.mutation.Name(); ok {
 		_spec.SetField(collection.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -133,7 +116,7 @@ func (cc *CollectionCreate) createSpec() (*Collection, *sqlgraph.CreateSpec) {
 			Columns: []string{collection.ProcessSnapshotsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -184,7 +167,7 @@ func (ccb *CollectionCreateBulk) Save(ctx context.Context) ([]*Collection, error
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil && nodes[i].ID == 0 {
+				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
 					nodes[i].ID = int(id)
 				}

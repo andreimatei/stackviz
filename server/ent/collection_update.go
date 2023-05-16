@@ -35,14 +35,14 @@ func (cu *CollectionUpdate) SetName(s string) *CollectionUpdate {
 }
 
 // AddProcessSnapshotIDs adds the "process_snapshots" edge to the ProcessSnapshot entity by IDs.
-func (cu *CollectionUpdate) AddProcessSnapshotIDs(ids ...int64) *CollectionUpdate {
+func (cu *CollectionUpdate) AddProcessSnapshotIDs(ids ...int) *CollectionUpdate {
 	cu.mutation.AddProcessSnapshotIDs(ids...)
 	return cu
 }
 
 // AddProcessSnapshots adds the "process_snapshots" edges to the ProcessSnapshot entity.
 func (cu *CollectionUpdate) AddProcessSnapshots(p ...*ProcessSnapshot) *CollectionUpdate {
-	ids := make([]int64, len(p))
+	ids := make([]int, len(p))
 	for i := range p {
 		ids[i] = p[i].ID
 	}
@@ -61,14 +61,14 @@ func (cu *CollectionUpdate) ClearProcessSnapshots() *CollectionUpdate {
 }
 
 // RemoveProcessSnapshotIDs removes the "process_snapshots" edge to ProcessSnapshot entities by IDs.
-func (cu *CollectionUpdate) RemoveProcessSnapshotIDs(ids ...int64) *CollectionUpdate {
+func (cu *CollectionUpdate) RemoveProcessSnapshotIDs(ids ...int) *CollectionUpdate {
 	cu.mutation.RemoveProcessSnapshotIDs(ids...)
 	return cu
 }
 
 // RemoveProcessSnapshots removes "process_snapshots" edges to ProcessSnapshot entities.
 func (cu *CollectionUpdate) RemoveProcessSnapshots(p ...*ProcessSnapshot) *CollectionUpdate {
-	ids := make([]int64, len(p))
+	ids := make([]int, len(p))
 	for i := range p {
 		ids[i] = p[i].ID
 	}
@@ -122,7 +122,7 @@ func (cu *CollectionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{collection.ProcessSnapshotsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -135,7 +135,7 @@ func (cu *CollectionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{collection.ProcessSnapshotsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -151,7 +151,7 @@ func (cu *CollectionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{collection.ProcessSnapshotsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -186,14 +186,14 @@ func (cuo *CollectionUpdateOne) SetName(s string) *CollectionUpdateOne {
 }
 
 // AddProcessSnapshotIDs adds the "process_snapshots" edge to the ProcessSnapshot entity by IDs.
-func (cuo *CollectionUpdateOne) AddProcessSnapshotIDs(ids ...int64) *CollectionUpdateOne {
+func (cuo *CollectionUpdateOne) AddProcessSnapshotIDs(ids ...int) *CollectionUpdateOne {
 	cuo.mutation.AddProcessSnapshotIDs(ids...)
 	return cuo
 }
 
 // AddProcessSnapshots adds the "process_snapshots" edges to the ProcessSnapshot entity.
 func (cuo *CollectionUpdateOne) AddProcessSnapshots(p ...*ProcessSnapshot) *CollectionUpdateOne {
-	ids := make([]int64, len(p))
+	ids := make([]int, len(p))
 	for i := range p {
 		ids[i] = p[i].ID
 	}
@@ -212,14 +212,14 @@ func (cuo *CollectionUpdateOne) ClearProcessSnapshots() *CollectionUpdateOne {
 }
 
 // RemoveProcessSnapshotIDs removes the "process_snapshots" edge to ProcessSnapshot entities by IDs.
-func (cuo *CollectionUpdateOne) RemoveProcessSnapshotIDs(ids ...int64) *CollectionUpdateOne {
+func (cuo *CollectionUpdateOne) RemoveProcessSnapshotIDs(ids ...int) *CollectionUpdateOne {
 	cuo.mutation.RemoveProcessSnapshotIDs(ids...)
 	return cuo
 }
 
 // RemoveProcessSnapshots removes "process_snapshots" edges to ProcessSnapshot entities.
 func (cuo *CollectionUpdateOne) RemoveProcessSnapshots(p ...*ProcessSnapshot) *CollectionUpdateOne {
-	ids := make([]int64, len(p))
+	ids := make([]int, len(p))
 	for i := range p {
 		ids[i] = p[i].ID
 	}
@@ -303,7 +303,7 @@ func (cuo *CollectionUpdateOne) sqlSave(ctx context.Context) (_node *Collection,
 			Columns: []string{collection.ProcessSnapshotsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -316,7 +316,7 @@ func (cuo *CollectionUpdateOne) sqlSave(ctx context.Context) (_node *Collection,
 			Columns: []string{collection.ProcessSnapshotsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -332,7 +332,7 @@ func (cuo *CollectionUpdateOne) sqlSave(ctx context.Context) (_node *Collection,
 			Columns: []string{collection.ProcessSnapshotsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

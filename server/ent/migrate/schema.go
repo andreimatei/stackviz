@@ -21,7 +21,7 @@ var (
 	}
 	// ProcessSnapshotsColumns holds the columns for the "process_snapshots" table.
 	ProcessSnapshotsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "process_id", Type: field.TypeString},
 		{Name: "snapshot", Type: field.TypeString, Size: 2147483647},
 		{Name: "collection_process_snapshots", Type: field.TypeInt, Nullable: true},

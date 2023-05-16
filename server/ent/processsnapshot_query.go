@@ -22,6 +22,8 @@ type ProcessSnapshotQuery struct {
 	inters     []Interceptor
 	predicates []predicate.ProcessSnapshot
 	withFKs    bool
+	modifiers  []func(*sql.Selector)
+	loadTotal  []func(context.Context, []*ProcessSnapshot) error
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -82,8 +84,8 @@ func (psq *ProcessSnapshotQuery) FirstX(ctx context.Context) *ProcessSnapshot {
 
 // FirstID returns the first ProcessSnapshot ID from the query.
 // Returns a *NotFoundError when no ProcessSnapshot ID was found.
-func (psq *ProcessSnapshotQuery) FirstID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (psq *ProcessSnapshotQuery) FirstID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = psq.Limit(1).IDs(setContextOp(ctx, psq.ctx, "FirstID")); err != nil {
 		return
 	}
@@ -95,7 +97,7 @@ func (psq *ProcessSnapshotQuery) FirstID(ctx context.Context) (id int64, err err
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (psq *ProcessSnapshotQuery) FirstIDX(ctx context.Context) int64 {
+func (psq *ProcessSnapshotQuery) FirstIDX(ctx context.Context) int {
 	id, err := psq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -133,8 +135,8 @@ func (psq *ProcessSnapshotQuery) OnlyX(ctx context.Context) *ProcessSnapshot {
 // OnlyID is like Only, but returns the only ProcessSnapshot ID in the query.
 // Returns a *NotSingularError when more than one ProcessSnapshot ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (psq *ProcessSnapshotQuery) OnlyID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (psq *ProcessSnapshotQuery) OnlyID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = psq.Limit(2).IDs(setContextOp(ctx, psq.ctx, "OnlyID")); err != nil {
 		return
 	}
@@ -150,7 +152,7 @@ func (psq *ProcessSnapshotQuery) OnlyID(ctx context.Context) (id int64, err erro
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (psq *ProcessSnapshotQuery) OnlyIDX(ctx context.Context) int64 {
+func (psq *ProcessSnapshotQuery) OnlyIDX(ctx context.Context) int {
 	id, err := psq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -178,7 +180,7 @@ func (psq *ProcessSnapshotQuery) AllX(ctx context.Context) []*ProcessSnapshot {
 }
 
 // IDs executes the query and returns a list of ProcessSnapshot IDs.
-func (psq *ProcessSnapshotQuery) IDs(ctx context.Context) (ids []int64, err error) {
+func (psq *ProcessSnapshotQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if psq.ctx.Unique == nil && psq.path != nil {
 		psq.Unique(true)
 	}
@@ -190,7 +192,7 @@ func (psq *ProcessSnapshotQuery) IDs(ctx context.Context) (ids []int64, err erro
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (psq *ProcessSnapshotQuery) IDsX(ctx context.Context) []int64 {
+func (psq *ProcessSnapshotQuery) IDsX(ctx context.Context) []int {
 	ids, err := psq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -347,6 +349,9 @@ func (psq *ProcessSnapshotQuery) sqlAll(ctx context.Context, hooks ...queryHook)
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
+	if len(psq.modifiers) > 0 {
+		_spec.Modifiers = psq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -356,11 +361,19 @@ func (psq *ProcessSnapshotQuery) sqlAll(ctx context.Context, hooks ...queryHook)
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	for i := range psq.loadTotal {
+		if err := psq.loadTotal[i](ctx, nodes); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
 }
 
 func (psq *ProcessSnapshotQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := psq.querySpec()
+	if len(psq.modifiers) > 0 {
+		_spec.Modifiers = psq.modifiers
+	}
 	_spec.Node.Columns = psq.ctx.Fields
 	if len(psq.ctx.Fields) > 0 {
 		_spec.Unique = psq.ctx.Unique != nil && *psq.ctx.Unique
@@ -369,7 +382,7 @@ func (psq *ProcessSnapshotQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (psq *ProcessSnapshotQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(processsnapshot.Table, processsnapshot.Columns, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewQuerySpec(processsnapshot.Table, processsnapshot.Columns, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt))
 	_spec.From = psq.sql
 	if unique := psq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

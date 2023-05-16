@@ -31,6 +31,10 @@ type CollectionEdges struct {
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
+	// totalCount holds the count of the edges above.
+	totalCount [1]map[string]int
+
+	namedProcessSnapshots map[string][]*ProcessSnapshot
 }
 
 // ProcessSnapshotsOrErr returns the ProcessSnapshots value or an error if the edge
@@ -123,6 +127,30 @@ func (c *Collection) String() string {
 	builder.WriteString(c.Name)
 	builder.WriteByte(')')
 	return builder.String()
+}
+
+// NamedProcessSnapshots returns the ProcessSnapshots named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (c *Collection) NamedProcessSnapshots(name string) ([]*ProcessSnapshot, error) {
+	if c.Edges.namedProcessSnapshots == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := c.Edges.namedProcessSnapshots[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (c *Collection) appendNamedProcessSnapshots(name string, edges ...*ProcessSnapshot) {
+	if c.Edges.namedProcessSnapshots == nil {
+		c.Edges.namedProcessSnapshots = make(map[string][]*ProcessSnapshot)
+	}
+	if len(edges) == 0 {
+		c.Edges.namedProcessSnapshots[name] = []*ProcessSnapshot{}
+	} else {
+		c.Edges.namedProcessSnapshots[name] = append(c.Edges.namedProcessSnapshots[name], edges...)
+	}
 }
 
 // Collections is a parsable slice of Collection.

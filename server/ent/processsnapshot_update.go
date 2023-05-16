@@ -72,7 +72,7 @@ func (psu *ProcessSnapshotUpdate) ExecX(ctx context.Context) {
 }
 
 func (psu *ProcessSnapshotUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(processsnapshot.Table, processsnapshot.Columns, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(processsnapshot.Table, processsnapshot.Columns, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt))
 	if ps := psu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -164,7 +164,7 @@ func (psuo *ProcessSnapshotUpdateOne) ExecX(ctx context.Context) {
 }
 
 func (psuo *ProcessSnapshotUpdateOne) sqlSave(ctx context.Context) (_node *ProcessSnapshot, err error) {
-	_spec := sqlgraph.NewUpdateSpec(processsnapshot.Table, processsnapshot.Columns, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(processsnapshot.Table, processsnapshot.Columns, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt))
 	id, ok := psuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "ProcessSnapshot.id" for update`)}

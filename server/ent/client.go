@@ -28,6 +28,8 @@ type Client struct {
 	Collection *CollectionClient
 	// ProcessSnapshot is the client for interacting with the ProcessSnapshot builders.
 	ProcessSnapshot *ProcessSnapshotClient
+	// additional fields for node api
+	tables tables
 }
 
 // NewClient creates a new client configured with the given options.
@@ -379,7 +381,7 @@ func (c *ProcessSnapshotClient) UpdateOne(ps *ProcessSnapshot) *ProcessSnapshotU
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *ProcessSnapshotClient) UpdateOneID(id int64) *ProcessSnapshotUpdateOne {
+func (c *ProcessSnapshotClient) UpdateOneID(id int) *ProcessSnapshotUpdateOne {
 	mutation := newProcessSnapshotMutation(c.config, OpUpdateOne, withProcessSnapshotID(id))
 	return &ProcessSnapshotUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -396,7 +398,7 @@ func (c *ProcessSnapshotClient) DeleteOne(ps *ProcessSnapshot) *ProcessSnapshotD
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *ProcessSnapshotClient) DeleteOneID(id int64) *ProcessSnapshotDeleteOne {
+func (c *ProcessSnapshotClient) DeleteOneID(id int) *ProcessSnapshotDeleteOne {
 	builder := c.Delete().Where(processsnapshot.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -413,12 +415,12 @@ func (c *ProcessSnapshotClient) Query() *ProcessSnapshotQuery {
 }
 
 // Get returns a ProcessSnapshot entity by its id.
-func (c *ProcessSnapshotClient) Get(ctx context.Context, id int64) (*ProcessSnapshot, error) {
+func (c *ProcessSnapshotClient) Get(ctx context.Context, id int) (*ProcessSnapshot, error) {
 	return c.Query().Where(processsnapshot.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *ProcessSnapshotClient) GetX(ctx context.Context, id int64) *ProcessSnapshot {
+func (c *ProcessSnapshotClient) GetX(ctx context.Context, id int) *ProcessSnapshot {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)

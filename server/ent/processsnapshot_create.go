@@ -31,12 +31,6 @@ func (psc *ProcessSnapshotCreate) SetSnapshot(s string) *ProcessSnapshotCreate {
 	return psc
 }
 
-// SetID sets the "id" field.
-func (psc *ProcessSnapshotCreate) SetID(i int64) *ProcessSnapshotCreate {
-	psc.mutation.SetID(i)
-	return psc
-}
-
 // Mutation returns the ProcessSnapshotMutation object of the builder.
 func (psc *ProcessSnapshotCreate) Mutation() *ProcessSnapshotMutation {
 	return psc.mutation
@@ -91,10 +85,8 @@ func (psc *ProcessSnapshotCreate) sqlSave(ctx context.Context) (*ProcessSnapshot
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != _node.ID {
-		id := _spec.ID.Value.(int64)
-		_node.ID = int64(id)
-	}
+	id := _spec.ID.Value.(int64)
+	_node.ID = int(id)
 	psc.mutation.id = &_node.ID
 	psc.mutation.done = true
 	return _node, nil
@@ -103,12 +95,8 @@ func (psc *ProcessSnapshotCreate) sqlSave(ctx context.Context) (*ProcessSnapshot
 func (psc *ProcessSnapshotCreate) createSpec() (*ProcessSnapshot, *sqlgraph.CreateSpec) {
 	var (
 		_node = &ProcessSnapshot{config: psc.config}
-		_spec = sqlgraph.NewCreateSpec(processsnapshot.Table, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64))
+		_spec = sqlgraph.NewCreateSpec(processsnapshot.Table, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt))
 	)
-	if id, ok := psc.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = id
-	}
 	if value, ok := psc.mutation.ProcessID(); ok {
 		_spec.SetField(processsnapshot.FieldProcessID, field.TypeString, value)
 		_node.ProcessID = value
@@ -160,9 +148,9 @@ func (pscb *ProcessSnapshotCreateBulk) Save(ctx context.Context) ([]*ProcessSnap
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil && nodes[i].ID == 0 {
+				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int64(id)
+					nodes[i].ID = int(id)
 				}
 				mutation.done = true
 				return nodes[i], nil

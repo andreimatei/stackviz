@@ -19,11 +19,14 @@ import (
 // CollectionQuery is the builder for querying Collection entities.
 type CollectionQuery struct {
 	config
-	ctx                  *QueryContext
-	order                []collection.OrderOption
-	inters               []Interceptor
-	predicates           []predicate.Collection
-	withProcessSnapshots *ProcessSnapshotQuery
+	ctx                       *QueryContext
+	order                     []collection.OrderOption
+	inters                    []Interceptor
+	predicates                []predicate.Collection
+	withProcessSnapshots      *ProcessSnapshotQuery
+	modifiers                 []func(*sql.Selector)
+	loadTotal                 []func(context.Context, []*Collection) error
+	withNamedProcessSnapshots map[string]*ProcessSnapshotQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -383,6 +386,9 @@ func (cq *CollectionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*C
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(cq.modifiers) > 0 {
+		_spec.Modifiers = cq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -398,6 +404,18 @@ func (cq *CollectionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*C
 			func(n *Collection, e *ProcessSnapshot) {
 				n.Edges.ProcessSnapshots = append(n.Edges.ProcessSnapshots, e)
 			}); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range cq.withNamedProcessSnapshots {
+		if err := cq.loadProcessSnapshots(ctx, query, nodes,
+			func(n *Collection) { n.appendNamedProcessSnapshots(name) },
+			func(n *Collection, e *ProcessSnapshot) { n.appendNamedProcessSnapshots(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for i := range cq.loadTotal {
+		if err := cq.loadTotal[i](ctx, nodes); err != nil {
 			return nil, err
 		}
 	}
@@ -438,6 +456,9 @@ func (cq *CollectionQuery) loadProcessSnapshots(ctx context.Context, query *Proc
 
 func (cq *CollectionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := cq.querySpec()
+	if len(cq.modifiers) > 0 {
+		_spec.Modifiers = cq.modifiers
+	}
 	_spec.Node.Columns = cq.ctx.Fields
 	if len(cq.ctx.Fields) > 0 {
 		_spec.Unique = cq.ctx.Unique != nil && *cq.ctx.Unique
@@ -515,6 +536,20 @@ func (cq *CollectionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithNamedProcessSnapshots tells the query-builder to eager-load the nodes that are connected to the "process_snapshots"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (cq *CollectionQuery) WithNamedProcessSnapshots(name string, opts ...func(*ProcessSnapshotQuery)) *CollectionQuery {
+	query := (&ProcessSnapshotClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if cq.withNamedProcessSnapshots == nil {
+		cq.withNamedProcessSnapshots = make(map[string]*ProcessSnapshotQuery)
+	}
+	cq.withNamedProcessSnapshots[name] = query
+	return cq
 }
 
 // CollectionGroupBy is the group-by builder for Collection entities.

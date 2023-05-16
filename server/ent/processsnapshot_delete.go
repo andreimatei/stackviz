@@ -40,7 +40,7 @@ func (psd *ProcessSnapshotDelete) ExecX(ctx context.Context) int {
 }
 
 func (psd *ProcessSnapshotDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(processsnapshot.Table, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewDeleteSpec(processsnapshot.Table, sqlgraph.NewFieldSpec(processsnapshot.FieldID, field.TypeInt))
 	if ps := psd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

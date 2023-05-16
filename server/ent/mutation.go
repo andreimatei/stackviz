@@ -36,8 +36,8 @@ type CollectionMutation struct {
 	id                       *int
 	name                     *string
 	clearedFields            map[string]struct{}
-	process_snapshots        map[int64]struct{}
-	removedprocess_snapshots map[int64]struct{}
+	process_snapshots        map[int]struct{}
+	removedprocess_snapshots map[int]struct{}
 	clearedprocess_snapshots bool
 	done                     bool
 	oldValue                 func(context.Context) (*Collection, error)
@@ -114,12 +114,6 @@ func (m CollectionMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// SetID sets the value of the id field. Note that this
-// operation is only accepted on creation of Collection entities.
-func (m *CollectionMutation) SetID(id int) {
-	m.id = &id
-}
-
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
 func (m *CollectionMutation) ID() (id int, exists bool) {
@@ -185,9 +179,9 @@ func (m *CollectionMutation) ResetName() {
 }
 
 // AddProcessSnapshotIDs adds the "process_snapshots" edge to the ProcessSnapshot entity by ids.
-func (m *CollectionMutation) AddProcessSnapshotIDs(ids ...int64) {
+func (m *CollectionMutation) AddProcessSnapshotIDs(ids ...int) {
 	if m.process_snapshots == nil {
-		m.process_snapshots = make(map[int64]struct{})
+		m.process_snapshots = make(map[int]struct{})
 	}
 	for i := range ids {
 		m.process_snapshots[ids[i]] = struct{}{}
@@ -205,9 +199,9 @@ func (m *CollectionMutation) ProcessSnapshotsCleared() bool {
 }
 
 // RemoveProcessSnapshotIDs removes the "process_snapshots" edge to the ProcessSnapshot entity by IDs.
-func (m *CollectionMutation) RemoveProcessSnapshotIDs(ids ...int64) {
+func (m *CollectionMutation) RemoveProcessSnapshotIDs(ids ...int) {
 	if m.removedprocess_snapshots == nil {
-		m.removedprocess_snapshots = make(map[int64]struct{})
+		m.removedprocess_snapshots = make(map[int]struct{})
 	}
 	for i := range ids {
 		delete(m.process_snapshots, ids[i])
@@ -216,7 +210,7 @@ func (m *CollectionMutation) RemoveProcessSnapshotIDs(ids ...int64) {
 }
 
 // RemovedProcessSnapshots returns the removed IDs of the "process_snapshots" edge to the ProcessSnapshot entity.
-func (m *CollectionMutation) RemovedProcessSnapshotsIDs() (ids []int64) {
+func (m *CollectionMutation) RemovedProcessSnapshotsIDs() (ids []int) {
 	for id := range m.removedprocess_snapshots {
 		ids = append(ids, id)
 	}
@@ -224,7 +218,7 @@ func (m *CollectionMutation) RemovedProcessSnapshotsIDs() (ids []int64) {
 }
 
 // ProcessSnapshotsIDs returns the "process_snapshots" edge IDs in the mutation.
-func (m *CollectionMutation) ProcessSnapshotsIDs() (ids []int64) {
+func (m *CollectionMutation) ProcessSnapshotsIDs() (ids []int) {
 	for id := range m.process_snapshots {
 		ids = append(ids, id)
 	}
@@ -458,7 +452,7 @@ type ProcessSnapshotMutation struct {
 	config
 	op            Op
 	typ           string
-	id            *int64
+	id            *int
 	process_id    *string
 	snapshot      *string
 	clearedFields map[string]struct{}
@@ -487,7 +481,7 @@ func newProcessSnapshotMutation(c config, op Op, opts ...processsnapshotOption) 
 }
 
 // withProcessSnapshotID sets the ID field of the mutation.
-func withProcessSnapshotID(id int64) processsnapshotOption {
+func withProcessSnapshotID(id int) processsnapshotOption {
 	return func(m *ProcessSnapshotMutation) {
 		var (
 			err   error
@@ -537,15 +531,9 @@ func (m ProcessSnapshotMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// SetID sets the value of the id field. Note that this
-// operation is only accepted on creation of ProcessSnapshot entities.
-func (m *ProcessSnapshotMutation) SetID(id int64) {
-	m.id = &id
-}
-
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *ProcessSnapshotMutation) ID() (id int64, exists bool) {
+func (m *ProcessSnapshotMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -556,12 +544,12 @@ func (m *ProcessSnapshotMutation) ID() (id int64, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *ProcessSnapshotMutation) IDs(ctx context.Context) ([]int64, error) {
+func (m *ProcessSnapshotMutation) IDs(ctx context.Context) ([]int, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int64{id}, nil
+			return []int{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
