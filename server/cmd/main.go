@@ -55,7 +55,8 @@ func main() {
 	mux.Handle("/query", graphqlServer)
 
 	// Start the HTTP server.
-	fmt.Printf("Serving on port %d\n. Go to http://localhost:7410/playground for a GraphQL playground.", *port)
+	fmt.Printf("Serving on port %d. Go to http://localhost:7410 for the app "+
+		"and http://localhost:7410/playground for a GraphQL playground.\n", *port)
 	http.ListenAndServe(fmt.Sprintf(":%d", *port), mux)
 }
 
