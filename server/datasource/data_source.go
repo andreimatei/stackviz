@@ -29,12 +29,14 @@ const (
 	stacksTreeQuery = "stacks.tree"
 	stacksRawQuery  = "stacks.raw"
 
-	collectionNameKey = "collection_name"
-	pathPrefixKey     = "path_prefix"
-	nameKey           = "name"
-	detailsFormatKey  = "detail_format"
-	fullNameKey       = "full_name"
-	filterKey         = "filter"
+	collectionNameKey        = "collection_name"
+	pathPrefixKey            = "path_prefix"
+	nameKey                  = "name"
+	detailsFormatKey         = "detail_format"
+	fullNameKey              = "full_name"
+	filterKey                = "filter"
+	numTotalGoroutinesKey    = "num_total_goroutines"
+	numFilteredGoroutinesKey = "num_filtered_goroutines"
 )
 
 // DataSource implements the querydispatcher.dataSource that deals with
@@ -379,7 +381,8 @@ func (ds *DataSource) HandleDataSeriesRequests(
 			return fmt.Errorf("filter '%s' must be a string list", pathPrefix)
 		}
 	}
-	fmt.Printf("!!! query. filter: %s, path prefix: %s\n", filter, pathPrefix)
+	log.Printf("!!! query (%d requests) filter: %s, path prefix: %s\n",
+		len(reqs), filter, pathPrefix)
 
 	snap := ds.filterStacks(col.snapshot, filter)
 	path := make([]weightedtree.ScopeID, len(pathPrefix))
@@ -401,7 +404,7 @@ func (ds *DataSource) HandleDataSeriesRequests(
 				return err
 			}
 		case stacksRawQuery:
-			ds.handleStacksRawQuery(snap, builder)
+			ds.handleStacksRawQuery(snap, len(col.snapshot.Goroutines), builder)
 		default:
 			return fmt.Errorf("unsupported data query: %s", req.QueryName)
 		}
@@ -481,12 +484,14 @@ func (ds *DataSource) handleStacksTreeQuery(
 
 var stackCategory = category.New("stack", "Stack", "Backtrace")
 
-func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, builder tvutil.DataBuilder) {
+func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines int, builder tvutil.DataBuilder) {
 	renderSettings := &table.RenderSettings{
 		RowHeightPx: 20,
 		FontSizePx:  14,
 	}
 	stackCol := table.Column(stackCategory)
+	builder.With(tvutil.IntegerProperty(numTotalGoroutinesKey, int64(numTotalGoroutines)))
+	builder.With(tvutil.IntegerProperty(numFilteredGoroutinesKey, int64(numTotalGoroutines-len(snap.Goroutines))))
 
 	for i := range snap.Goroutines {
 		g := snap.Goroutines[i]

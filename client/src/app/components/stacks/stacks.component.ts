@@ -1,4 +1,10 @@
-import { Component, ContentChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ComponentRef,
+  ContentChild
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   AppCoreService,
@@ -18,6 +24,7 @@ const SOURCE = 'data-table';
   imports: [CommonModule, DataTableModule],
   template: `
     <div>
+      {{ numStacks }} stacks ({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines)
       <ul>
         <li *ngFor="let stack of stacks">
             <data-table [data]="stack" ></data-table>
@@ -41,8 +48,13 @@ export class StacksComponent {
 
   private unsubscribe = new Subject<void>();
   protected stacks?: ResponseNode[];
+  protected numStacks?: number;
+  protected numFilteredGoroutines?: number;
+  protected numTotalGoroutines?: number;
 
-  constructor(private readonly appCoreService: AppCoreService) {
+  constructor(
+    private readonly appCoreService: AppCoreService,
+  ) {
   }
 
   ngAfterContentInit(): void {
@@ -59,6 +71,9 @@ export class StacksComponent {
       dataSeriesQuery?.response
         .pipe(takeUntil(this.unsubscribe))
         .subscribe((response: ResponseNode) => {
+          this.numStacks = response.children.length;
+          this.numTotalGoroutines = response.properties.expectNumber('num_total_goroutines');
+          this.numFilteredGoroutines = response.properties.expectNumber('num_filtered_goroutines');
           this.stacks = response.children;
         })
     });
