@@ -37,6 +37,7 @@ const (
 	filterKey                = "filter"
 	numTotalGoroutinesKey    = "num_total_goroutines"
 	numFilteredGoroutinesKey = "num_filtered_goroutines"
+	numBucketsKey            = "num_buckets"
 )
 
 // DataSource implements the querydispatcher.dataSource that deals with
@@ -54,6 +55,7 @@ func New(fetcher StacksFetcher) *DataSource {
 // requires.
 type collection struct {
 	snapshot *pp.Snapshot
+	agg      *pp.Aggregated
 }
 
 // StacksFetcher describes types capable of fetching stack traces by collection
@@ -88,9 +90,11 @@ func NewStacksFetcher(dir string) StacksFetcher {
 
 func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionName string) (collection, error) {
 	// Check the cache first.
-	col, ok := f.lru.Get(collectionName)
-	if ok {
-		return col, nil
+	{
+		col, ok := f.lru.Get(collectionName)
+		if ok {
+			return col, nil
+		}
 	}
 
 	// Read the stacks from the file.
@@ -99,25 +103,29 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionName string) (c
 		return collection{}, err
 	}
 	defer file.Close()
-	col, err = f.readStacks(file)
+	snap, err := f.readStacks(file)
 	if err != nil {
 		return collection{}, err
+	}
+	agg := snap.Aggregate(pp.AnyValue)
+	col := collection{
+		snapshot: snap,
+		agg:      agg,
 	}
 
 	f.lru.Add(collectionName, col)
 	return col, nil
 }
 
-func (f *stacksFetcherImpl) readStacks(r io.Reader) (collection, error) {
+func (f *stacksFetcherImpl) readStacks(r io.Reader) (*pp.Snapshot, error) {
 	snap, _, err := pp.ScanSnapshot(r, io.Discard, pp.DefaultOpts())
 	if err != nil && err != io.EOF {
-		return collection{}, err
+		return nil, err
 	}
 	if snap == nil {
-		return collection{}, fmt.Errorf("failed to parse any stacks")
+		return nil, fmt.Errorf("failed to parse any stacks")
 	}
-	fmt.Printf("!!! loaded %d stacks\n", len(snap.Goroutines))
-	return collection{snapshot: snap}, nil
+	return snap, nil
 }
 
 // treeNode is a node in a trie of stack traces. Each node represents a
@@ -492,10 +500,21 @@ func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines
 	stackCol := table.Column(stackCategory)
 	builder.With(tvutil.IntegerProperty(numTotalGoroutinesKey, int64(numTotalGoroutines)))
 	builder.With(tvutil.IntegerProperty(numFilteredGoroutinesKey, int64(numTotalGoroutines-len(snap.Goroutines))))
+	agg := snap.Aggregate(pp.AnyValue)
 
-	for i := range snap.Goroutines {
-		g := snap.Goroutines[i]
-		tab := table.New(builder.Child(), renderSettings, stackCol)
+	aggBuilder := builder.Child().With(tvutil.IntegerProperty(numBucketsKey, int64(len(agg.Buckets))))
+	rawBuilder := builder.Child()
+
+	for _, b := range agg.Buckets {
+		tab := table.New(aggBuilder.Child(), renderSettings, stackCol)
+		for j := range b.Stack.Calls {
+			c := &b.Stack.Calls[j]
+			tab.Row(table.FormattedCell(stackCol, c.Func.Complete))
+		}
+	}
+
+	for _, g := range snap.Goroutines {
+		tab := table.New(rawBuilder.Child(), renderSettings, stackCol)
 		for j := range g.Stack.Calls {
 			c := &g.Stack.Calls[j]
 			tab.Row(table.FormattedCell(stackCol, c.Func.Complete))

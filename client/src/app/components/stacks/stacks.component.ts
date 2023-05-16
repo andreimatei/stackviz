@@ -1,8 +1,5 @@
 import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
-  ComponentRef,
   ContentChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -12,6 +9,9 @@ import {
   DataTableModule,
   InteractionsDirective
 } from 'traceviz/dist/ngx-traceviz-lib';
+import {
+  MatTabsModule,
+} from '@angular/material/tabs'
 import { AppCore, ConfigurationError, ResponseNode, Severity } from 'traceviz-client-core';
 import { Subject } from "rxjs";
 import { takeUntil } from 'rxjs/operators';
@@ -21,15 +21,31 @@ const SOURCE = 'data-table';
 @Component({
   selector: 'stacks',
   standalone: true,
-  imports: [CommonModule, DataTableModule],
+  imports: [CommonModule, DataTableModule, MatTabsModule],
   template: `
     <div>
-      {{ numStacks }} stacks ({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines)
-      <ul>
-        <li *ngFor="let stack of stacks">
-            <data-table [data]="stack" ></data-table>
-        </li>
-      </ul>
+      {{ numStacks }} stacks
+      ({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines),
+      {{ numBuckets }} buckets
+      <hr>
+
+      <mat-tab-group>
+        <mat-tab label="Aggregated">
+          <ul>
+            <li *ngFor="let stack of aggStacks">
+                <data-table [data]="stack" ></data-table>
+            </li>
+          </ul>
+        </mat-tab>
+        <mat-tab label="Raw">
+          <ul>
+            <li *ngFor="let stack of rawStacks">
+                <data-table [data]="stack" ></data-table>
+            </li>
+          </ul>
+         </mat-tab>
+      </mat-tab-group>
+
     </div>
   `,
   styles: [`ul {
@@ -47,8 +63,10 @@ export class StacksComponent {
   @ContentChild(InteractionsDirective) interactionsDir?: InteractionsDirective;
 
   private unsubscribe = new Subject<void>();
-  protected stacks?: ResponseNode[];
+  protected rawStacks?: ResponseNode[];
+  protected aggStacks?: ResponseNode[];
   protected numStacks?: number;
+  protected numBuckets?: number;
   protected numFilteredGoroutines?: number;
   protected numTotalGoroutines?: number;
 
@@ -71,10 +89,12 @@ export class StacksComponent {
       dataSeriesQuery?.response
         .pipe(takeUntil(this.unsubscribe))
         .subscribe((response: ResponseNode) => {
-          this.numStacks = response.children.length;
           this.numTotalGoroutines = response.properties.expectNumber('num_total_goroutines');
           this.numFilteredGoroutines = response.properties.expectNumber('num_filtered_goroutines');
-          this.stacks = response.children;
+          this.numBuckets = response.children[0].properties.expectNumber('num_buckets');
+          this.aggStacks = response.children[0].children;
+          this.rawStacks = response.children[1].children;
+          this.numStacks = this.rawStacks.length;
         })
     });
   }
