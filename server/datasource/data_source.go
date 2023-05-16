@@ -38,6 +38,9 @@ const (
 	numTotalGoroutinesKey    = "num_total_goroutines"
 	numFilteredGoroutinesKey = "num_filtered_goroutines"
 	numBucketsKey            = "num_buckets"
+
+	numGoroutinesInBucketKey = "num_gs_in_bucket"
+	goroutineIDKey           = "g_id"
 )
 
 // DataSource implements the querydispatcher.dataSource that deals with
@@ -506,15 +509,15 @@ func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines
 	rawBuilder := builder.Child()
 
 	for _, b := range agg.Buckets {
-		tab := table.New(aggBuilder.Child(), renderSettings, stackCol)
 		for j := range b.Stack.Calls {
+			tab := table.New(aggBuilder.Child(), renderSettings, stackCol).With(tvutil.IntegerProperty(numGoroutinesInBucketKey, int64(len(b.IDs))))
 			c := &b.Stack.Calls[j]
 			tab.Row(table.FormattedCell(stackCol, c.Func.Complete))
 		}
 	}
 
 	for _, g := range snap.Goroutines {
-		tab := table.New(rawBuilder.Child(), renderSettings, stackCol)
+		tab := table.New(rawBuilder.Child(), renderSettings, stackCol).With(tvutil.IntegerProperty(goroutineIDKey, int64(g.ID)))
 		for j := range g.Stack.Calls {
 			c := &g.Stack.Calls[j]
 			tab.Row(table.FormattedCell(stackCol, c.Func.Complete))

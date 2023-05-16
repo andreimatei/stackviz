@@ -33,16 +33,20 @@ const SOURCE = 'data-table';
         <mat-tab label="Aggregated">
           <ul>
             <li *ngFor="let stack of aggStacks">
-                <data-table [data]="stack" ></data-table>
+              {{ stack.properties.expectNumber("num_gs_in_bucket") }} goroutine(s):
+              <data-table [data]="stack" ></data-table>
             </li>
           </ul>
         </mat-tab>
         <mat-tab label="Raw">
-          <ul>
-            <li *ngFor="let stack of rawStacks">
+          <ng-template matTabContent>
+            <ul>
+              <li *ngFor="let stack of rawStacks">
+                Goroutine ID {{ stack.properties.expectNumber("g_id") }}:
                 <data-table [data]="stack" ></data-table>
-            </li>
-          </ul>
+              </li>
+            </ul>
+          </ng-template>
          </mat-tab>
       </mat-tab-group>
 
