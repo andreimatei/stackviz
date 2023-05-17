@@ -6,12 +6,12 @@ const config: CodegenConfig = {
   documents: "src/app/graphql/collection.graphql",
   generates: {
     "src/app/graphql/graphql-codegen-generated.ts": {
-      plugins: ["typescript-apollo-angular"]
+      plugins: ["typescript", "typescript-operations", "typescript-apollo-angular"],
+      config: {
+        addExplicitOverride: true
+      }
     },
-    "src/app/graphql/graphql-codegen-generated.schema.json": {
-      plugins: ["introspection"]
-    }
-  }
+  },
 };
 
 export default config;
