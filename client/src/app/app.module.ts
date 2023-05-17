@@ -9,6 +9,16 @@ import { AppComponent } from './app.component';
 import { ComponentsModule } from "./components/components.module";
 import { StacksComponent } from "./components/stacks/stacks.component";
 import { GraphQLModule } from './graphql/graphql.module';
+import { RouterModule, Routes } from '@angular/router';
+import { CollectionsListComponent } from "./components/collections-list/collections-list.component";
+import { SnapshotModule } from "./components/snapshot/snapshot.module";
+import { SnapshotComponent } from "./components/snapshot/snapshot.component";
+
+const routes: Routes = [
+  { path: '', redirectTo: '/collections', pathMatch: 'full'},
+  { path: 'collections', component: CollectionsListComponent },
+  { path: 'snapshot', component: SnapshotComponent},
+];
 
 @NgModule({
   declarations: [
@@ -18,15 +28,17 @@ import { GraphQLModule } from './graphql/graphql.module';
     BrowserModule,
     BrowserAnimationsModule,
     CoreModule,
+    ComponentsModule,
     DataTableModule,
+    GraphQLModule,
     HttpClientModule,
     MatCardModule,
     MatPaginatorModule,
-    WeightedTreeModule,
-    ComponentsModule,
-    TextFieldModule,
+    RouterModule.forRoot(routes),
     StacksComponent,
-    GraphQLModule,
+    SnapshotModule,
+    TextFieldModule,
+    WeightedTreeModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

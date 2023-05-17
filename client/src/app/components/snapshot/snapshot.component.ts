@@ -1,13 +1,13 @@
 import { AfterContentInit, Component } from '@angular/core';
-import { AllCollectionsGQL } from "./graphql/graphql-codegen-generated";
+import { AllCollectionsGQL } from "../../graphql/graphql-codegen-generated";
 
 /** The application component of the LogViz client. */
 @Component({
-  selector: 'stacksviz',
-  template: '<router-outlet></router-outlet>',
-  styleUrls: ['app.component.css'],
+  selector: 'snapshot',
+  templateUrl: './snapshot.component.html',
+  styleUrls: ['snapshot.component.css'],
 })
-export class AppComponent implements AfterContentInit {
+export class SnapshotComponent implements AfterContentInit {
   constructor(ac: AllCollectionsGQL) {
     ac.fetch().subscribe(results => console.log("!!! GraphQL results:", JSON.stringify(results.data)));
   }
