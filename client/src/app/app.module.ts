@@ -8,6 +8,7 @@ import { CoreModule, DataTableModule, WeightedTreeModule, TextFieldModule } from
 import { AppComponent } from './app.component';
 import { ComponentsModule } from "./components/components.module";
 import { StacksComponent } from "./components/stacks/stacks.component";
+import { GraphQLModule } from './graphql/graphql.module';
 
 @NgModule({
   declarations: [
@@ -25,6 +26,7 @@ import { StacksComponent } from "./components/stacks/stacks.component";
     ComponentsModule,
     TextFieldModule,
     StacksComponent,
+    GraphQLModule,
   ],
   providers: [],
   bootstrap: [AppComponent]
