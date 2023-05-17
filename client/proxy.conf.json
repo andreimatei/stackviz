@@ -4,7 +4,7 @@
     "secure": false,
     "logLevel": "debug"
   },
-  "/query": {
+  "/graphql": {
     "target": "http://localhost:7410",
     "secure": false,
     "logLevel": "debug"

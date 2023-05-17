@@ -51,8 +51,8 @@ func main() {
 
 	// Create the Graphql server and register it and the playground.
 	graphqlServer := graphqlhandler.NewDefaultServer(server.NewSchema(client))
-	mux.Handle("/playground", playground.Handler("GraphQL playground", "/query"))
-	mux.Handle("/query", graphqlServer)
+	mux.Handle("/playground", playground.Handler("GraphQL playground", "/graphql"))
+	mux.Handle("/graphql", graphqlServer)
 
 	// Start the HTTP server.
 	fmt.Printf("Serving on port %d. Go to http://localhost:7410 for the app "+
