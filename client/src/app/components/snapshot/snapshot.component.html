@@ -104,19 +104,11 @@
 
       <interactions>
         <reaction target="data-series" type="fetch">
-          <and>
-            <not>
-              <equals>
-                <global-ref key="collection_name"></global-ref>
-                <string></string>
-              </equals>
-            </not>
-            <or>
-              <changed><global-ref key="collection_name"></global-ref></changed>
-              <changed><global-ref key="path_prefix"></global-ref></changed>
-              <changed><global-ref key="filter"></global-ref></changed>
-            </or>
-          </and>
+          <or>
+            <changed><global-ref key="collection_name"></global-ref></changed>
+            <changed><global-ref key="path_prefix"></global-ref></changed>
+            <changed><global-ref key="filter"></global-ref></changed>
+          </or>
         </reaction>
       </interactions>
     </data-series>
