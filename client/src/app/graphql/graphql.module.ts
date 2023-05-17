@@ -36,7 +36,7 @@ const errorLink = onError(({ graphQLErrors, networkError, response }) => {
   }
 });
 
-const uri = 'http://localhost:7410/query'; // <-- add the URL of the GraphQL server here
+const uri = '/query'; // <-- add the URL of the GraphQL server here
 export function createApollo(httpLink: HttpLink): ApolloClientOptions<any> {
   return {
     link: ApolloLink.from([basicContext, errorLink, httpLink.create({ uri })]),

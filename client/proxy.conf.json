@@ -3,5 +3,10 @@
     "target": "http://localhost:7410",
     "secure": false,
     "logLevel": "debug"
+  },
+  "/query": {
+    "target": "http://localhost:7410",
+    "secure": false,
+    "logLevel": "debug"
   }
 }
