@@ -9,6 +9,7 @@ import { SnapshotComponent } from './snapshot.component';
 import { ComponentsModule } from "../components.module";
 import { StacksComponent } from "../stacks/stacks.component";
 import { GraphQLModule } from '../../graphql/graphql.module';
+import { RouterModule } from "@angular/router";
 
 
 @NgModule({
@@ -27,6 +28,7 @@ import { GraphQLModule } from '../../graphql/graphql.module';
     MatPaginatorModule,
     TextFieldModule,
     StacksComponent,
+    RouterModule,
     WeightedTreeModule,
   ],
   providers: [],

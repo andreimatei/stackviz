@@ -1,1 +1,3 @@
-<p>collections-list works!</p>
+<nav>
+  <a routerLink="/snapshot/{{c.id}}" *ngFor="let c of collections" >Snapshot {{ c.name }} </a>
+</nav>

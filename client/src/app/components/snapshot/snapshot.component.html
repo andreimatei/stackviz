@@ -1,4 +1,5 @@
 <div class="app">
+
   <app-core>
     <!--
       Define the global key-value mapping, with it initial values.  This global state provides
@@ -6,8 +7,6 @@
     -->
     <global-state>
       <value-map>
-        <!-- The collection loader finds collections at this name under
-             google3/third_party/traceviz/codelab/logviz/server/logs/. -->
         <value key="collection_name">
           <string>cockroachdb_example_snapshot.txt</string>
         </value>
@@ -38,6 +37,10 @@
       </value-map>
     </data-query>
   </app-core>
+
+  <p>
+    Snapshot <a routerLink="/collections"> {{ snapshotName }} </a>
+  </p>
 
   <text-field label="Filter" placeholder="filter by package or function name" updateOnEnter=false>
     <interactions>

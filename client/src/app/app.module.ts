@@ -15,9 +15,9 @@ import { SnapshotModule } from "./components/snapshot/snapshot.module";
 import { SnapshotComponent } from "./components/snapshot/snapshot.component";
 
 const routes: Routes = [
-  { path: '', redirectTo: '/collections', pathMatch: 'full'},
   { path: 'collections', component: CollectionsListComponent },
-  { path: 'snapshot', component: SnapshotComponent},
+  { path: 'snapshot/:id', component: SnapshotComponent},
+  { path: '', redirectTo: '/collections', pathMatch: 'full'},
 ];
 
 @NgModule({
