@@ -17,7 +17,6 @@ const SOURCE = 'data-table';
   selector: 'app-stacks',
   standalone: true,
   imports: [CommonModule, DataTableModule, MatTabsModule],
-  //encapsulation: ViewEncapsulation.ShadowDom,
   template: `
     <div>
       {{ numStacks }} stacks

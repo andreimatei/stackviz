@@ -18,9 +18,10 @@ import (
 	"io"
 	"log"
 	"math"
-	"os"
-	"path"
 	"regexp"
+	"stacksviz/ent"
+	collectionEnt "stacksviz/ent/collection"
+	"stacksviz/ent/processsnapshot"
 	"strconv"
 	"strings"
 )
@@ -29,7 +30,7 @@ const (
 	stacksTreeQuery = "stacks.tree"
 	stacksRawQuery  = "stacks.raw"
 
-	collectionNameKey        = "collection_name"
+	collectionIDKey          = "collection_id"
 	pathPrefixKey            = "path_prefix"
 	nameKey                  = "name"
 	detailsFormatKey         = "detail_format"
@@ -57,8 +58,9 @@ func New(fetcher StacksFetcher) *DataSource {
 // collection represents a single fetched log trace, along with any metadata it
 // requires.
 type collection struct {
-	snapshot *pp.Snapshot
-	agg      *pp.Aggregated
+	collectionName string
+	snapshot       *pp.Snapshot
+	agg            *pp.Aggregated
 }
 
 // StacksFetcher describes types capable of fetching stack traces by collection
@@ -66,69 +68,93 @@ type collection struct {
 type StacksFetcher interface {
 	// Fetch fetches the stacks specified by collectionName, returning a
 	// LogTrace or an error if a failure is encountered.
-	Fetch(ctx context.Context, collectionName string) (collection, error)
+	Fetch(ctx context.Context, collectionID int) (collection, error)
 }
 
 type stacksFetcherImpl struct {
-	// rootDir is the directory from which files containing stack traces are read.
-	rootDir string
-	// lru is a cache mapping from collection name to previously-loaded collection.
-	lru simplelru.LRUCache[string, collection]
+	client *ent.Client
+	// lru is a cache mapping from collection ID to previously-loaded collection.
+	lru simplelru.LRUCache[int, collection]
 }
 
 var _ StacksFetcher = &stacksFetcherImpl{}
 
 // NewStacksFetcher creates a new StacksFetcher that will read collections from
 // the specified directory.
-func NewStacksFetcher(dir string) StacksFetcher {
-	lru, err := lru.New[string, collection](100)
+func NewStacksFetcher(client *ent.Client) StacksFetcher {
+	lru, err := lru.New[int, collection](100)
 	if err != nil {
 		panic(err)
 	}
 	return &stacksFetcherImpl{
-		rootDir: dir,
-		lru:     lru,
+		client: client,
+		lru:    lru,
 	}
 }
 
-func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionName string) (collection, error) {
+func getCollection(ctx context.Context, id int, client *ent.Client) (*ent.Collection, error) {
+	c, err := client.Collection.
+		Query().
+		Where(collectionEnt.ID(id)).
+		Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed querying collection: %w", err)
+	}
+	return c, nil
+}
+
+func getSnapshot(ctx context.Context, id int, client *ent.Client) (*ent.ProcessSnapshot, error) {
+	c, err := client.ProcessSnapshot.
+		Query().
+		Where(processsnapshot.ID(id)).
+		Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed querying snapshot: %w", err)
+	}
+	return c, nil
+}
+
+func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int) (collection, error) {
 	// Check the cache first.
 	{
-		col, ok := f.lru.Get(collectionName)
+		col, ok := f.lru.Get(collectionID)
 		if ok {
 			return col, nil
 		}
 	}
 
-	// Read the stacks from the file.
-	file, err := os.Open(path.Join(f.rootDir, collectionName))
+	col, err := getCollection(ctx, collectionID, f.client)
 	if err != nil {
 		return collection{}, err
 	}
-	defer file.Close()
-	snap, err := f.readStacks(file)
+
+	snaps, err := col.ProcessSnapshots(ctx)
 	if err != nil {
 		return collection{}, err
 	}
+
+	// !!! we return the first snapshot in the collection. Figure out how to display all of them.
+
+	//if len(snaps) != 1 {
+	//	return collection{}, fmt.Errorf("!!! unexpected number of snapshots in collection: %d", len(snaps))
+	//}
+
+	snap, _, err := pp.ScanSnapshot(strings.NewReader(snaps[0].Snapshot), io.Discard, pp.DefaultOpts())
+	if err != nil && err != io.EOF {
+		return collection{}, err
+	}
+	if snap == nil {
+		return collection{}, fmt.Errorf("failed to parse any stacks")
+	}
+
 	agg := snap.Aggregate(pp.AnyValue)
-	col := collection{
+	res := collection{
 		snapshot: snap,
 		agg:      agg,
 	}
 
-	f.lru.Add(collectionName, col)
-	return col, nil
-}
-
-func (f *stacksFetcherImpl) readStacks(r io.Reader) (*pp.Snapshot, error) {
-	snap, _, err := pp.ScanSnapshot(r, io.Discard, pp.DefaultOpts())
-	if err != nil && err != io.EOF {
-		return nil, err
-	}
-	if snap == nil {
-		return nil, fmt.Errorf("failed to parse any stacks")
-	}
-	return snap, nil
+	f.lru.Add(collectionID, res)
+	return res, nil
 }
 
 // treeNode is a node in a trie of stack traces. Each node represents a
@@ -359,22 +385,22 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	reqs []*tvutil.DataSeriesRequest,
 ) error {
 	// Pull the collection name from the global filters.
-	collectionNameVal, ok := globalFilters[collectionNameKey]
+	collectionIDVal, ok := globalFilters[collectionIDKey]
 	if !ok {
-		return fmt.Errorf("missing required filter option '%s'", collectionNameKey)
+		return fmt.Errorf("missing required filter option '%s'", collectionIDKey)
 	}
-	collectionName, err := tvutil.ExpectStringValue(collectionNameVal)
+	collectionID, err := tvutil.ExpectIntegerValue(collectionIDVal)
 	if err != nil {
-		return fmt.Errorf("required filter option '%s' must be a string", collectionNameKey)
+		return fmt.Errorf("required filter option '%s' must be an int", collectionIDKey)
 	}
 
 	// Fetch the collection, from the cache if it's there.
-	col, err := ds.fetchCollection(ctx, collectionName)
+	col, err := ds.fetchCollection(ctx, int(collectionID))
 	if err != nil {
 		log.Printf("Failed to fetch collection: %s", err)
 		return err
 	}
-	log.Printf("Loaded collection %s", collectionName)
+	log.Printf("Loaded collection %s", col.collectionName)
 
 	var filter string
 	filterVal, ok := globalFilters[filterKey]
@@ -534,8 +560,8 @@ func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines
 // fetchCollection returns the specified collection from the LRU if it's
 // present there.  If it isn't already in the LRU, it is fetched and added to
 // the LRU before being returned.
-func (ds *DataSource) fetchCollection(ctx context.Context, collectionName string) (collection, error) {
-	col, err := ds.fetcher.Fetch(ctx, collectionName)
+func (ds *DataSource) fetchCollection(ctx context.Context, collectionID int) (collection, error) {
+	col, err := ds.fetcher.Fetch(ctx, collectionID)
 	if err != nil {
 		return collection{}, err
 	}

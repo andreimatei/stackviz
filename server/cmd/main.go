@@ -10,9 +10,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	server "stacksviz"
 	"stacksviz/ent"
-	"stacksviz/ent/collection"
 	"stacksviz/service"
 )
 
@@ -40,7 +40,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	service, err := service.New(*resourceRoot, *stacksDir)
+	service, err := service.New(*resourceRoot, client)
 	if err != nil {
 		log.Fatalf("Failed to create LogViz service: %s", err)
 	}
@@ -61,7 +61,7 @@ func main() {
 }
 
 func CreateCollection(ctx context.Context, client *ent.Client) (*ent.Collection, error) {
-	stacks, err := os.ReadFile("datasource/cockroachdb_example_snapshot.txt")
+	stacks, err := os.ReadFile(path.Join(*stacksDir, "cockroachdb_example_snapshot.txt"))
 	if err != nil {
 		return nil, fmt.Errorf("failed reading file: %w", err)
 	}
@@ -87,19 +87,5 @@ func CreateCollection(ctx context.Context, client *ent.Client) (*ent.Collection,
 	}
 	log.Println("collection was created: ", c)
 
-	return c, nil
-}
-
-func QueryCollection(ctx context.Context, client *ent.Client) (*ent.Collection, error) {
-	c, err := client.Collection.
-		Query().
-		Where(collection.ID(1)).
-		// `Only` fails if no user found,
-		// or more than 1 user returned.
-		Only(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed querying user: %w", err)
-	}
-	log.Println("collection returned: ", c)
 	return c, nil
 }

@@ -7,8 +7,8 @@
     -->
     <global-state>
       <value-map>
-        <value key="collection_name">
-          <string>cockroachdb_example_snapshot.txt</string>
+        <value key="collection_id">
+          <int>1</int>
         </value>
         <value key="path_prefix">
           <string-list></string-list>
@@ -31,7 +31,7 @@
         Note that backend data series providers may ignore some global filters.
       -->
       <value-map>
-        <value key="collection_name"><global-ref key="collection_name"></global-ref></value>
+        <value key="collection_id"><global-ref key="collection_id"></global-ref></value>
         <value key="path_prefix"><global-ref key="path_prefix"></global-ref></value>
         <value key="filter"><global-ref key="filter"></global-ref></value>
       </value-map>
@@ -61,19 +61,11 @@
 
       <interactions>
         <reaction target="data-series" type="fetch">
-          <and>
-            <not>
-              <equals>
-                <global-ref key="collection_name"></global-ref>
-                <string></string>
-              </equals>
-            </not>
-            <or>
-              <changed><global-ref key="collection_name"></global-ref></changed>
-              <changed><global-ref key="path_prefix"></global-ref></changed>
-              <changed><global-ref key="filter"></global-ref></changed>
-            </or>
-          </and>
+          <or>
+            <changed><global-ref key="collection_id"></global-ref></changed>
+            <changed><global-ref key="path_prefix"></global-ref></changed>
+            <changed><global-ref key="filter"></global-ref></changed>
+          </or>
         </reaction>
       </interactions>
     </data-series>
@@ -105,7 +97,7 @@
       <interactions>
         <reaction target="data-series" type="fetch">
           <or>
-            <changed><global-ref key="collection_name"></global-ref></changed>
+            <changed><global-ref key="collection_id"></global-ref></changed>
             <changed><global-ref key="path_prefix"></global-ref></changed>
             <changed><global-ref key="filter"></global-ref></changed>
           </or>
