@@ -4,3 +4,14 @@ query AllCollections {
     name
   }
 }
+
+query GetCollection($colID: ID!) {
+  collectionByID(id: $colID) {
+    id
+    name
+    processSnapshots {
+      id
+      processID
+    }
+  }
+}

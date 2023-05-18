@@ -45,6 +45,16 @@ export type CreateProcessSnapshotInput = {
   snapshot: Scalars['String'];
 };
 
+export type Mutation = {
+  __typename?: 'Mutation';
+  createCollection?: Maybe<Collection>;
+};
+
+
+export type MutationCreateCollectionArgs = {
+  input?: InputMaybe<CreateCollectionInput>;
+};
+
 /**
  * An object with an ID.
  * Follows the [Relay Global Object Identification Specification](https://relay.dev/graphql/objectidentification.htm)
@@ -87,12 +97,18 @@ export type ProcessSnapshot = Node & {
 
 export type Query = {
   __typename?: 'Query';
+  collectionByID?: Maybe<Collection>;
   collections: Array<Collection>;
   /** Fetches an object given its ID. */
   node?: Maybe<Node>;
   /** Lookup nodes by a list of IDs. */
   nodes: Array<Maybe<Node>>;
   processSnapshots: Array<ProcessSnapshot>;
+};
+
+
+export type QueryCollectionByIdArgs = {
+  id: Scalars['ID'];
 };
 
 
@@ -110,6 +126,13 @@ export type AllCollectionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type AllCollectionsQuery = { __typename?: 'Query', collections: Array<{ __typename?: 'Collection', id: string, name: string }> };
 
+export type GetCollectionQueryVariables = Exact<{
+  colID: Scalars['ID'];
+}>;
+
+
+export type GetCollectionQuery = { __typename?: 'Query', collectionByID?: { __typename?: 'Collection', id: string, name: string, processSnapshots?: Array<{ __typename?: 'ProcessSnapshot', id: string, processID: string }> | null } | null };
+
 export const AllCollectionsDocument = gql`
     query AllCollections {
   collections {
@@ -124,6 +147,29 @@ export const AllCollectionsDocument = gql`
   })
   export class AllCollectionsGQL extends Apollo.Query<AllCollectionsQuery, AllCollectionsQueryVariables> {
     override document = AllCollectionsDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const GetCollectionDocument = gql`
+    query GetCollection($colID: ID!) {
+  collectionByID(id: $colID) {
+    id
+    name
+    processSnapshots {
+      id
+      processID
+    }
+  }
+}
+    `;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class GetCollectionGQL extends Apollo.Query<GetCollectionQuery, GetCollectionQueryVariables> {
+    override document = GetCollectionDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);

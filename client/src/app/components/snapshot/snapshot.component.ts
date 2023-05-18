@@ -1,5 +1,9 @@
 import { AfterContentInit, Component, OnInit } from '@angular/core';
-import { AllCollectionsGQL } from "../../graphql/graphql-codegen-generated";
+import {
+  AllCollectionsGQL,
+  GetCollectionGQL,
+  ProcessSnapshot
+} from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute } from "@angular/router";
 import { AppCoreService } from 'traceviz/dist/ngx-traceviz-lib';
 
@@ -19,20 +23,21 @@ import { AppCoreService } from 'traceviz/dist/ngx-traceviz-lib';
 })
 export class SnapshotComponent implements AfterContentInit, OnInit {
   protected snapshotID?: number;
-  protected snapshotName?: string;
+  protected collectionName?: string;
+  protected snapshots?: ProcessSnapshot[];
 
-  constructor(private ac: AllCollectionsGQL, private route: ActivatedRoute) {}
+  constructor(private getCollectionQuery: GetCollectionGQL,
+              private route: ActivatedRoute) {}
 
   ngOnInit(): void {
     this.snapshotID = Number(this.route.snapshot.paramMap.get('id'));
-    this.ac.fetch().subscribe(
-      results => {
-        results.data.collections.forEach(c => {
-            if (Number(c.id) == this.snapshotID) {
-              this.snapshotName = c.name;
-            }
-          })
-      });
+
+    this.getCollectionQuery.fetch({colID: this.snapshotID.toString()}).subscribe(results => {
+      this.collectionName = results.data.collectionByID?.name;
+      this.snapshots = results.data.collectionByID?.processSnapshots?.map(
+        value => ({...value, snapshot: "",})
+      )
+    })
   }
 
   ngAfterContentInit(): void {

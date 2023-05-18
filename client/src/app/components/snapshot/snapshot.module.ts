@@ -10,6 +10,8 @@ import { ComponentsModule } from "../components.module";
 import { StacksComponent } from "../stacks/stacks.component";
 import { GraphQLModule } from '../../graphql/graphql.module';
 import { RouterModule } from "@angular/router";
+import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from "@angular/material/input";
 
 
 @NgModule({
@@ -26,6 +28,8 @@ import { RouterModule } from "@angular/router";
     HttpClientModule,
     MatCardModule,
     MatPaginatorModule,
+    MatSelectModule,
+    MatInputModule,
     TextFieldModule,
     StacksComponent,
     RouterModule,

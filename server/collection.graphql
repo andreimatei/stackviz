@@ -1,0 +1,7 @@
+type Mutation {
+  createCollection(input: CreateCollectionInput): Collection
+}
+
+extend type Query {
+  collectionByID(id: ID!): Collection
+}

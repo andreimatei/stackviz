@@ -69,7 +69,7 @@ func CreateCollection(ctx context.Context, client *ent.Client) (*ent.Collection,
 	var snaps []*ent.ProcessSnapshot
 	for i := 1; i <= 2; i++ {
 		s, err := client.ProcessSnapshot.Create().
-			SetProcessID("node-1").
+			SetProcessID(fmt.Sprintf("node-%d", i)).
 			SetSnapshot(string(stacks)).
 			Save(ctx)
 		if err != nil {

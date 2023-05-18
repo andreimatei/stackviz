@@ -1,6 +1,7 @@
 # schema tells gqlgen where the GraphQL schema is located.
 schema:
   - ent.graphql
+  - collection.graphql
 
 # resolver reports where the resolver implementations go.
 resolver:
@@ -26,3 +27,4 @@ models:
   Node:
     model:
       - stacksviz/ent.Noder
+      - stacksviz/ent/collection.Noder

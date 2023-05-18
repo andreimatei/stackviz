@@ -39,8 +39,15 @@
   </app-core>
 
   <p>
-    Snapshot <a routerLink="/collections"> {{ snapshotName }} </a>
+    Collection <a routerLink="/collections"> {{ collectionName }} </a>
   </p>
+
+  <mat-form-field>
+    <mat-label>Snapshots</mat-label>
+    <select matNativeControl required>
+      <option *ngFor="let snap of snapshots" [value]="snap.id" >{{ snap.processID }}</option>
+    </select>
+  </mat-form-field>
 
   <text-field label="Filter" placeholder="filter by package or function name" updateOnEnter=false>
     <interactions>
