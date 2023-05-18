@@ -16,7 +16,7 @@ import { SnapshotComponent } from "./components/snapshot/snapshot.component";
 
 const routes: Routes = [
   { path: 'collections', component: CollectionsListComponent },
-  { path: 'snapshot/:id', component: SnapshotComponent},
+  { path: 'collection/:id', component: SnapshotComponent},
   { path: '', redirectTo: '/collections', pathMatch: 'full'},
 ];
 

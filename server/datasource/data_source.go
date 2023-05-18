@@ -20,7 +20,6 @@ import (
 	"math"
 	"regexp"
 	"stacksviz/ent"
-	collectionEnt "stacksviz/ent/collection"
 	"stacksviz/ent/processsnapshot"
 	"strconv"
 	"strings"
@@ -30,7 +29,7 @@ const (
 	stacksTreeQuery = "stacks.tree"
 	stacksRawQuery  = "stacks.raw"
 
-	collectionIDKey          = "collection_id"
+	snapshotIDKey            = "snapshot_id"
 	pathPrefixKey            = "path_prefix"
 	nameKey                  = "name"
 	detailsFormatKey         = "detail_format"
@@ -55,12 +54,12 @@ func New(fetcher StacksFetcher) *DataSource {
 	return &DataSource{fetcher: fetcher}
 }
 
-// collection represents a single fetched log trace, along with any metadata it
+// processSnapshot represents a single fetched log trace, along with any metadata it
 // requires.
-type collection struct {
-	collectionName string
-	snapshot       *pp.Snapshot
-	agg            *pp.Aggregated
+type processSnapshot struct {
+	processID string
+	snapshot  *pp.Snapshot
+	agg       *pp.Aggregated
 }
 
 // StacksFetcher describes types capable of fetching stack traces by collection
@@ -68,13 +67,13 @@ type collection struct {
 type StacksFetcher interface {
 	// Fetch fetches the stacks specified by collectionName, returning a
 	// LogTrace or an error if a failure is encountered.
-	Fetch(ctx context.Context, collectionID int) (collection, error)
+	Fetch(ctx context.Context, snapshotID int) (processSnapshot, error)
 }
 
 type stacksFetcherImpl struct {
 	client *ent.Client
-	// lru is a cache mapping from collection ID to previously-loaded collection.
-	lru simplelru.LRUCache[int, collection]
+	// lru is a cache mapping from processSnapshot ID to previously-loaded processSnapshot.
+	lru simplelru.LRUCache[int, processSnapshot]
 }
 
 var _ StacksFetcher = &stacksFetcherImpl{}
@@ -82,7 +81,7 @@ var _ StacksFetcher = &stacksFetcherImpl{}
 // NewStacksFetcher creates a new StacksFetcher that will read collections from
 // the specified directory.
 func NewStacksFetcher(client *ent.Client) StacksFetcher {
-	lru, err := lru.New[int, collection](100)
+	lru, err := lru.New[int, processSnapshot](100)
 	if err != nil {
 		panic(err)
 	}
@@ -90,17 +89,6 @@ func NewStacksFetcher(client *ent.Client) StacksFetcher {
 		client: client,
 		lru:    lru,
 	}
-}
-
-func getCollection(ctx context.Context, id int, client *ent.Client) (*ent.Collection, error) {
-	c, err := client.Collection.
-		Query().
-		Where(collectionEnt.ID(id)).
-		Only(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed querying collection: %w", err)
-	}
-	return c, nil
 }
 
 func getSnapshot(ctx context.Context, id int, client *ent.Client) (*ent.ProcessSnapshot, error) {
@@ -114,46 +102,35 @@ func getSnapshot(ctx context.Context, id int, client *ent.Client) (*ent.ProcessS
 	return c, nil
 }
 
-func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int) (collection, error) {
+func (f *stacksFetcherImpl) Fetch(ctx context.Context, snapshotID int) (processSnapshot, error) {
 	// Check the cache first.
 	{
-		col, ok := f.lru.Get(collectionID)
+		snap, ok := f.lru.Get(snapshotID)
 		if ok {
-			return col, nil
+			return snap, nil
 		}
 	}
 
-	col, err := getCollection(ctx, collectionID, f.client)
+	snapRec, err := getSnapshot(ctx, snapshotID, f.client)
 	if err != nil {
-		return collection{}, err
+		return processSnapshot{}, err
 	}
 
-	snaps, err := col.ProcessSnapshots(ctx)
-	if err != nil {
-		return collection{}, err
-	}
-
-	// !!! we return the first snapshot in the collection. Figure out how to display all of them.
-
-	//if len(snaps) != 1 {
-	//	return collection{}, fmt.Errorf("!!! unexpected number of snapshots in collection: %d", len(snaps))
-	//}
-
-	snap, _, err := pp.ScanSnapshot(strings.NewReader(snaps[0].Snapshot), io.Discard, pp.DefaultOpts())
+	snap, _, err := pp.ScanSnapshot(strings.NewReader(snapRec.Snapshot), io.Discard, pp.DefaultOpts())
 	if err != nil && err != io.EOF {
-		return collection{}, err
+		return processSnapshot{}, err
 	}
 	if snap == nil {
-		return collection{}, fmt.Errorf("failed to parse any stacks")
+		return processSnapshot{}, fmt.Errorf("failed to parse any stacks")
 	}
 
 	agg := snap.Aggregate(pp.AnyValue)
-	res := collection{
+	res := processSnapshot{
 		snapshot: snap,
 		agg:      agg,
 	}
 
-	f.lru.Add(collectionID, res)
+	f.lru.Add(snapshotID, res)
 	return res, nil
 }
 
@@ -384,23 +361,22 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	drb *tvutil.DataResponseBuilder,
 	reqs []*tvutil.DataSeriesRequest,
 ) error {
-	// Pull the collection name from the global filters.
-	collectionIDVal, ok := globalFilters[collectionIDKey]
+	snapshotIDVal, ok := globalFilters[snapshotIDKey]
 	if !ok {
-		return fmt.Errorf("missing required filter option '%s'", collectionIDKey)
+		return fmt.Errorf("missing required filter option '%s'", snapshotIDKey)
 	}
-	collectionID, err := tvutil.ExpectIntegerValue(collectionIDVal)
+	snapshotID, err := tvutil.ExpectIntegerValue(snapshotIDVal)
 	if err != nil {
-		return fmt.Errorf("required filter option '%s' must be an int", collectionIDKey)
+		return fmt.Errorf("required filter option '%s' must be an int", snapshotIDKey)
 	}
 
 	// Fetch the collection, from the cache if it's there.
-	col, err := ds.fetchCollection(ctx, int(collectionID))
+	col, err := ds.fetchCollection(ctx, int(snapshotID))
 	if err != nil {
 		log.Printf("Failed to fetch collection: %s", err)
 		return err
 	}
-	log.Printf("Loaded collection %s", col.collectionName)
+	log.Printf("Loaded snapshot %s", col.processID)
 
 	var filter string
 	filterVal, ok := globalFilters[filterKey]
@@ -557,13 +533,13 @@ func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines
 	}
 }
 
-// fetchCollection returns the specified collection from the LRU if it's
+// fetchCollection returns the specified processSnapshot from the LRU if it's
 // present there.  If it isn't already in the LRU, it is fetched and added to
 // the LRU before being returned.
-func (ds *DataSource) fetchCollection(ctx context.Context, collectionID int) (collection, error) {
-	col, err := ds.fetcher.Fetch(ctx, collectionID)
+func (ds *DataSource) fetchCollection(ctx context.Context, snapshotID int) (processSnapshot, error) {
+	col, err := ds.fetcher.Fetch(ctx, snapshotID)
 	if err != nil {
-		return collection{}, err
+		return processSnapshot{}, err
 	}
 	return col, nil
 }
@@ -582,13 +558,7 @@ func (ds *DataSource) stackMatchesPrefix(g *pp.Goroutine, prefix []weightedtree.
 		return false
 	}
 	for i := range prefix {
-		//if i == 0 {
-		//	log.Printf("!!! first func in stack %s (%d) with %d", c.Func.Complete, computeScopeID(c), prefix[i])
-		//}
 		c := &g.Stack.Calls[len(g.Stack.Calls)-i-1]
-		//if strings.Contains(c.Func.Complete, "internalClientAdapter") {
-		//	log.Printf("!!! comparing %s (%d) with %d", c.Func.Complete, computeScopeID(c), prefix[i])
-		//}
 		if computeScopeID(c) != prefix[i] {
 			return false
 		}

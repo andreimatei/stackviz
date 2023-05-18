@@ -6,6 +6,7 @@ import {
 } from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute } from "@angular/router";
 import { AppCoreService } from 'traceviz/dist/ngx-traceviz-lib';
+import { IntegerValue } from "traceviz-client-core";
 
 @Component({
   selector: 'snapshot',
@@ -26,12 +27,13 @@ export class SnapshotComponent implements AfterContentInit, OnInit {
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
 
-  constructor(private getCollectionQuery: GetCollectionGQL,
-              private route: ActivatedRoute) {}
+  constructor(
+    private readonly appCoreService: AppCoreService,
+    private readonly getCollectionQuery: GetCollectionGQL,
+    private readonly route: ActivatedRoute) {}
 
   ngOnInit(): void {
     this.snapshotID = Number(this.route.snapshot.paramMap.get('id'));
-
     this.getCollectionQuery.fetch({colID: this.snapshotID.toString()}).subscribe(results => {
       this.collectionName = results.data.collectionByID?.name;
       this.snapshots = results.data.collectionByID?.processSnapshots?.map(
@@ -41,5 +43,10 @@ export class SnapshotComponent implements AfterContentInit, OnInit {
   }
 
   ngAfterContentInit(): void {
+  }
+
+  onSelectedSnapshotChange(newValue: string) {
+    let newSnapshotID = Number(newValue);
+    this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(newSnapshotID), false /* toggle */);
   }
 }

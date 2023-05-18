@@ -7,7 +7,7 @@
     -->
     <global-state>
       <value-map>
-        <value key="collection_id">
+        <value key="snapshot_id">
           <int>1</int>
         </value>
         <value key="path_prefix">
@@ -31,7 +31,7 @@
         Note that backend data series providers may ignore some global filters.
       -->
       <value-map>
-        <value key="collection_id"><global-ref key="collection_id"></global-ref></value>
+        <value key="snapshot_id"><global-ref key="snapshot_id"></global-ref></value>
         <value key="path_prefix"><global-ref key="path_prefix"></global-ref></value>
         <value key="filter"><global-ref key="filter"></global-ref></value>
       </value-map>
@@ -44,7 +44,7 @@
 
   <mat-form-field>
     <mat-label>Snapshots</mat-label>
-    <select matNativeControl required>
+    <select matNativeControl #snapshot (change)="onSelectedSnapshotChange(snapshot.value)">
       <option *ngFor="let snap of snapshots" [value]="snap.id" >{{ snap.processID }}</option>
     </select>
   </mat-form-field>
@@ -69,7 +69,7 @@
       <interactions>
         <reaction target="data-series" type="fetch">
           <or>
-            <changed><global-ref key="collection_id"></global-ref></changed>
+            <changed><global-ref key="snapshot_id"></global-ref></changed>
             <changed><global-ref key="path_prefix"></global-ref></changed>
             <changed><global-ref key="filter"></global-ref></changed>
           </or>
@@ -104,7 +104,7 @@
       <interactions>
         <reaction target="data-series" type="fetch">
           <or>
-            <changed><global-ref key="collection_id"></global-ref></changed>
+            <changed><global-ref key="snapshot_id"></global-ref></changed>
             <changed><global-ref key="path_prefix"></global-ref></changed>
             <changed><global-ref key="filter"></global-ref></changed>
           </or>
