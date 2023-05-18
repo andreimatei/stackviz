@@ -30,10 +30,11 @@ export class SnapshotComponent implements AfterContentInit, OnInit {
   constructor(
     private readonly appCoreService: AppCoreService,
     private readonly getCollectionQuery: GetCollectionGQL,
-    private readonly route: ActivatedRoute) {}
+    private readonly route: ActivatedRoute) {
+  }
 
   ngOnInit(): void {
-    this.snapshotID = Number(this.route.snapshot.paramMap.get('id'));
+    this.snapshotID = Number(this.route.snapshot.paramMap.get('snapID'));
     this.getCollectionQuery.fetch({colID: this.snapshotID.toString()}).subscribe(results => {
       this.collectionName = results.data.collectionByID?.name;
       this.snapshots = results.data.collectionByID?.processSnapshots?.map(
