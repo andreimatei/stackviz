@@ -1,5 +1,6 @@
 type Mutation {
   createCollection(input: CreateCollectionInput): Collection
+  collectCollection: Collection
 }
 
 extend type Query {

@@ -1,22 +1,53 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from "@angular/router";
-import { AllCollectionsGQL, Collection } from "../../graphql/graphql-codegen-generated";
+import {
+  AllCollectionsGQL,
+  CollectCollectionGQL,
+  Collection
+} from "src/app/graphql/graphql-codegen-generated";
+import { MatButtonModule } from "@angular/material/button";
+import { QueryRef } from "apollo-angular";
+import { map, Observable } from "rxjs";
 
 @Component({
   selector: 'collections-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, MatButtonModule],
   templateUrl: './collections-list.component.html',
   styles: []
 })
-export class CollectionsListComponent {
+export class CollectionsListComponent implements OnInit {
+  protected loading: boolean;
   protected collections?: Collection[];
+  private collectionsQueryInstance?: QueryRef<any, any>;
+  protected querySubscription?: Observable<Array<{ id: string, name: string }>>;
 
-  constructor(collectionsQuery: AllCollectionsGQL) {
-    collectionsQuery.fetch().subscribe(results => {
-      this.collections = results.data.collections;
-    });
+  constructor(
+    private readonly collectionsQuery: AllCollectionsGQL,
+    private readonly newCollectionQuery: CollectCollectionGQL,
+  ) {
+    this.loading = false;
   }
 
+  ngOnInit() {
+    const queryInstance = this.collectionsQuery.watch()
+    this.collectionsQueryInstance = queryInstance
+    this.querySubscription = queryInstance.valueChanges.pipe(
+      map(result => result.data.collections),
+    )
+  }
+
+  collectSnapshots(): void {
+    console.log("!!! CollectCollection");
+    this.newCollectionQuery.mutate().subscribe({
+      next: (res) => {
+        this.collectionsQueryInstance!.refetch().then(
+          undefined,  // onfulfilled
+          reason => console.log("failed to refresh collections: ", reason),
+        );
+      },
+      error: (error) => console.log("failed to create collection: ", error)
+    })
+  }
 }

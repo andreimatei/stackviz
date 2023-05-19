@@ -15,3 +15,9 @@ query GetCollection($colID: ID!) {
     }
   }
 }
+
+mutation CollectCollection {
+  collectCollection {
+    id
+  }
+}

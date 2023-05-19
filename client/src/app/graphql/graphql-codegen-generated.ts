@@ -47,6 +47,7 @@ export type CreateProcessSnapshotInput = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  collectCollection?: Maybe<Collection>;
   createCollection?: Maybe<Collection>;
 };
 
@@ -133,6 +134,11 @@ export type GetCollectionQueryVariables = Exact<{
 
 export type GetCollectionQuery = { __typename?: 'Query', collectionByID?: { __typename?: 'Collection', id: string, name: string, processSnapshots?: Array<{ __typename?: 'ProcessSnapshot', id: string, processID: string }> | null } | null };
 
+export type CollectCollectionMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type CollectCollectionMutation = { __typename?: 'Mutation', collectCollection?: { __typename?: 'Collection', id: string } | null };
+
 export const AllCollectionsDocument = gql`
     query AllCollections {
   collections {
@@ -170,6 +176,24 @@ export const GetCollectionDocument = gql`
   })
   export class GetCollectionGQL extends Apollo.Query<GetCollectionQuery, GetCollectionQueryVariables> {
     override document = GetCollectionDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const CollectCollectionDocument = gql`
+    mutation CollectCollection {
+  collectCollection {
+    id
+  }
+}
+    `;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class CollectCollectionGQL extends Apollo.Mutation<CollectCollectionMutation, CollectCollectionMutationVariables> {
+    override document = CollectCollectionDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);

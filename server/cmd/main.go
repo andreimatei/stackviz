@@ -14,6 +14,7 @@ import (
 	server "stacksviz"
 	"stacksviz/ent"
 	"stacksviz/service"
+	"stacksviz/util"
 )
 
 var (
@@ -25,6 +26,15 @@ var (
 func main() {
 	ctx := context.Background()
 	flag.Parse()
+
+	execPath, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+	}
+	conf, err := util.ReadConfig(path.Join(path.Dir(execPath), "config.yaml"))
+	if err != nil {
+		log.Fatalf("failed to read config file: %s", err)
+	}
 
 	client, err := ent.Open("sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
 	if err != nil {
@@ -50,7 +60,7 @@ func main() {
 	mux.Handle("/", http.FileServer(http.Dir(*resourceRoot)))
 
 	// Create the Graphql server and register it and the playground.
-	graphqlServer := graphqlhandler.NewDefaultServer(server.NewSchema(client))
+	graphqlServer := graphqlhandler.NewDefaultServer(server.NewSchema(client, conf))
 	mux.Handle("/playground", playground.Handler("GraphQL playground", "/graphql"))
 	mux.Handle("/graphql", graphqlServer)
 

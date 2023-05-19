@@ -12,7 +12,7 @@ import (
 
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id int) (ent.Noder, error) {
-	return r.client.Noder(ctx, id)
+	return r.dbClient.Noder(ctx, id)
 }
 
 // Nodes is the resolver for the nodes field.
@@ -22,12 +22,12 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []int) ([]ent.Noder, erro
 
 // Collections is the resolver for the collections field.
 func (r *queryResolver) Collections(ctx context.Context) ([]*ent.Collection, error) {
-	return r.client.Collection.Query().All(ctx)
+	return r.dbClient.Collection.Query().All(ctx)
 }
 
 // ProcessSnapshots is the resolver for the processSnapshots field.
 func (r *queryResolver) ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error) {
-	return r.client.ProcessSnapshot.Query().All(ctx)
+	return r.dbClient.ProcessSnapshot.Query().All(ctx)
 }
 
 // Query returns QueryResolver implementation.

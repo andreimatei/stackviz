@@ -6,16 +6,23 @@ package server
 
 import (
 	"stacksviz/ent"
+	"stacksviz/util"
 
 	"github.com/99designs/gqlgen/graphql"
 )
 
 // Resolver is the resolver root.
-type Resolver struct{ client *ent.Client }
+type Resolver struct {
+	dbClient *ent.Client
+	conf     util.Config
+}
 
 // NewSchema creates a graphql executable schema.
-func NewSchema(client *ent.Client) graphql.ExecutableSchema {
+func NewSchema(client *ent.Client, conf util.Config) graphql.ExecutableSchema {
 	return NewExecutableSchema(Config{
-		Resolvers: &Resolver{client},
+		Resolvers: &Resolver{
+			dbClient: client,
+			conf:     conf,
+		},
 	})
 }

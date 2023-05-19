@@ -53,7 +53,8 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateCollection func(childComplexity int, input *ent.CreateCollectionInput) int
+		CollectCollection func(childComplexity int) int
+		CreateCollection  func(childComplexity int, input *ent.CreateCollectionInput) int
 	}
 
 	PageInfo struct {
@@ -80,6 +81,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	CreateCollection(ctx context.Context, input *ent.CreateCollectionInput) (*ent.Collection, error)
+	CollectCollection(ctx context.Context) (*ent.Collection, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id int) (ent.Noder, error)
@@ -124,6 +126,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Collection.ProcessSnapshots(childComplexity), true
+
+	case "Mutation.collectCollection":
+		if e.complexity.Mutation.CollectCollection == nil {
+			break
+		}
+
+		return e.complexity.Mutation.CollectCollection(childComplexity), true
 
 	case "Mutation.createCollection":
 		if e.complexity.Mutation.CreateCollection == nil {
@@ -632,6 +641,55 @@ func (ec *executionContext) fieldContext_Mutation_createCollection(ctx context.C
 	if fc.Args, err = ec.field_Mutation_createCollection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_collectCollection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_collectCollection(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CollectCollection(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Collection)
+	fc.Result = res
+	return ec.marshalOCollection2ᚖstacksvizᚋentᚐCollection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_collectCollection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Collection_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Collection_name(ctx, field)
+			case "processSnapshots":
+				return ec.fieldContext_Collection_processSnapshots(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Collection", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -3289,6 +3347,12 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createCollection(ctx, field)
+			})
+
+		case "collectCollection":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_collectCollection(ctx, field)
 			})
 
 		default:

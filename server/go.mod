@@ -9,11 +9,13 @@ require (
 	github.com/google/traceviz/server/go v0.0.0-20230428161057-a446b048e906
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.2
+	github.com/kr/pretty v0.1.0
 	github.com/maruel/panicparse/v2 v2.3.1
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/stretchr/testify v1.8.2
 	github.com/vektah/gqlparser/v2 v2.5.1
 	golang.org/x/sync v0.2.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -29,6 +31,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -40,7 +43,6 @@ require (
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.9.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/google/traceviz/server/go => ../../../google/traceviz/server/go

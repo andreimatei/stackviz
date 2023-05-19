@@ -1,3 +1,11 @@
 <nav>
-  <a routerLink="/collections/{{c.id}}" *ngFor="let c of collections" >Snapshot {{ c.name }} </a>
+  <ul>
+    <li *ngFor="let c of querySubscription | async" >
+      <a routerLink="/collections/{{c.id}}" >Snapshot {{ c.name }} </a>
+    </li>
+  </ul>
 </nav>
+
+<button mat-raised-button color="primary" (click)="collectSnapshots()">
+  Collect a snapshot from the service
+</button>

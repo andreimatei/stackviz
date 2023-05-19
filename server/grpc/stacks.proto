@@ -32,7 +32,7 @@ message GetSnapshotResponse {
 
 // Extra data collected for a "frame of interest".
 message FrameInfo {
-  message Var {
+  message VarOrParam {
     // The name of the variable. e.g. "ba".
     string name = 1;
     // JSON. e.g.
