@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+import "google/pprof/proto/profile.proto";
+
+
+message FunctionInfoRequest {
+  // e.g. github.com/cockroachdb/cockroach/pkg/kv/kvserver.(*raftScheduler).Start.Func2
+  string name = 1;
+}
+
+message FunctionInfoResponse {
+  message Param {
+    // e.g. "ctx"
+    string name = 1;
+    // e.g. "context.Context"
+    string type = 2;
+  }
+  repeated Param params = 1;
+}
+
+message GetSnapshotRequest {
+  message FunctionOfInterest {
+    string name = 1;
+  }
+  repeated FunctionOfInterest functions_of_interest = 1;
+}
+
+message GetSnapshotResponse {
+  // One snapshot per process.
+  repeated ProcessSnapshot snapshots = 1;
+}
+
+// Extra data collected for a "frame of interest".
+message FrameInfo {
+  message Var {
+    // The name of the variable. e.g. "ba".
+    string name = 1;
+    // JSON. e.g.
+    // {
+    // "BatchRequest": {
+    //     "Header": {
+    //       ...
+    //     }
+    //     ...
+    //   }
+    // }
+    string value = 2;
+  }
+
+  // The id of the goroutine whose backtrace this frame belongs to.
+  int32 goroutine_id = 1;
+  // The index of the frame within the goroutines's backtrace.
+  int32 frame_index = 2;
+  string function_name = 3;
+  string file = 4;
+  int32 line = 5;
+  // The local variables collected at file:line.
+  repeated Var vars = 6;
+}
+
+// A snapshot for a single process.
+message ProcessSnapshot {
+  // Some identifier of the process this snapshot was collected from. e.g.
+  // "node-1" if we can get CRDB-specific IDs. Otherwise a pid or such.
+  string process_id = 1;
+  Profile profile = 2;
+  repeated FrameInfo frames = 3;
+}
+
+service Stacks {
+  // Retrieve static information about a specific function.
+  rpc FunctionInfo(FunctionInfoRequest) returns (FunctionInfoResponse);
+  // Collect a snapshot of the stacks of all goroutines in all monitored processes.
+  rpc GetSnapshot(GetSnapshotRequest) returns (GetSnapshotResponse);
+}
