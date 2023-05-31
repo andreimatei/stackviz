@@ -381,8 +381,7 @@ func (ds *DataSource) buildTree(snap *pp.Snapshot, fois []FrameOfInterest) *tree
 		for i := range s.Signature.Stack.Calls {
 			stack[l-i-1].call = s.Signature.Stack.Calls[i]
 			for _, foi := range myFois {
-				if foi.Frame == i+1 {
-					log.Printf("!!! making tree node with vars: %s %s", stack[l-i-1].call.Func.Name, foi.Value)
+				if foi.Frame == i {
 					stack[l-i-1].vars = stack[l-i-1].vars + "\n" + foi.Value
 				}
 			}
