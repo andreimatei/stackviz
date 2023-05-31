@@ -450,15 +450,17 @@ func (m *CollectionMutation) ResetEdge(name string) error {
 // ProcessSnapshotMutation represents an operation that mutates the ProcessSnapshot nodes in the graph.
 type ProcessSnapshotMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	process_id    *string
-	snapshot      *string
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*ProcessSnapshot, error)
-	predicates    []predicate.ProcessSnapshot
+	op                       Op
+	typ                      string
+	id                       *int
+	process_id               *string
+	snapshot                 *string
+	frames_of_interest       *[]string
+	appendframes_of_interest []string
+	clearedFields            map[string]struct{}
+	done                     bool
+	oldValue                 func(context.Context) (*ProcessSnapshot, error)
+	predicates               []predicate.ProcessSnapshot
 }
 
 var _ ent.Mutation = (*ProcessSnapshotMutation)(nil)
@@ -631,6 +633,71 @@ func (m *ProcessSnapshotMutation) ResetSnapshot() {
 	m.snapshot = nil
 }
 
+// SetFramesOfInterest sets the "frames_of_interest" field.
+func (m *ProcessSnapshotMutation) SetFramesOfInterest(s []string) {
+	m.frames_of_interest = &s
+	m.appendframes_of_interest = nil
+}
+
+// FramesOfInterest returns the value of the "frames_of_interest" field in the mutation.
+func (m *ProcessSnapshotMutation) FramesOfInterest() (r []string, exists bool) {
+	v := m.frames_of_interest
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFramesOfInterest returns the old "frames_of_interest" field's value of the ProcessSnapshot entity.
+// If the ProcessSnapshot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProcessSnapshotMutation) OldFramesOfInterest(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFramesOfInterest is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFramesOfInterest requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFramesOfInterest: %w", err)
+	}
+	return oldValue.FramesOfInterest, nil
+}
+
+// AppendFramesOfInterest adds s to the "frames_of_interest" field.
+func (m *ProcessSnapshotMutation) AppendFramesOfInterest(s []string) {
+	m.appendframes_of_interest = append(m.appendframes_of_interest, s...)
+}
+
+// AppendedFramesOfInterest returns the list of values that were appended to the "frames_of_interest" field in this mutation.
+func (m *ProcessSnapshotMutation) AppendedFramesOfInterest() ([]string, bool) {
+	if len(m.appendframes_of_interest) == 0 {
+		return nil, false
+	}
+	return m.appendframes_of_interest, true
+}
+
+// ClearFramesOfInterest clears the value of the "frames_of_interest" field.
+func (m *ProcessSnapshotMutation) ClearFramesOfInterest() {
+	m.frames_of_interest = nil
+	m.appendframes_of_interest = nil
+	m.clearedFields[processsnapshot.FieldFramesOfInterest] = struct{}{}
+}
+
+// FramesOfInterestCleared returns if the "frames_of_interest" field was cleared in this mutation.
+func (m *ProcessSnapshotMutation) FramesOfInterestCleared() bool {
+	_, ok := m.clearedFields[processsnapshot.FieldFramesOfInterest]
+	return ok
+}
+
+// ResetFramesOfInterest resets all changes to the "frames_of_interest" field.
+func (m *ProcessSnapshotMutation) ResetFramesOfInterest() {
+	m.frames_of_interest = nil
+	m.appendframes_of_interest = nil
+	delete(m.clearedFields, processsnapshot.FieldFramesOfInterest)
+}
+
 // Where appends a list predicates to the ProcessSnapshotMutation builder.
 func (m *ProcessSnapshotMutation) Where(ps ...predicate.ProcessSnapshot) {
 	m.predicates = append(m.predicates, ps...)
@@ -665,12 +732,15 @@ func (m *ProcessSnapshotMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProcessSnapshotMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 3)
 	if m.process_id != nil {
 		fields = append(fields, processsnapshot.FieldProcessID)
 	}
 	if m.snapshot != nil {
 		fields = append(fields, processsnapshot.FieldSnapshot)
+	}
+	if m.frames_of_interest != nil {
+		fields = append(fields, processsnapshot.FieldFramesOfInterest)
 	}
 	return fields
 }
@@ -684,6 +754,8 @@ func (m *ProcessSnapshotMutation) Field(name string) (ent.Value, bool) {
 		return m.ProcessID()
 	case processsnapshot.FieldSnapshot:
 		return m.Snapshot()
+	case processsnapshot.FieldFramesOfInterest:
+		return m.FramesOfInterest()
 	}
 	return nil, false
 }
@@ -697,6 +769,8 @@ func (m *ProcessSnapshotMutation) OldField(ctx context.Context, name string) (en
 		return m.OldProcessID(ctx)
 	case processsnapshot.FieldSnapshot:
 		return m.OldSnapshot(ctx)
+	case processsnapshot.FieldFramesOfInterest:
+		return m.OldFramesOfInterest(ctx)
 	}
 	return nil, fmt.Errorf("unknown ProcessSnapshot field %s", name)
 }
@@ -719,6 +793,13 @@ func (m *ProcessSnapshotMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSnapshot(v)
+		return nil
+	case processsnapshot.FieldFramesOfInterest:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFramesOfInterest(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ProcessSnapshot field %s", name)
@@ -749,7 +830,11 @@ func (m *ProcessSnapshotMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ProcessSnapshotMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(processsnapshot.FieldFramesOfInterest) {
+		fields = append(fields, processsnapshot.FieldFramesOfInterest)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -762,6 +847,11 @@ func (m *ProcessSnapshotMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ProcessSnapshotMutation) ClearField(name string) error {
+	switch name {
+	case processsnapshot.FieldFramesOfInterest:
+		m.ClearFramesOfInterest()
+		return nil
+	}
 	return fmt.Errorf("unknown ProcessSnapshot nullable field %s", name)
 }
 
@@ -774,6 +864,9 @@ func (m *ProcessSnapshotMutation) ResetField(name string) error {
 		return nil
 	case processsnapshot.FieldSnapshot:
 		m.ResetSnapshot()
+		return nil
+	case processsnapshot.FieldFramesOfInterest:
+		m.ResetFramesOfInterest()
 		return nil
 	}
 	return fmt.Errorf("unknown ProcessSnapshot field %s", name)

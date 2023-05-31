@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"github.com/google/traceviz/server/go/category"
 	"github.com/google/traceviz/server/go/color"
@@ -54,12 +55,19 @@ func New(fetcher StacksFetcher) *DataSource {
 	return &DataSource{fetcher: fetcher}
 }
 
+type FrameOfInterest struct {
+	Gid   int
+	Frame int
+	Value string
+}
+
 // processSnapshot represents a single fetched log trace, along with any metadata it
 // requires.
 type processSnapshot struct {
-	processID string
-	snapshot  *pp.Snapshot
-	agg       *pp.Aggregated
+	processID        string
+	snapshot         *pp.Snapshot
+	agg              *pp.Aggregated
+	framesOfInterest []FrameOfInterest
 }
 
 // StacksFetcher describes types capable of fetching stack traces by collection
@@ -126,9 +134,18 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, snapshotID int) (processS
 	}
 
 	agg := snap.Aggregate(pp.AnyValue)
+
+	fois := make([]FrameOfInterest, len(snapRec.FramesOfInterest))
+	for i, foi := range snapRec.FramesOfInterest {
+		if err = json.Unmarshal([]byte(foi), &fois[i]); err != nil {
+			return processSnapshot{}, err
+		}
+	}
+
 	res := processSnapshot{
-		snapshot: snap,
-		agg:      agg,
+		snapshot:         snap,
+		agg:              agg,
+		framesOfInterest: fois,
 	}
 
 	f.lru.Add(snapshotID, res)
@@ -142,6 +159,7 @@ type treeNode struct {
 	function pp.Func
 	file     string
 	line     int
+	vars     string
 	// path is the path from the root to this node, represented by hashes of
 	// each ancestor's function.
 	path     []weightedtree.ScopeID
@@ -228,15 +246,16 @@ func (t *treeNode) findChild(file string, line int) *treeNode {
 
 // addStack adds the stack to the tree rooted at t, creating new nodes for calls
 // that don't yet exist.
-func (t *treeNode) addStack(stack []pp.Call) {
+func (t *treeNode) addStack(stack []frame) {
 	t.numGoroutines++
 	if len(stack) == 0 {
 		// t is a leaf for the stack that we just finished processing.
 		t.numLeafGoroutines++
 		return
 	}
-	child := t.findChild(stack[0].RemoteSrcPath, stack[0].Line)
+	child := t.findChild(stack[0].call.RemoteSrcPath, stack[0].call.Line)
 	if child != nil {
+		child.vars += stack[0].vars
 		child.addStack(stack[1:])
 	} else {
 		t.createPath(stack)
@@ -245,14 +264,14 @@ func (t *treeNode) addStack(stack []pp.Call) {
 
 // createPath adds children to t recursively such that the tree gets the path
 // t -> stack[0] -> stack[1] -> ...
-func (t *treeNode) createPath(stack []pp.Call) {
+func (t *treeNode) createPath(stack []frame) {
 	t.numGoroutines++
 	if len(stack) == 0 {
 		// The stack had t as a leaf function.
 		t.numLeafGoroutines++
 		return
 	}
-	call := &stack[0]
+	call := &stack[0].call
 	t.children = append(t.children, treeNode{
 		function:          call.Func,
 		file:              call.RemoteSrcPath,
@@ -260,6 +279,7 @@ func (t *treeNode) createPath(stack []pp.Call) {
 		path:              append(t.path, computeScopeID(call)),
 		children:          nil,
 		numLeafGoroutines: 0,
+		vars:              stack[0].vars,
 	})
 	t.children[len(t.children)-1].createPath(stack[1:])
 }
@@ -288,11 +308,16 @@ type nodeBuilder interface {
 // its children, recursively) into a weighted tree.
 func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSpace *color.Space) {
 	t := node.TreeNode.(*treeNode)
+	if t.vars != "" {
+		log.Printf("!!! really creating node with vars: %s %q", t.function.Name, t.vars)
+	}
+	const varsKey = "vars_key"
 	n := builder.Node(float64(t.numLeafGoroutines),
 		tvutil.StringProperty(nameKey, t.function.DirName+"."+t.function.Name),
 		weightedtree.Path(t),
 		tvutil.StringsProperty(fullNameKey, t.function.Complete),
-		tvutil.StringProperty(detailsFormatKey, fmt.Sprintf("$(%s)", fullNameKey)),
+		tvutil.StringsProperty(varsKey, t.vars),
+		tvutil.StringProperty(detailsFormatKey, fmt.Sprintf("$(%s) - $(%s)", fullNameKey, varsKey)),
 		colorSpace.PrimaryColor(functionNameToColor(t.function.Complete)),
 		label.Format(fmt.Sprintf("$(%s)", nameKey)))
 	for _, c := range node.Children {
@@ -323,8 +348,13 @@ func functionNameToColor(functionName string) float64 {
 	return float64(hash) / math.MaxUint32
 }
 
+type frame struct {
+	call pp.Call
+	vars string
+}
+
 // buildTree builds a trie out of the stack traces in snap.
-func (ds *DataSource) buildTree(snap *pp.Snapshot) *treeNode {
+func (ds *DataSource) buildTree(snap *pp.Snapshot, fois []FrameOfInterest) *treeNode {
 	root := &treeNode{
 		function: pp.Func{
 			Complete: "root",
@@ -335,12 +365,27 @@ func (ds *DataSource) buildTree(snap *pp.Snapshot) *treeNode {
 		path: nil,
 	}
 	for _, s := range snap.Goroutines {
+		var myFois []FrameOfInterest
+		for _, foi := range fois {
+			if foi.Gid != s.ID {
+				continue
+			}
+			myFois = append(myFois, foi)
+		}
+
 		// Invert the stack; we want it ordered from top-level function to leaf
 		// function.
 		l := len(s.Signature.Stack.Calls)
-		stack := make([]pp.Call, l)
+		stack := make([]frame, l)
+
 		for i := range s.Signature.Stack.Calls {
-			stack[l-i-1] = s.Signature.Stack.Calls[i]
+			stack[l-i-1].call = s.Signature.Stack.Calls[i]
+			for _, foi := range myFois {
+				if foi.Frame == i+1 {
+					log.Printf("!!! making tree node with vars: %s %s", stack[l-i-1].call.Func.Name, foi.Value)
+					stack[l-i-1].vars = stack[l-i-1].vars + "\n" + foi.Value
+				}
+			}
 		}
 		root.addStack(stack)
 	}
@@ -414,12 +459,12 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		switch req.QueryName {
 		case stacksTreeQuery:
 			log.Printf("!!! stacksTreeQuery")
-			if err := ds.handleStacksTreeQuery(snap, path, builder); err != nil {
+			if err := ds.handleStacksTreeQuery(snap, processSnapshot.framesOfInterest, path, builder); err != nil {
 				return err
 			}
 		case stacksRawQuery:
 			log.Printf("!!! stacksRawQuery")
-			ds.handleStacksRawQuery(snap, len(processSnapshot.snapshot.Goroutines), builder)
+			ds.handleStacksRawQuery(snap, len(processSnapshot.snapshot.Goroutines), processSnapshot.framesOfInterest, builder)
 		default:
 			return fmt.Errorf("unsupported data query: %s", req.QueryName)
 		}
@@ -469,10 +514,11 @@ func (ds *DataSource) filterStacksByPrefix(snap *pp.Snapshot, prefix []weightedt
 // as such.
 func (ds *DataSource) handleStacksTreeQuery(
 	snap *pp.Snapshot,
+	fois []FrameOfInterest,
 	path []weightedtree.ScopeID,
 	builder tvutil.DataBuilder,
 ) error {
-	tree := ds.buildTree(snap)
+	tree := ds.buildTree(snap, fois)
 	filtered, err := weightedtree.Walk(
 		tree,
 		compareByFunctionName, // within a level, sort alphabetically
@@ -502,7 +548,9 @@ var pkgCol = table.Column(category.New("package", "Package", "The name of the pa
 var fileLineCol = table.Column(category.New("fileLine", "file:line", "The source location."))
 var funcCol = table.Column(category.New("function", "Function", "The name of the function."))
 
-func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines int, builder tvutil.DataBuilder) {
+func (ds *DataSource) handleStacksRawQuery(
+	snap *pp.Snapshot, numTotalGoroutines int, fois []FrameOfInterest, builder tvutil.DataBuilder,
+) {
 	renderSettings := &table.RenderSettings{
 		RowHeightPx: 20,
 		FontSizePx:  14,
@@ -528,6 +576,15 @@ func (ds *DataSource) handleStacksRawQuery(snap *pp.Snapshot, numTotalGoroutines
 
 	for _, g := range snap.Goroutines {
 		tab := table.New(rawBuilder.Child(), renderSettings, stackCol).With(tvutil.IntegerProperty(goroutineIDKey, int64(g.ID)))
+		var myFois []FrameOfInterest
+		for _, foi := range fois {
+			if foi.Gid != g.ID {
+				continue
+			}
+			myFois = append(myFois, foi)
+			tab.Row(table.Cell(stackCol, tvutil.String(foi.Value)))
+		}
+
 		for j := range g.Stack.Calls {
 			c := &g.Stack.Calls[j]
 			tab.Row(table.FormattedCell(stackCol, c.Func.Complete))

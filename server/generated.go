@@ -65,9 +65,10 @@ type ComplexityRoot struct {
 	}
 
 	ProcessSnapshot struct {
-		ID        func(childComplexity int) int
-		ProcessID func(childComplexity int) int
-		Snapshot  func(childComplexity int) int
+		FramesOfInterest func(childComplexity int) int
+		ID               func(childComplexity int) int
+		ProcessID        func(childComplexity int) int
+		Snapshot         func(childComplexity int) int
 	}
 
 	Query struct {
@@ -173,6 +174,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
+
+	case "ProcessSnapshot.framesOfInterest":
+		if e.complexity.ProcessSnapshot.FramesOfInterest == nil {
+			break
+		}
+
+		return e.complexity.ProcessSnapshot.FramesOfInterest(childComplexity), true
 
 	case "ProcessSnapshot.id":
 		if e.complexity.ProcessSnapshot.ID == nil {
@@ -578,6 +586,8 @@ func (ec *executionContext) fieldContext_Collection_processSnapshots(ctx context
 				return ec.fieldContext_ProcessSnapshot_processID(ctx, field)
 			case "snapshot":
 				return ec.fieldContext_ProcessSnapshot_snapshot(ctx, field)
+			case "framesOfInterest":
+				return ec.fieldContext_ProcessSnapshot_framesOfInterest(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProcessSnapshot", field.Name)
 		},
@@ -996,6 +1006,47 @@ func (ec *executionContext) fieldContext_ProcessSnapshot_snapshot(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _ProcessSnapshot_framesOfInterest(ctx context.Context, field graphql.CollectedField, obj *ent.ProcessSnapshot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProcessSnapshot_framesOfInterest(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FramesOfInterest, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProcessSnapshot_framesOfInterest(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProcessSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_node(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_node(ctx, field)
 	if err != nil {
@@ -1200,6 +1251,8 @@ func (ec *executionContext) fieldContext_Query_processSnapshots(ctx context.Cont
 				return ec.fieldContext_ProcessSnapshot_processID(ctx, field)
 			case "snapshot":
 				return ec.fieldContext_ProcessSnapshot_snapshot(ctx, field)
+			case "framesOfInterest":
+				return ec.fieldContext_ProcessSnapshot_framesOfInterest(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProcessSnapshot", field.Name)
 		},
@@ -3214,7 +3267,7 @@ func (ec *executionContext) unmarshalInputCreateProcessSnapshotInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"processID", "snapshot"}
+	fieldsInOrder := [...]string{"processID", "snapshot", "framesOfInterest"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -3239,6 +3292,15 @@ func (ec *executionContext) unmarshalInputCreateProcessSnapshotInput(ctx context
 				return it, err
 			}
 			it.Snapshot = data
+		case "framesOfInterest":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterest"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterest = data
 		}
 	}
 
@@ -3440,6 +3502,10 @@ func (ec *executionContext) _ProcessSnapshot(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "framesOfInterest":
+
+			out.Values[i] = ec._ProcessSnapshot_framesOfInterest(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

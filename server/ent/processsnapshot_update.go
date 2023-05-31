@@ -11,6 +11,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 )
 
@@ -36,6 +37,24 @@ func (psu *ProcessSnapshotUpdate) SetProcessID(s string) *ProcessSnapshotUpdate 
 // SetSnapshot sets the "snapshot" field.
 func (psu *ProcessSnapshotUpdate) SetSnapshot(s string) *ProcessSnapshotUpdate {
 	psu.mutation.SetSnapshot(s)
+	return psu
+}
+
+// SetFramesOfInterest sets the "frames_of_interest" field.
+func (psu *ProcessSnapshotUpdate) SetFramesOfInterest(s []string) *ProcessSnapshotUpdate {
+	psu.mutation.SetFramesOfInterest(s)
+	return psu
+}
+
+// AppendFramesOfInterest appends s to the "frames_of_interest" field.
+func (psu *ProcessSnapshotUpdate) AppendFramesOfInterest(s []string) *ProcessSnapshotUpdate {
+	psu.mutation.AppendFramesOfInterest(s)
+	return psu
+}
+
+// ClearFramesOfInterest clears the value of the "frames_of_interest" field.
+func (psu *ProcessSnapshotUpdate) ClearFramesOfInterest() *ProcessSnapshotUpdate {
+	psu.mutation.ClearFramesOfInterest()
 	return psu
 }
 
@@ -86,6 +105,17 @@ func (psu *ProcessSnapshotUpdate) sqlSave(ctx context.Context) (n int, err error
 	if value, ok := psu.mutation.Snapshot(); ok {
 		_spec.SetField(processsnapshot.FieldSnapshot, field.TypeString, value)
 	}
+	if value, ok := psu.mutation.FramesOfInterest(); ok {
+		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeJSON, value)
+	}
+	if value, ok := psu.mutation.AppendedFramesOfInterest(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, processsnapshot.FieldFramesOfInterest, value)
+		})
+	}
+	if psu.mutation.FramesOfInterestCleared() {
+		_spec.ClearField(processsnapshot.FieldFramesOfInterest, field.TypeJSON)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, psu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{processsnapshot.Label}
@@ -115,6 +145,24 @@ func (psuo *ProcessSnapshotUpdateOne) SetProcessID(s string) *ProcessSnapshotUpd
 // SetSnapshot sets the "snapshot" field.
 func (psuo *ProcessSnapshotUpdateOne) SetSnapshot(s string) *ProcessSnapshotUpdateOne {
 	psuo.mutation.SetSnapshot(s)
+	return psuo
+}
+
+// SetFramesOfInterest sets the "frames_of_interest" field.
+func (psuo *ProcessSnapshotUpdateOne) SetFramesOfInterest(s []string) *ProcessSnapshotUpdateOne {
+	psuo.mutation.SetFramesOfInterest(s)
+	return psuo
+}
+
+// AppendFramesOfInterest appends s to the "frames_of_interest" field.
+func (psuo *ProcessSnapshotUpdateOne) AppendFramesOfInterest(s []string) *ProcessSnapshotUpdateOne {
+	psuo.mutation.AppendFramesOfInterest(s)
+	return psuo
+}
+
+// ClearFramesOfInterest clears the value of the "frames_of_interest" field.
+func (psuo *ProcessSnapshotUpdateOne) ClearFramesOfInterest() *ProcessSnapshotUpdateOne {
+	psuo.mutation.ClearFramesOfInterest()
 	return psuo
 }
 
@@ -194,6 +242,17 @@ func (psuo *ProcessSnapshotUpdateOne) sqlSave(ctx context.Context) (_node *Proce
 	}
 	if value, ok := psuo.mutation.Snapshot(); ok {
 		_spec.SetField(processsnapshot.FieldSnapshot, field.TypeString, value)
+	}
+	if value, ok := psuo.mutation.FramesOfInterest(); ok {
+		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeJSON, value)
+	}
+	if value, ok := psuo.mutation.AppendedFramesOfInterest(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, processsnapshot.FieldFramesOfInterest, value)
+		})
+	}
+	if psuo.mutation.FramesOfInterestCleared() {
+		_spec.ClearField(processsnapshot.FieldFramesOfInterest, field.TypeJSON)
 	}
 	_node = &ProcessSnapshot{config: psuo.config}
 	_spec.Assign = _node.assignValues

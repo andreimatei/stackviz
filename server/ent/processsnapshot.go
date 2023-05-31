@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"stacksviz/ent/processsnapshot"
 	"strings"
@@ -19,7 +20,9 @@ type ProcessSnapshot struct {
 	// ProcessID holds the value of the "process_id" field.
 	ProcessID string `json:"process_id,omitempty"`
 	// Snapshot holds the value of the "snapshot" field.
-	Snapshot                     string `json:"snapshot,omitempty"`
+	Snapshot string `json:"snapshot,omitempty"`
+	// FramesOfInterest holds the value of the "frames_of_interest" field.
+	FramesOfInterest             []string `json:"frames_of_interest,omitempty"`
 	collection_process_snapshots *int
 	selectValues                 sql.SelectValues
 }
@@ -29,6 +32,8 @@ func (*ProcessSnapshot) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case processsnapshot.FieldFramesOfInterest:
+			values[i] = new([]byte)
 		case processsnapshot.FieldID:
 			values[i] = new(sql.NullInt64)
 		case processsnapshot.FieldProcessID, processsnapshot.FieldSnapshot:
@@ -67,6 +72,14 @@ func (ps *ProcessSnapshot) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field snapshot", values[i])
 			} else if value.Valid {
 				ps.Snapshot = value.String
+			}
+		case processsnapshot.FieldFramesOfInterest:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field frames_of_interest", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &ps.FramesOfInterest); err != nil {
+					return fmt.Errorf("unmarshal field frames_of_interest: %w", err)
+				}
 			}
 		case processsnapshot.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -116,6 +129,9 @@ func (ps *ProcessSnapshot) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("snapshot=")
 	builder.WriteString(ps.Snapshot)
+	builder.WriteString(", ")
+	builder.WriteString("frames_of_interest=")
+	builder.WriteString(fmt.Sprintf("%v", ps.FramesOfInterest))
 	builder.WriteByte(')')
 	return builder.String()
 }

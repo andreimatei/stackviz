@@ -24,6 +24,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "process_id", Type: field.TypeString},
 		{Name: "snapshot", Type: field.TypeString, Size: 2147483647},
+		{Name: "frames_of_interest", Type: field.TypeJSON, Nullable: true},
 		{Name: "collection_process_snapshots", Type: field.TypeInt, Nullable: true},
 	}
 	// ProcessSnapshotsTable holds the schema information for the "process_snapshots" table.
@@ -34,7 +35,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "process_snapshots_collections_process_snapshots",
-				Columns:    []*schema.Column{ProcessSnapshotsColumns[3]},
+				Columns:    []*schema.Column{ProcessSnapshotsColumns[4]},
 				RefColumns: []*schema.Column{CollectionsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},

@@ -6,18 +6,12 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/kr/pretty"
-	"io"
 	"log"
-	"net/http"
-	"net/rpc"
 	"stacksviz/ent"
 	"stacksviz/ent/collection"
-	"strings"
 	"time"
-
-	"github.com/andreimatei/delve-agent/agentrpc"
 )
 
 // CreateCollection is the resolver for the createCollection field.
@@ -34,6 +28,7 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 	if len(r.conf.Targets) != 1 {
 		return nil, fmt.Errorf("expected exactly one service")
 	}
+
 	var svcName string
 	for serviceName, _ := range r.conf.Targets {
 		// TODO(andrei): deal with multiple services
@@ -45,9 +40,22 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 		log.Printf("collecting snapshot from process %d: %s-%s - %s", i, svcName, processName, url)
 		// !!! snap, err := r.getSnapshotFromPprof(url)
 		snap, err := r.getSnapshotFromDelveAgent(url)
+		if err != nil {
+			return nil, err
+		}
+		var framesOfInterest []string
+		for _, foi := range snap.Frames_of_interest {
+			b, err := json.Marshal(foi)
+			if err != nil {
+				return nil, err
+			}
+			framesOfInterest = append(framesOfInterest, string(b))
+		}
+		log.Printf("!!! creating snapshot with frames of interest: %s", framesOfInterest)
 		ps, err := r.dbClient.ProcessSnapshot.Create().SetInput(ent.CreateProcessSnapshotInput{
-			ProcessID: processName,
-			Snapshot:  string(snap),
+			ProcessID:        processName,
+			Snapshot:         snapToString(snap),
+			FramesOfInterest: framesOfInterest,
 		}).Save(ctx)
 		if err != nil {
 			return nil, err
@@ -60,45 +68,6 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 		Name:               fmt.Sprintf("%s - %s", svcName, time.Now().Format(timeFormat)),
 		ProcessSnapshotIDs: psIDs,
 	}).Save(ctx)
-}
-
-func (r *mutationResolver) getSnapshotFromPprof(targetURL string) (string, error) {
-	resp, err := http.Get(targetURL)
-	// TODO(andrei): try the other processes instead of bailing out
-	if err != nil {
-		return "", err
-	}
-	body := resp.Body
-	defer body.Close()
-
-	snap, err := io.ReadAll(body)
-	if err != nil {
-		return "", err
-	}
-	return string(snap), nil
-}
-
-func (r *mutationResolver) getSnapshotFromDelveAgent(agentAddr string) (string, error) {
-	client, err := rpc.DialHTTP("tcp", agentAddr)
-	if err != nil {
-		log.Fatal("dialing:", err)
-	}
-
-	args := &agentrpc.GetSnapshotIn{}
-	var res = &agentrpc.GetSnapshotOut{}
-	err = client.Call("Agent.GetSnapshot", args, &res)
-	if err != nil {
-		log.Fatal("arith error:", err)
-	}
-	pretty.Print(res) // !!!
-
-	var sb strings.Builder
-	for _, stack := range res.Snapshot.Stacks {
-		sb.WriteString(stack)
-		sb.WriteRune('\n')
-	}
-
-	return sb.String(), nil
 }
 
 // CollectionByID is the resolver for the collectionByID field.

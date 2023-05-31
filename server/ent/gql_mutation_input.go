@@ -24,14 +24,18 @@ func (c *CollectionCreate) SetInput(i CreateCollectionInput) *CollectionCreate {
 
 // CreateProcessSnapshotInput represents a mutation input for creating processsnapshots.
 type CreateProcessSnapshotInput struct {
-	ProcessID string
-	Snapshot  string
+	ProcessID        string
+	Snapshot         string
+	FramesOfInterest []string
 }
 
 // Mutate applies the CreateProcessSnapshotInput on the ProcessSnapshotMutation builder.
 func (i *CreateProcessSnapshotInput) Mutate(m *ProcessSnapshotMutation) {
 	m.SetProcessID(i.ProcessID)
 	m.SetSnapshot(i.Snapshot)
+	if v := i.FramesOfInterest; v != nil {
+		m.SetFramesOfInterest(v)
+	}
 }
 
 // SetInput applies the change-set in the CreateProcessSnapshotInput on the ProcessSnapshotCreate builder.

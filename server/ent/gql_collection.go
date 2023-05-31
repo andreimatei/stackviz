@@ -118,6 +118,11 @@ func (ps *ProcessSnapshotQuery) collectField(ctx context.Context, opCtx *graphql
 				selectedFields = append(selectedFields, processsnapshot.FieldSnapshot)
 				fieldSeen[processsnapshot.FieldSnapshot] = struct{}{}
 			}
+		case "framesOfInterest":
+			if _, ok := fieldSeen[processsnapshot.FieldFramesOfInterest]; !ok {
+				selectedFields = append(selectedFields, processsnapshot.FieldFramesOfInterest)
+				fieldSeen[processsnapshot.FieldFramesOfInterest] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:
