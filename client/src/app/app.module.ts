@@ -33,7 +33,7 @@ const routeToFirstSnapshot = (route: ActivatedRouteSnapshot, state: RouterStateS
       console.log("error: failed to get collection or first snapshot");
       return false
     }
-    return router.createUrlTree(['collections/1/snap/' + snap?.id]);
+    return router.createUrlTree(['collections/'+ colID + '/snap/' + snap?.id]);
   }))
 };
 

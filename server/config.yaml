@@ -1,4 +1,6 @@
 targets:
   crdb:
-    node-1: http://localhost:8080/debug/pprof/goroutine?debug=2
-    node-2: http://localhost:8080/debug/pprof/goroutine?debug=2
+    node-1: localhost:1234
+    node-2: localhost:1234
+    #node-1: http://localhost:8080/debug/pprof/goroutine?debug=2
+    #node-2: http://localhost:8080/debug/pprof/goroutine?debug=2

@@ -8,7 +8,7 @@ import {
 } from "src/app/graphql/graphql-codegen-generated";
 import { MatButtonModule } from "@angular/material/button";
 import { QueryRef } from "apollo-angular";
-import { map, Observable } from "rxjs";
+import { map, tap, Observable } from "rxjs";
 
 @Component({
   selector: 'collections-list',
@@ -35,6 +35,7 @@ export class CollectionsListComponent implements OnInit {
     this.collectionsQueryInstance = queryInstance
     this.querySubscription = queryInstance.valueChanges.pipe(
       map(result => result.data.collections),
+      tap(value => console.log("!!! got collections: ", value))
     )
   }
 

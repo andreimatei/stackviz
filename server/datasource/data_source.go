@@ -92,6 +92,7 @@ func NewStacksFetcher(client *ent.Client) StacksFetcher {
 }
 
 func getSnapshot(ctx context.Context, id int, client *ent.Client) (*ent.ProcessSnapshot, error) {
+	log.Printf("!!! getSnapshot: id: %d", id)
 	c, err := client.ProcessSnapshot.
 		Query().
 		Where(processsnapshot.ID(id)).
@@ -370,13 +371,12 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		return fmt.Errorf("required filter option '%s' must be an int", snapshotIDKey)
 	}
 
-	// Fetch the collection, from the cache if it's there.
-	col, err := ds.fetchCollection(ctx, int(snapshotID))
+	processSnapshot, err := ds.fetchCollection(ctx, int(snapshotID))
 	if err != nil {
 		log.Printf("Failed to fetch collection: %s", err)
 		return err
 	}
-	log.Printf("Loaded snapshot %s", col.processID)
+	log.Printf("Loaded snapshot: id: %d, processID: %q", snapshotID, processSnapshot.processID)
 
 	var filter string
 	filterVal, ok := globalFilters[filterKey]
@@ -397,7 +397,7 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	log.Printf("!!! query (%d requests) filter: %s, path prefix: %s\n",
 		len(reqs), filter, pathPrefix)
 
-	snap := ds.filterStacks(col.snapshot, filter)
+	snap := ds.filterStacks(processSnapshot.snapshot, filter)
 	path := make([]weightedtree.ScopeID, len(pathPrefix))
 	for i, p := range pathPrefix {
 		sid, err := strconv.ParseUint(p, 10, 64)
@@ -413,11 +413,13 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		builder := drb.DataSeries(req)
 		switch req.QueryName {
 		case stacksTreeQuery:
+			log.Printf("!!! stacksTreeQuery")
 			if err := ds.handleStacksTreeQuery(snap, path, builder); err != nil {
 				return err
 			}
 		case stacksRawQuery:
-			ds.handleStacksRawQuery(snap, len(col.snapshot.Goroutines), builder)
+			log.Printf("!!! stacksRawQuery")
+			ds.handleStacksRawQuery(snap, len(processSnapshot.snapshot.Goroutines), builder)
 		default:
 			return fmt.Errorf("unsupported data query: %s", req.QueryName)
 		}

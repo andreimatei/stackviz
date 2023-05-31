@@ -6,10 +6,11 @@ require (
 	entgo.io/contrib v0.4.6-0.20230514215512-b00990bedaf0
 	entgo.io/ent v0.12.3
 	github.com/99designs/gqlgen v0.17.31
+	github.com/andreimatei/delve-agent v0.1.0
 	github.com/google/traceviz/server/go v0.0.0-20230428161057-a446b048e906
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.2
-	github.com/kr/pretty v0.1.0
+	github.com/kr/pretty v0.2.1
 	github.com/maruel/panicparse/v2 v2.3.1
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/stretchr/testify v1.8.2
@@ -46,3 +47,5 @@ require (
 )
 
 replace github.com/google/traceviz/server/go => ../../../google/traceviz/server/go
+
+replace github.com/andreimatei/delve-agent => ../../delve-agent

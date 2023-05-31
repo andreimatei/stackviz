@@ -23,6 +23,7 @@ import { IntegerValue } from "traceviz-client-core";
   providers: [AppCoreService]
 })
 export class SnapshotComponent implements AfterContentInit, OnInit {
+  protected collectionID?: number;
   protected snapshotID?: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
@@ -34,13 +35,31 @@ export class SnapshotComponent implements AfterContentInit, OnInit {
   }
 
   ngOnInit(): void {
+    // Get the collection ID and snapshot ID from the URL. The names of the URL
+    // params are defined in the Routes collection.
+    this.collectionID = Number(this.route.snapshot.paramMap.get('colID'));
     this.snapshotID = Number(this.route.snapshot.paramMap.get('snapID'));
-    this.getCollectionQuery.fetch({colID: this.snapshotID.toString()}).subscribe(results => {
+    console.log("!!! reading collection ", this.collectionID)
+    this.getCollectionQuery.fetch({colID: this.collectionID.toString()}).subscribe(results => {
       this.collectionName = results.data.collectionByID?.name;
       this.snapshots = results.data.collectionByID?.processSnapshots?.map(
         value => ({...value, snapshot: "",})
       )
+      console.log("!!! snapshots: ", this.snapshots)
     })
+    // TODO(andrei): This is a hack; I don't know how to set the initial value
+    // for a field in globalState. Even if I attempt to do it in an
+    // appCore.onPublish() callback, I think it's still too early; the
+    // respective state does not seem to exist by then (maybe because this
+    // callback fires before the one that creates them based on the children in
+    // the template.
+    setTimeout(() => {
+      this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(this.snapshotID!), false /* toggle */);
+    }, 100)
+    // this.appCoreService.appCore.onPublish(
+    //   (appCore) => {
+    //     appCore.globalState.get("snapshot_id").fold(new IntegerValue(this.snapshotID), false /* toggle */);
+    //   })
   }
 
   ngAfterContentInit(): void {
