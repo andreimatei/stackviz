@@ -55,11 +55,7 @@ func New(fetcher StacksFetcher) *DataSource {
 	return &DataSource{fetcher: fetcher}
 }
 
-type FrameOfInterest struct {
-	Gid   int
-	Frame int
-	Value string
-}
+type FramesOfInterest map[int]map[int][]string
 
 // processSnapshot represents a single fetched log trace, along with any metadata it
 // requires.
@@ -67,7 +63,7 @@ type processSnapshot struct {
 	processID        string
 	snapshot         *pp.Snapshot
 	agg              *pp.Aggregated
-	framesOfInterest []FrameOfInterest
+	framesOfInterest FramesOfInterest
 }
 
 // StacksFetcher describes types capable of fetching stack traces by collection
@@ -135,12 +131,20 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, snapshotID int) (processS
 
 	agg := snap.Aggregate(pp.AnyValue)
 
-	fois := make([]FrameOfInterest, len(snapRec.FramesOfInterest))
-	for i, foi := range snapRec.FramesOfInterest {
-		if err = json.Unmarshal([]byte(foi), &fois[i]); err != nil {
-			return processSnapshot{}, err
+	var fois FramesOfInterest
+	if snapRec.FramesOfInterest != "" {
+		if err = json.Unmarshal([]byte(snapRec.FramesOfInterest), &fois); err != nil {
+			log.Printf("!!! json: %s", snapRec.FramesOfInterest)
+			return processSnapshot{}, fmt.Errorf("failed to unmarshal frames of interest: %w", err)
 		}
 	}
+
+	// !!!
+	//for i, foi := range snapRec.FramesOfInterest {
+	//	if err = json.Unmarshal([]byte(foi), &fois[i]); err != nil {
+	//		return processSnapshot{}, err
+	//	}
+	//}
 
 	res := processSnapshot{
 		snapshot:         snap,
@@ -354,7 +358,7 @@ type frame struct {
 }
 
 // buildTree builds a trie out of the stack traces in snap.
-func (ds *DataSource) buildTree(snap *pp.Snapshot, fois []FrameOfInterest) *treeNode {
+func (ds *DataSource) buildTree(snap *pp.Snapshot, fois FramesOfInterest) *treeNode {
 	root := &treeNode{
 		function: pp.Func{
 			Complete: "root",
@@ -365,13 +369,7 @@ func (ds *DataSource) buildTree(snap *pp.Snapshot, fois []FrameOfInterest) *tree
 		path: nil,
 	}
 	for _, s := range snap.Goroutines {
-		var myFois []FrameOfInterest
-		for _, foi := range fois {
-			if foi.Gid != s.ID {
-				continue
-			}
-			myFois = append(myFois, foi)
-		}
+		myFois := fois[s.ID]
 
 		// Invert the stack; we want it ordered from top-level function to leaf
 		// function.
@@ -380,10 +378,8 @@ func (ds *DataSource) buildTree(snap *pp.Snapshot, fois []FrameOfInterest) *tree
 
 		for i := range s.Signature.Stack.Calls {
 			stack[l-i-1].call = s.Signature.Stack.Calls[i]
-			for _, foi := range myFois {
-				if foi.Frame == i {
-					stack[l-i-1].vars = stack[l-i-1].vars + "\n" + foi.Value
-				}
+			for _, foi := range myFois[i] {
+				stack[l-i-1].vars = stack[l-i-1].vars + "\n" + foi
 			}
 		}
 		root.addStack(stack)
@@ -457,12 +453,10 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		builder := drb.DataSeries(req)
 		switch req.QueryName {
 		case stacksTreeQuery:
-			log.Printf("!!! stacksTreeQuery")
 			if err := ds.handleStacksTreeQuery(snap, processSnapshot.framesOfInterest, path, builder); err != nil {
 				return err
 			}
 		case stacksRawQuery:
-			log.Printf("!!! stacksRawQuery")
 			ds.handleStacksRawQuery(snap, len(processSnapshot.snapshot.Goroutines), processSnapshot.framesOfInterest, builder)
 		default:
 			return fmt.Errorf("unsupported data query: %s", req.QueryName)
@@ -513,7 +507,7 @@ func (ds *DataSource) filterStacksByPrefix(snap *pp.Snapshot, prefix []weightedt
 // as such.
 func (ds *DataSource) handleStacksTreeQuery(
 	snap *pp.Snapshot,
-	fois []FrameOfInterest,
+	fois FramesOfInterest,
 	path []weightedtree.ScopeID,
 	builder tvutil.DataBuilder,
 ) error {
@@ -548,7 +542,7 @@ var fileLineCol = table.Column(category.New("fileLine", "file:line", "The source
 var funcCol = table.Column(category.New("function", "Function", "The name of the function."))
 
 func (ds *DataSource) handleStacksRawQuery(
-	snap *pp.Snapshot, numTotalGoroutines int, fois []FrameOfInterest, builder tvutil.DataBuilder,
+	snap *pp.Snapshot, numTotalGoroutines int, fois FramesOfInterest, builder tvutil.DataBuilder,
 ) {
 	renderSettings := &table.RenderSettings{
 		RowHeightPx: 20,
@@ -575,13 +569,11 @@ func (ds *DataSource) handleStacksRawQuery(
 
 	for _, g := range snap.Goroutines {
 		tab := table.New(rawBuilder.Child(), renderSettings, stackCol).With(tvutil.IntegerProperty(goroutineIDKey, int64(g.ID)))
-		var myFois []FrameOfInterest
-		for _, foi := range fois {
-			if foi.Gid != g.ID {
-				continue
+		// Render all the frames of interest for the goroutine, across all the frames.
+		for _, foisByFrame := range fois[g.ID] {
+			for _, foi := range foisByFrame {
+				tab.Row(table.Cell(stackCol, tvutil.String(foi)))
 			}
-			myFois = append(myFois, foi)
-			tab.Row(table.Cell(stackCol, tvutil.String(foi.Value)))
 		}
 
 		for j := range g.Stack.Calls {

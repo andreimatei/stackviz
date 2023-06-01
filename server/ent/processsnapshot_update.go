@@ -11,7 +11,6 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 )
 
@@ -41,14 +40,16 @@ func (psu *ProcessSnapshotUpdate) SetSnapshot(s string) *ProcessSnapshotUpdate {
 }
 
 // SetFramesOfInterest sets the "frames_of_interest" field.
-func (psu *ProcessSnapshotUpdate) SetFramesOfInterest(s []string) *ProcessSnapshotUpdate {
+func (psu *ProcessSnapshotUpdate) SetFramesOfInterest(s string) *ProcessSnapshotUpdate {
 	psu.mutation.SetFramesOfInterest(s)
 	return psu
 }
 
-// AppendFramesOfInterest appends s to the "frames_of_interest" field.
-func (psu *ProcessSnapshotUpdate) AppendFramesOfInterest(s []string) *ProcessSnapshotUpdate {
-	psu.mutation.AppendFramesOfInterest(s)
+// SetNillableFramesOfInterest sets the "frames_of_interest" field if the given value is not nil.
+func (psu *ProcessSnapshotUpdate) SetNillableFramesOfInterest(s *string) *ProcessSnapshotUpdate {
+	if s != nil {
+		psu.SetFramesOfInterest(*s)
+	}
 	return psu
 }
 
@@ -106,15 +107,10 @@ func (psu *ProcessSnapshotUpdate) sqlSave(ctx context.Context) (n int, err error
 		_spec.SetField(processsnapshot.FieldSnapshot, field.TypeString, value)
 	}
 	if value, ok := psu.mutation.FramesOfInterest(); ok {
-		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeJSON, value)
-	}
-	if value, ok := psu.mutation.AppendedFramesOfInterest(); ok {
-		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, processsnapshot.FieldFramesOfInterest, value)
-		})
+		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeString, value)
 	}
 	if psu.mutation.FramesOfInterestCleared() {
-		_spec.ClearField(processsnapshot.FieldFramesOfInterest, field.TypeJSON)
+		_spec.ClearField(processsnapshot.FieldFramesOfInterest, field.TypeString)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, psu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -149,14 +145,16 @@ func (psuo *ProcessSnapshotUpdateOne) SetSnapshot(s string) *ProcessSnapshotUpda
 }
 
 // SetFramesOfInterest sets the "frames_of_interest" field.
-func (psuo *ProcessSnapshotUpdateOne) SetFramesOfInterest(s []string) *ProcessSnapshotUpdateOne {
+func (psuo *ProcessSnapshotUpdateOne) SetFramesOfInterest(s string) *ProcessSnapshotUpdateOne {
 	psuo.mutation.SetFramesOfInterest(s)
 	return psuo
 }
 
-// AppendFramesOfInterest appends s to the "frames_of_interest" field.
-func (psuo *ProcessSnapshotUpdateOne) AppendFramesOfInterest(s []string) *ProcessSnapshotUpdateOne {
-	psuo.mutation.AppendFramesOfInterest(s)
+// SetNillableFramesOfInterest sets the "frames_of_interest" field if the given value is not nil.
+func (psuo *ProcessSnapshotUpdateOne) SetNillableFramesOfInterest(s *string) *ProcessSnapshotUpdateOne {
+	if s != nil {
+		psuo.SetFramesOfInterest(*s)
+	}
 	return psuo
 }
 
@@ -244,15 +242,10 @@ func (psuo *ProcessSnapshotUpdateOne) sqlSave(ctx context.Context) (_node *Proce
 		_spec.SetField(processsnapshot.FieldSnapshot, field.TypeString, value)
 	}
 	if value, ok := psuo.mutation.FramesOfInterest(); ok {
-		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeJSON, value)
-	}
-	if value, ok := psuo.mutation.AppendedFramesOfInterest(); ok {
-		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, processsnapshot.FieldFramesOfInterest, value)
-		})
+		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeString, value)
 	}
 	if psuo.mutation.FramesOfInterestCleared() {
-		_spec.ClearField(processsnapshot.FieldFramesOfInterest, field.TypeJSON)
+		_spec.ClearField(processsnapshot.FieldFramesOfInterest, field.TypeString)
 	}
 	_node = &ProcessSnapshot{config: psuo.config}
 	_spec.Assign = _node.assignValues

@@ -63,6 +63,11 @@ func Snapshot(v string) predicate.ProcessSnapshot {
 	return predicate.ProcessSnapshot(sql.FieldEQ(FieldSnapshot, v))
 }
 
+// FramesOfInterest applies equality check predicate on the "frames_of_interest" field. It's identical to FramesOfInterestEQ.
+func FramesOfInterest(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldEQ(FieldFramesOfInterest, v))
+}
+
 // ProcessIDEQ applies the EQ predicate on the "process_id" field.
 func ProcessIDEQ(v string) predicate.ProcessSnapshot {
 	return predicate.ProcessSnapshot(sql.FieldEQ(FieldProcessID, v))
@@ -193,6 +198,61 @@ func SnapshotContainsFold(v string) predicate.ProcessSnapshot {
 	return predicate.ProcessSnapshot(sql.FieldContainsFold(FieldSnapshot, v))
 }
 
+// FramesOfInterestEQ applies the EQ predicate on the "frames_of_interest" field.
+func FramesOfInterestEQ(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldEQ(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestNEQ applies the NEQ predicate on the "frames_of_interest" field.
+func FramesOfInterestNEQ(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldNEQ(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestIn applies the In predicate on the "frames_of_interest" field.
+func FramesOfInterestIn(vs ...string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldIn(FieldFramesOfInterest, vs...))
+}
+
+// FramesOfInterestNotIn applies the NotIn predicate on the "frames_of_interest" field.
+func FramesOfInterestNotIn(vs ...string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldNotIn(FieldFramesOfInterest, vs...))
+}
+
+// FramesOfInterestGT applies the GT predicate on the "frames_of_interest" field.
+func FramesOfInterestGT(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldGT(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestGTE applies the GTE predicate on the "frames_of_interest" field.
+func FramesOfInterestGTE(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldGTE(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestLT applies the LT predicate on the "frames_of_interest" field.
+func FramesOfInterestLT(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldLT(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestLTE applies the LTE predicate on the "frames_of_interest" field.
+func FramesOfInterestLTE(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldLTE(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestContains applies the Contains predicate on the "frames_of_interest" field.
+func FramesOfInterestContains(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldContains(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestHasPrefix applies the HasPrefix predicate on the "frames_of_interest" field.
+func FramesOfInterestHasPrefix(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldHasPrefix(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestHasSuffix applies the HasSuffix predicate on the "frames_of_interest" field.
+func FramesOfInterestHasSuffix(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldHasSuffix(FieldFramesOfInterest, v))
+}
+
 // FramesOfInterestIsNil applies the IsNil predicate on the "frames_of_interest" field.
 func FramesOfInterestIsNil() predicate.ProcessSnapshot {
 	return predicate.ProcessSnapshot(sql.FieldIsNull(FieldFramesOfInterest))
@@ -201,6 +261,16 @@ func FramesOfInterestIsNil() predicate.ProcessSnapshot {
 // FramesOfInterestNotNil applies the NotNil predicate on the "frames_of_interest" field.
 func FramesOfInterestNotNil() predicate.ProcessSnapshot {
 	return predicate.ProcessSnapshot(sql.FieldNotNull(FieldFramesOfInterest))
+}
+
+// FramesOfInterestEqualFold applies the EqualFold predicate on the "frames_of_interest" field.
+func FramesOfInterestEqualFold(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldEqualFold(FieldFramesOfInterest, v))
+}
+
+// FramesOfInterestContainsFold applies the ContainsFold predicate on the "frames_of_interest" field.
+func FramesOfInterestContainsFold(v string) predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldContainsFold(FieldFramesOfInterest, v))
 }
 
 // And groups predicates with the AND operator between them.

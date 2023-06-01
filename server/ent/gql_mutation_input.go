@@ -26,7 +26,7 @@ func (c *CollectionCreate) SetInput(i CreateCollectionInput) *CollectionCreate {
 type CreateProcessSnapshotInput struct {
 	ProcessID        string
 	Snapshot         string
-	FramesOfInterest []string
+	FramesOfInterest *string
 }
 
 // Mutate applies the CreateProcessSnapshotInput on the ProcessSnapshotMutation builder.
@@ -34,7 +34,7 @@ func (i *CreateProcessSnapshotInput) Mutate(m *ProcessSnapshotMutation) {
 	m.SetProcessID(i.ProcessID)
 	m.SetSnapshot(i.Snapshot)
 	if v := i.FramesOfInterest; v != nil {
-		m.SetFramesOfInterest(v)
+		m.SetFramesOfInterest(*v)
 	}
 }
 

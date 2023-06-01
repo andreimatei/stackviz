@@ -450,17 +450,16 @@ func (m *CollectionMutation) ResetEdge(name string) error {
 // ProcessSnapshotMutation represents an operation that mutates the ProcessSnapshot nodes in the graph.
 type ProcessSnapshotMutation struct {
 	config
-	op                       Op
-	typ                      string
-	id                       *int
-	process_id               *string
-	snapshot                 *string
-	frames_of_interest       *[]string
-	appendframes_of_interest []string
-	clearedFields            map[string]struct{}
-	done                     bool
-	oldValue                 func(context.Context) (*ProcessSnapshot, error)
-	predicates               []predicate.ProcessSnapshot
+	op                 Op
+	typ                string
+	id                 *int
+	process_id         *string
+	snapshot           *string
+	frames_of_interest *string
+	clearedFields      map[string]struct{}
+	done               bool
+	oldValue           func(context.Context) (*ProcessSnapshot, error)
+	predicates         []predicate.ProcessSnapshot
 }
 
 var _ ent.Mutation = (*ProcessSnapshotMutation)(nil)
@@ -634,13 +633,12 @@ func (m *ProcessSnapshotMutation) ResetSnapshot() {
 }
 
 // SetFramesOfInterest sets the "frames_of_interest" field.
-func (m *ProcessSnapshotMutation) SetFramesOfInterest(s []string) {
+func (m *ProcessSnapshotMutation) SetFramesOfInterest(s string) {
 	m.frames_of_interest = &s
-	m.appendframes_of_interest = nil
 }
 
 // FramesOfInterest returns the value of the "frames_of_interest" field in the mutation.
-func (m *ProcessSnapshotMutation) FramesOfInterest() (r []string, exists bool) {
+func (m *ProcessSnapshotMutation) FramesOfInterest() (r string, exists bool) {
 	v := m.frames_of_interest
 	if v == nil {
 		return
@@ -651,7 +649,7 @@ func (m *ProcessSnapshotMutation) FramesOfInterest() (r []string, exists bool) {
 // OldFramesOfInterest returns the old "frames_of_interest" field's value of the ProcessSnapshot entity.
 // If the ProcessSnapshot object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProcessSnapshotMutation) OldFramesOfInterest(ctx context.Context) (v []string, err error) {
+func (m *ProcessSnapshotMutation) OldFramesOfInterest(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldFramesOfInterest is only allowed on UpdateOne operations")
 	}
@@ -665,23 +663,9 @@ func (m *ProcessSnapshotMutation) OldFramesOfInterest(ctx context.Context) (v []
 	return oldValue.FramesOfInterest, nil
 }
 
-// AppendFramesOfInterest adds s to the "frames_of_interest" field.
-func (m *ProcessSnapshotMutation) AppendFramesOfInterest(s []string) {
-	m.appendframes_of_interest = append(m.appendframes_of_interest, s...)
-}
-
-// AppendedFramesOfInterest returns the list of values that were appended to the "frames_of_interest" field in this mutation.
-func (m *ProcessSnapshotMutation) AppendedFramesOfInterest() ([]string, bool) {
-	if len(m.appendframes_of_interest) == 0 {
-		return nil, false
-	}
-	return m.appendframes_of_interest, true
-}
-
 // ClearFramesOfInterest clears the value of the "frames_of_interest" field.
 func (m *ProcessSnapshotMutation) ClearFramesOfInterest() {
 	m.frames_of_interest = nil
-	m.appendframes_of_interest = nil
 	m.clearedFields[processsnapshot.FieldFramesOfInterest] = struct{}{}
 }
 
@@ -694,7 +678,6 @@ func (m *ProcessSnapshotMutation) FramesOfInterestCleared() bool {
 // ResetFramesOfInterest resets all changes to the "frames_of_interest" field.
 func (m *ProcessSnapshotMutation) ResetFramesOfInterest() {
 	m.frames_of_interest = nil
-	m.appendframes_of_interest = nil
 	delete(m.clearedFields, processsnapshot.FieldFramesOfInterest)
 }
 
@@ -795,7 +778,7 @@ func (m *ProcessSnapshotMutation) SetField(name string, value ent.Value) error {
 		m.SetSnapshot(v)
 		return nil
 	case processsnapshot.FieldFramesOfInterest:
-		v, ok := value.([]string)
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

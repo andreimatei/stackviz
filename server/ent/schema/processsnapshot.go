@@ -17,7 +17,7 @@ func (ProcessSnapshot) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("process_id"),
 		field.Text("snapshot"),
-		field.JSON("frames_of_interest", []string{}).Optional(),
+		field.Text("frames_of_interest").Optional(),
 	}
 }
 

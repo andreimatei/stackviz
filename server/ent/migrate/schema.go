@@ -24,7 +24,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "process_id", Type: field.TypeString},
 		{Name: "snapshot", Type: field.TypeString, Size: 2147483647},
-		{Name: "frames_of_interest", Type: field.TypeJSON, Nullable: true},
+		{Name: "frames_of_interest", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "collection_process_snapshots", Type: field.TypeInt, Nullable: true},
 	}
 	// ProcessSnapshotsTable holds the schema information for the "process_snapshots" table.

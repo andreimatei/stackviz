@@ -43,20 +43,24 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 		if err != nil {
 			return nil, err
 		}
-		var framesOfInterest []string
-		for _, foi := range snap.Frames_of_interest {
-			b, err := json.Marshal(foi)
+		var framesOfInterest string
+		if len(snap.Frames_of_interest) > 0 {
+			b, err := json.Marshal(snap.Frames_of_interest)
 			if err != nil {
 				return nil, err
 			}
-			framesOfInterest = append(framesOfInterest, string(b))
+			framesOfInterest = string(b)
 		}
+
 		log.Printf("!!! creating snapshot with frames of interest: %s", framesOfInterest)
-		ps, err := r.dbClient.ProcessSnapshot.Create().SetInput(ent.CreateProcessSnapshotInput{
-			ProcessID:        processName,
-			Snapshot:         snapToString(snap),
-			FramesOfInterest: framesOfInterest,
-		}).Save(ctx)
+		input := ent.CreateProcessSnapshotInput{
+			ProcessID: processName,
+			Snapshot:  snapToString(snap),
+		}
+		if framesOfInterest != "" {
+			input.FramesOfInterest = &framesOfInterest
+		}
+		ps, err := r.dbClient.ProcessSnapshot.Create().SetInput(input).Save(ctx)
 		if err != nil {
 			return nil, err
 		}

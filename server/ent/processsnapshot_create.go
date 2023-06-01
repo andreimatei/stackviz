@@ -32,8 +32,16 @@ func (psc *ProcessSnapshotCreate) SetSnapshot(s string) *ProcessSnapshotCreate {
 }
 
 // SetFramesOfInterest sets the "frames_of_interest" field.
-func (psc *ProcessSnapshotCreate) SetFramesOfInterest(s []string) *ProcessSnapshotCreate {
+func (psc *ProcessSnapshotCreate) SetFramesOfInterest(s string) *ProcessSnapshotCreate {
 	psc.mutation.SetFramesOfInterest(s)
+	return psc
+}
+
+// SetNillableFramesOfInterest sets the "frames_of_interest" field if the given value is not nil.
+func (psc *ProcessSnapshotCreate) SetNillableFramesOfInterest(s *string) *ProcessSnapshotCreate {
+	if s != nil {
+		psc.SetFramesOfInterest(*s)
+	}
 	return psc
 }
 
@@ -112,7 +120,7 @@ func (psc *ProcessSnapshotCreate) createSpec() (*ProcessSnapshot, *sqlgraph.Crea
 		_node.Snapshot = value
 	}
 	if value, ok := psc.mutation.FramesOfInterest(); ok {
-		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeJSON, value)
+		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeString, value)
 		_node.FramesOfInterest = value
 	}
 	return _node, _spec

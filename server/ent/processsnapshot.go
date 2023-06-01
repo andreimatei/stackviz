@@ -3,7 +3,6 @@
 package ent
 
 import (
-	"encoding/json"
 	"fmt"
 	"stacksviz/ent/processsnapshot"
 	"strings"
@@ -22,7 +21,7 @@ type ProcessSnapshot struct {
 	// Snapshot holds the value of the "snapshot" field.
 	Snapshot string `json:"snapshot,omitempty"`
 	// FramesOfInterest holds the value of the "frames_of_interest" field.
-	FramesOfInterest             []string `json:"frames_of_interest,omitempty"`
+	FramesOfInterest             string `json:"frames_of_interest,omitempty"`
 	collection_process_snapshots *int
 	selectValues                 sql.SelectValues
 }
@@ -32,11 +31,9 @@ func (*ProcessSnapshot) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case processsnapshot.FieldFramesOfInterest:
-			values[i] = new([]byte)
 		case processsnapshot.FieldID:
 			values[i] = new(sql.NullInt64)
-		case processsnapshot.FieldProcessID, processsnapshot.FieldSnapshot:
+		case processsnapshot.FieldProcessID, processsnapshot.FieldSnapshot, processsnapshot.FieldFramesOfInterest:
 			values[i] = new(sql.NullString)
 		case processsnapshot.ForeignKeys[0]: // collection_process_snapshots
 			values[i] = new(sql.NullInt64)
@@ -74,12 +71,10 @@ func (ps *ProcessSnapshot) assignValues(columns []string, values []any) error {
 				ps.Snapshot = value.String
 			}
 		case processsnapshot.FieldFramesOfInterest:
-			if value, ok := values[i].(*[]byte); !ok {
+			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field frames_of_interest", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &ps.FramesOfInterest); err != nil {
-					return fmt.Errorf("unmarshal field frames_of_interest: %w", err)
-				}
+			} else if value.Valid {
+				ps.FramesOfInterest = value.String
 			}
 		case processsnapshot.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -131,7 +126,7 @@ func (ps *ProcessSnapshot) String() string {
 	builder.WriteString(ps.Snapshot)
 	builder.WriteString(", ")
 	builder.WriteString("frames_of_interest=")
-	builder.WriteString(fmt.Sprintf("%v", ps.FramesOfInterest))
+	builder.WriteString(ps.FramesOfInterest)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -67,3 +67,8 @@ func ByProcessID(opts ...sql.OrderTermOption) OrderOption {
 func BySnapshot(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSnapshot, opts...).ToFunc()
 }
+
+// ByFramesOfInterest orders the results by the frames_of_interest field.
+func ByFramesOfInterest(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFramesOfInterest, opts...).ToFunc()
+}
