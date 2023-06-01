@@ -22,9 +22,9 @@ import { IntegerValue } from "traceviz-client-core";
   // considered a good thing.
   providers: [AppCoreService]
 })
-export class SnapshotComponent implements AfterContentInit, OnInit {
-  protected collectionID?: number;
-  protected snapshotID?: number;
+export class SnapshotComponent implements OnInit {
+  protected collectionID!: number;
+  protected snapshotID!: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
 
@@ -47,22 +47,8 @@ export class SnapshotComponent implements AfterContentInit, OnInit {
       )
       console.log("!!! snapshots: ", this.snapshots)
     })
-    // TODO(andrei): This is a hack; I don't know how to set the initial value
-    // for a field in globalState. Even if I attempt to do it in an
-    // appCore.onPublish() callback, I think it's still too early; the
-    // respective state does not seem to exist by then (maybe because this
-    // callback fires before the one that creates them based on the children in
-    // the template.
-    setTimeout(() => {
-      this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(this.snapshotID!), false /* toggle */);
-    }, 100)
-    // this.appCoreService.appCore.onPublish(
-    //   (appCore) => {
-    //     appCore.globalState.get("snapshot_id").fold(new IntegerValue(this.snapshotID), false /* toggle */);
-    //   })
-  }
-
-  ngAfterContentInit(): void {
+    this.appCoreService.appCore.globalState.set(
+      "snapshot_id", new IntegerValue(this.snapshotID));
   }
 
   onSelectedSnapshotChange(newValue: string) {
