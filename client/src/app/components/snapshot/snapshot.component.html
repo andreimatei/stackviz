@@ -13,9 +13,17 @@
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        <p>
-          {{funcInfo}}
-        </p>
+        <mat-accordion multi>
+          <mat-expansion-panel expanded *ngFor="let v of funcInfo">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                Frame info
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            {{v}}
+          </mat-expansion-panel>
+        </mat-accordion>
+
 
       </mat-expansion-panel>
     </div>

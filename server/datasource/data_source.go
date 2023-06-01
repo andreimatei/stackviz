@@ -42,6 +42,7 @@ const (
 
 	numGoroutinesInBucketKey = "num_gs_in_bucket"
 	goroutineIDKey           = "g_id"
+	varsKey                  = "vars"
 )
 
 // DataSource implements the querydispatcher.dataSource that deals with
@@ -163,7 +164,7 @@ type treeNode struct {
 	function pp.Func
 	file     string
 	line     int
-	vars     string
+	vars     [][]string
 	// path is the path from the root to this node, represented by hashes of
 	// each ancestor's function.
 	path     []weightedtree.ScopeID
@@ -259,7 +260,9 @@ func (t *treeNode) addStack(stack []frame) {
 	}
 	child := t.findChild(stack[0].call.RemoteSrcPath, stack[0].call.Line)
 	if child != nil {
-		child.vars += stack[0].vars
+		if len(stack[0].vars) > 0 {
+			child.vars = append(child.vars, stack[0].vars)
+		}
 		child.addStack(stack[1:])
 	} else {
 		t.createPath(stack)
@@ -283,7 +286,7 @@ func (t *treeNode) createPath(stack []frame) {
 		path:              append(t.path, computeScopeID(call)),
 		children:          nil,
 		numLeafGoroutines: 0,
-		vars:              stack[0].vars,
+		vars:              [][]string{stack[0].vars},
 	})
 	t.children[len(t.children)-1].createPath(stack[1:])
 }
@@ -312,15 +315,23 @@ type nodeBuilder interface {
 // its children, recursively) into a weighted tree.
 func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSpace *color.Space) {
 	t := node.TreeNode.(*treeNode)
-	if t.vars != "" {
-		log.Printf("!!! really creating node with vars: %s %q", t.function.Name, t.vars)
+
+	var varsProp []string
+	var sb strings.Builder
+	for _, frame := range t.vars {
+		sb.Reset()
+		for _, v := range frame {
+			sb.WriteString(v)
+			sb.WriteRune('\n')
+		}
+		varsProp = append(varsProp, sb.String())
 	}
-	const varsKey = "vars_key"
+
 	n := builder.Node(float64(t.numLeafGoroutines),
 		tvutil.StringProperty(nameKey, t.function.DirName+"."+t.function.Name),
 		weightedtree.Path(t),
 		tvutil.StringsProperty(fullNameKey, t.function.Complete),
-		tvutil.StringsProperty(varsKey, t.vars),
+		tvutil.StringsProperty(varsKey, varsProp...),
 		tvutil.StringProperty(detailsFormatKey, fmt.Sprintf("$(%s) - $(%s)", fullNameKey, varsKey)),
 		colorSpace.PrimaryColor(functionNameToColor(t.function.Complete)),
 		label.Format(fmt.Sprintf("$(%s)", nameKey)))
@@ -354,7 +365,7 @@ func functionNameToColor(functionName string) float64 {
 
 type frame struct {
 	call pp.Call
-	vars string
+	vars []string
 }
 
 // buildTree builds a trie out of the stack traces in snap.
@@ -369,17 +380,15 @@ func (ds *DataSource) buildTree(snap *pp.Snapshot, fois FramesOfInterest) *treeN
 		path: nil,
 	}
 	for _, s := range snap.Goroutines {
-		myFois := fois[s.ID]
-
-		// Invert the stack; we want it ordered from top-level function to leaf
-		// function.
+		// Join the stack trace with the variable data. Also invert the stack; we
+		// want it ordered from top-level function to leaf function.
 		l := len(s.Signature.Stack.Calls)
+		myFois := fois[s.ID]
 		stack := make([]frame, l)
-
 		for i := range s.Signature.Stack.Calls {
-			stack[l-i-1].call = s.Signature.Stack.Calls[i]
-			for _, foi := range myFois[i] {
-				stack[l-i-1].vars = stack[l-i-1].vars + "\n" + foi
+			stack[l-i-1] = frame{
+				call: s.Signature.Stack.Calls[i],
+				vars: myFois[i],
 			}
 		}
 		root.addStack(stack)

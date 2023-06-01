@@ -24,9 +24,13 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshotID!: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
-  protected funcInfo?: string;
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') input!: MatDrawer;
+
+  // Data about the selected node. Each element is a string containing all the
+  // captured variables from one frame (where all frames correspond to the
+  // selected node).
+  protected funcInfo?: string[];
 
   constructor(
     private readonly appCoreService: AppCoreService,
@@ -39,20 +43,17 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     // params are defined in the Routes collection.
     this.collectionID = Number(this.route.snapshot.paramMap.get('colID'));
     this.snapshotID = Number(this.route.snapshot.paramMap.get('snapID'));
-    console.log("!!! reading collection ", this.collectionID)
     this.getCollectionQuery.fetch({colID: this.collectionID.toString()}).subscribe(results => {
       this.collectionName = results.data.collectionByID?.name;
       this.snapshots = results.data.collectionByID?.processSnapshots?.map(
         value => ({...value, snapshot: "",})
       )
-      console.log("!!! snapshots: ", this.snapshots)
     })
     this.appCoreService.appCore.globalState.set(
       "snapshot_id", new IntegerValue(this.snapshotID));
   }
 
   ngAfterViewInit() {
-    console.log("!!! afterView: ", this.input!)
     this.weightedTree!.interactionsDir!.get().withAction(
       new Action(WeightedTreeComponent.NODE, WeightedTreeComponent.CTRL_CLICK,
         new Call(this.onNodeCtrlClick.bind(this))));
@@ -61,9 +62,9 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   onNodeCtrlClick(localState: ValueMap): void {
     console.log(localState);
     console.log(this.input!);
-    if (localState.has('vars_key')) {
-      console.log("!!! vars_key: ", localState.get('vars_key').toString());
-      this.funcInfo = localState.get('vars_key').toString();
+    if (localState.has('vars')) {
+      console.log("!!! vars: ", localState.get('vars').toString());
+      this.funcInfo = localState.expectStringList('vars');
     }
     this.input.toggle();
   }
