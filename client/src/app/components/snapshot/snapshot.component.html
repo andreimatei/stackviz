@@ -1,4 +1,30 @@
 <div class="app">
+<mat-drawer-container class="example-container" autosize>
+  <mat-drawer #functionDrawer mode="side" position="end"  class="func-details-drawer">
+    <div>
+      <h3>Function details</h3>
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            Captured variables
+          </mat-panel-title>
+          <mat-panel-description>
+            The variables captured from all stack traces featuring this frame.
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <p>
+          {{funcInfo}}
+        </p>
+
+      </mat-expansion-panel>
+    </div>
+  </mat-drawer>
+  <mat-drawer-content>
+
+    <!--
+  <p><button mat-button (click)="sidenav.toggle()">sidenav.toggle()</button></p>
+  -->
 
   <app-core>
     <!--
@@ -113,4 +139,6 @@
       </interactions>
     </data-series>
   </app-stacks>
+</mat-drawer-content>
+</mat-drawer-container>
 </div>

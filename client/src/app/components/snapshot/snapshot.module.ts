@@ -12,7 +12,8 @@ import { GraphQLModule } from '../../graphql/graphql.module';
 import { RouterModule } from "@angular/router";
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from "@angular/material/input";
-
+import { MatSidenavModule } from '@angular/material/sidenav';
+import {MatExpansionModule} from '@angular/material/expansion';
 
 @NgModule({
   declarations: [
@@ -30,6 +31,8 @@ import { MatInputModule } from "@angular/material/input";
     MatPaginatorModule,
     MatSelectModule,
     MatInputModule,
+    MatSidenavModule,
+    MatExpansionModule,
     TextFieldModule,
     StacksComponent,
     RouterModule,

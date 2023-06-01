@@ -3,6 +3,7 @@ import { GetCollectionGQL, ProcessSnapshot } from "../../graphql/graphql-codegen
 import { ActivatedRoute } from "@angular/router";
 import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
 import { Action, IntegerValue, Update, ValueMap, } from "traceviz-client-core";
+import { MatDrawer } from "@angular/material/sidenav";
 
 @Component({
   selector: 'snapshot',
@@ -23,7 +24,9 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshotID!: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
+  protected funcInfo?: string;
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
+  @ViewChild('functionDrawer') input!: MatDrawer;
 
   constructor(
     private readonly appCoreService: AppCoreService,
@@ -49,12 +52,20 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
+    console.log("!!! afterView: ", this.input!)
     this.weightedTree!.interactionsDir!.get().withAction(
-      new Action(WeightedTreeComponent.NODE, WeightedTreeComponent.CTRL_CLICK, new Call(this.onNodeCtrlClick)));
+      new Action(WeightedTreeComponent.NODE, WeightedTreeComponent.CTRL_CLICK,
+        new Call(this.onNodeCtrlClick.bind(this))));
   }
 
   onNodeCtrlClick(localState: ValueMap): void {
-    console.log(localState)
+    console.log(localState);
+    console.log(this.input!);
+    if (localState.has('vars_key')) {
+      console.log("!!! vars_key: ", localState.get('vars_key').toString());
+      this.funcInfo = localState.get('vars_key').toString();
+    }
+    this.input.toggle();
   }
 
   onSelectedSnapshotChange(newValue: string) {
