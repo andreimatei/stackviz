@@ -38,7 +38,7 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(agentAddr string) (agentrpc
 	var res = &agentrpc.GetSnapshotOut{}
 	err = client.Call("Agent.GetSnapshot", args, &res)
 	if err != nil {
-		log.Fatal("arith error:", err)
+		log.Fatal("call to agent failed:", err)
 	}
 	pretty.Print(res) // !!!
 
