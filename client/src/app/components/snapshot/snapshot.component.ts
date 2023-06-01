@@ -1,12 +1,8 @@
-import { AfterContentInit, Component, OnInit } from '@angular/core';
-import {
-  AllCollectionsGQL,
-  GetCollectionGQL,
-  ProcessSnapshot
-} from "../../graphql/graphql-codegen-generated";
+import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
+import { GetCollectionGQL, ProcessSnapshot } from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute } from "@angular/router";
-import { AppCoreService } from 'traceviz/dist/ngx-traceviz-lib';
-import { IntegerValue } from "traceviz-client-core";
+import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
+import { Action, IntegerValue, Update, ValueMap, } from "traceviz-client-core";
 
 @Component({
   selector: 'snapshot',
@@ -22,11 +18,12 @@ import { IntegerValue } from "traceviz-client-core";
   // considered a good thing.
   providers: [AppCoreService]
 })
-export class SnapshotComponent implements OnInit {
+export class SnapshotComponent implements OnInit, AfterViewInit {
   protected collectionID!: number;
   protected snapshotID!: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
+  @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
 
   constructor(
     private readonly appCoreService: AppCoreService,
@@ -51,8 +48,32 @@ export class SnapshotComponent implements OnInit {
       "snapshot_id", new IntegerValue(this.snapshotID));
   }
 
+  ngAfterViewInit() {
+    this.weightedTree!.interactionsDir!.get().withAction(
+      new Action(WeightedTreeComponent.NODE, WeightedTreeComponent.CTRL_CLICK, new Call(this.onNodeCtrlClick)));
+  }
+
+  onNodeCtrlClick(localState: ValueMap): void {
+    console.log(localState)
+  }
+
   onSelectedSnapshotChange(newValue: string) {
     let newSnapshotID = Number(newValue);
     this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(newSnapshotID), false /* toggle */);
+  }
+}
+
+// Call is an implementation of Update that calls the provided function.
+class Call extends Update {
+  constructor(private readonly handler: ((localState: ValueMap) => void)) {
+    super();
+  }
+
+  override update(localState?: ValueMap | undefined) {
+    this.handler(localState!)
+  }
+
+  get autoDocument(): string {
+    throw new Error('Method not implemented.');
   }
 }
