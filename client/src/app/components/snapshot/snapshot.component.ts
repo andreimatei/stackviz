@@ -1,5 +1,9 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
-import { GetCollectionGQL, ProcessSnapshot } from "../../graphql/graphql-codegen-generated";
+import {
+  GetAvailableVariablesGQL,
+  GetCollectionGQL,
+  ProcessSnapshot
+} from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute } from "@angular/router";
 import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
 import { Action, IntegerValue, Update, ValueMap, } from "traceviz-client-core";
@@ -35,6 +39,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   constructor(
     private readonly appCoreService: AppCoreService,
     private readonly getCollectionQuery: GetCollectionGQL,
+    private readonly varsQuery: GetAvailableVariablesGQL,
     private readonly route: ActivatedRoute) {
   }
 
@@ -43,12 +48,13 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     // params are defined in the Routes collection.
     this.collectionID = Number(this.route.snapshot.paramMap.get('colID'));
     this.snapshotID = Number(this.route.snapshot.paramMap.get('snapID'));
-    this.getCollectionQuery.fetch({colID: this.collectionID.toString()}).subscribe(results => {
-      this.collectionName = results.data.collectionByID?.name;
-      this.snapshots = results.data.collectionByID?.processSnapshots?.map(
-        value => ({...value, snapshot: "",})
-      )
-    })
+    this.getCollectionQuery.fetch({colID: this.collectionID.toString()})
+      .subscribe(results => {
+        this.collectionName = results.data.collectionByID?.name;
+        this.snapshots = results.data.collectionByID?.processSnapshots?.map(
+          value => ({...value, snapshot: "",})
+        )
+      })
     this.appCoreService.appCore.globalState.set(
       "snapshot_id", new IntegerValue(this.snapshotID));
   }
@@ -66,6 +72,18 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       console.log("!!! vars: ", localState.get('vars').toString());
       this.funcInfo = localState.expectStringList('vars');
     }
+
+    const funcName = localState.expectString('full_name');
+    const pcOffset = localState.expectNumber('pc_off');
+    console.log("!!! issuing available vars query: ", funcName, pcOffset);
+    this.varsQuery.fetch({func: funcName, pc: pcOffset})
+     .subscribe(
+       results => {
+       console.log("!!! got available vars: ", results.data.availableVars);
+     },
+       error => console.log("!!! failed: ", error),
+     )
+
     this.input.toggle();
   }
 

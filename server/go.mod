@@ -49,3 +49,5 @@ require (
 replace github.com/google/traceviz/server/go => ../../../google/traceviz/server/go
 
 replace github.com/andreimatei/delve-agent => ../../delve-agent
+
+replace github.com/maruel/panicparse/v2 => ../../../maruel/panicparse

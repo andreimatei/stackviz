@@ -43,6 +43,7 @@ const (
 	numGoroutinesInBucketKey = "num_gs_in_bucket"
 	goroutineIDKey           = "g_id"
 	varsKey                  = "vars"
+	pcOffsetKey              = "pc_off"
 )
 
 // DataSource implements the querydispatcher.dataSource that deals with
@@ -122,7 +123,9 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, snapshotID int) (processS
 		return processSnapshot{}, err
 	}
 
-	snap, _, err := pp.ScanSnapshot(strings.NewReader(snapRec.Snapshot), io.Discard, pp.DefaultOpts())
+	opts := pp.DefaultOpts()
+	opts.ParsePC = true
+	snap, _, err := pp.ScanSnapshot(strings.NewReader(snapRec.Snapshot), io.Discard, opts)
 	if err != nil && err != io.EOF {
 		return processSnapshot{}, err
 	}
@@ -164,6 +167,7 @@ type treeNode struct {
 	function pp.Func
 	file     string
 	line     int
+	pcOffset int64
 	vars     [][]string
 	// path is the path from the root to this node, represented by hashes of
 	// each ancestor's function.
@@ -283,6 +287,7 @@ func (t *treeNode) createPath(stack []frame) {
 		function:          call.Func,
 		file:              call.RemoteSrcPath,
 		line:              call.Line,
+		pcOffset:          call.PCOffset,
 		path:              append(t.path, computeScopeID(call)),
 		children:          nil,
 		numLeafGoroutines: 0,
@@ -330,9 +335,10 @@ func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSp
 	n := builder.Node(float64(t.numLeafGoroutines),
 		tvutil.StringProperty(nameKey, t.function.DirName+"."+t.function.Name),
 		weightedtree.Path(t),
-		tvutil.StringsProperty(fullNameKey, t.function.Complete),
+		tvutil.StringProperty(fullNameKey, t.function.Complete),
+		tvutil.IntegerProperty(pcOffsetKey, t.pcOffset),
 		tvutil.StringsProperty(varsKey, varsProp...),
-		tvutil.StringProperty(detailsFormatKey, fmt.Sprintf("$(%s) - $(%s)", fullNameKey, varsKey)),
+		tvutil.StringProperty(detailsFormatKey, fmt.Sprintf("$(%s) - $(%s) +$(%s)", fullNameKey, varsKey, pcOffsetKey)),
 		colorSpace.PrimaryColor(functionNameToColor(t.function.Complete)),
 		label.Format(fmt.Sprintf("$(%s)", nameKey)))
 	for _, c := range node.Children {
@@ -545,10 +551,14 @@ func (ds *DataSource) handleStacksTreeQuery(
 	return nil
 }
 
+// Columns for the raw stacks.
 var stackCol = table.Column(category.New("stack", "Backtrace", "The goroutine's stack backtrace"))
+
+// Columns for the aggregated views.
 var pkgCol = table.Column(category.New("package", "Package", "The name of the package that the function lives in."))
 var fileLineCol = table.Column(category.New("fileLine", "file:line", "The source location."))
 var funcCol = table.Column(category.New("function", "Function", "The name of the function."))
+var pcOffsetCol = table.Column(category.New("pcoff", "PC offset", "instruction offset from function entry"))
 
 func (ds *DataSource) handleStacksRawQuery(
 	snap *pp.Snapshot, numTotalGoroutines int, fois FramesOfInterest, builder tvutil.DataBuilder,
@@ -565,13 +575,14 @@ func (ds *DataSource) handleStacksRawQuery(
 	rawBuilder := builder.Child()
 
 	for _, b := range agg.Buckets {
-		tab := table.New(aggBuilder.Child(), renderSettings, pkgCol, fileLineCol, funcCol).With(tvutil.IntegerProperty(numGoroutinesInBucketKey, int64(len(b.IDs))))
+		tab := table.New(aggBuilder.Child(), renderSettings, pkgCol, fileLineCol, funcCol, pcOffsetCol).With(tvutil.IntegerProperty(numGoroutinesInBucketKey, int64(len(b.IDs))))
 		for j := range b.Stack.Calls {
 			c := &b.Stack.Calls[j]
 			tab.Row(
 				table.FormattedCell(pkgCol, c.Func.DirName),
 				table.FormattedCell(fileLineCol, fmt.Sprintf("%s:%d", c.SrcName, c.Line)),
 				table.FormattedCell(funcCol, c.Func.Name),
+				table.FormattedCell(pcOffsetCol, fmt.Sprintf("0x%x", c.PCOffset)),
 			)
 		}
 	}

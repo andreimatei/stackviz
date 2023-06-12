@@ -80,6 +80,36 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 	return r.dbClient.Debug().Collection.Query().Where(collection.ID(id)).Only(ctx)
 }
 
+// AvailableVars is the resolver for the availableVars field.
+func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff int) ([]*VarInfo, error) {
+	var svcName string
+	for serviceName, _ := range r.conf.Targets {
+		// TODO(andrei): deal with multiple services
+		svcName = serviceName
+	}
+
+	var agentURL string
+	for _, url := range r.conf.Targets[svcName] {
+		agentURL = url
+		break
+	}
+
+	log.Printf("!!! calling AvailableVars on Delve agent")
+	vars, err := r.getAvailableVarsFromDelveAgent(agentURL, funcArg, int64(pcOff))
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*VarInfo, len(vars))
+	for i, v := range vars {
+		res[i] = &VarInfo{
+			Name:    v.Name,
+			Type:    v.Type,
+			VarType: v.VarType,
+		}
+	}
+	return res, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 

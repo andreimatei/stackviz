@@ -38,7 +38,7 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(agentAddr string) (agentrpc
 	var res = &agentrpc.GetSnapshotOut{}
 	err = client.Call("Agent.GetSnapshot", args, &res)
 	if err != nil {
-		log.Fatal("call to agent failed:", err)
+		log.Fatal("call to agent failed: ", err)
 	}
 	pretty.Print(res) // !!!
 
@@ -50,6 +50,23 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(agentAddr string) (agentrpc
 	//
 	//return sb.String(), nil
 	return res.Snapshot, nil
+}
+
+func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn string, pcOff int64) ([]agentrpc.VarInfo, error) {
+	log.Printf("!!! getting available vars for %s:0x%x", fn, pcOff)
+	client, err := rpc.DialHTTP("tcp", agentAddr)
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+
+	args := &agentrpc.ListVarsIn{Func: fn, PCOff: pcOff}
+	var res = &agentrpc.ListVarsOut{}
+	err = client.Call("Agent.ListVars", args, &res)
+	if err != nil {
+		log.Fatal("call to agent failed: ", err)
+	}
+	pretty.Print(res) // !!!
+	return res.Vars, nil
 }
 
 func snapToString(s agentrpc.Snapshot) string {

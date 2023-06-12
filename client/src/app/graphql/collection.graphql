@@ -21,3 +21,11 @@ mutation CollectCollection {
     id
   }
 }
+
+query GetAvailableVariables($func: String!, $pc: Int!) {
+  availableVars(func: $func, pc: $pc) {
+    Name
+    Type
+    VarType
+  }
+}
