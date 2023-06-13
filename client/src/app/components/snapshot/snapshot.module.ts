@@ -15,6 +15,9 @@ import { MatInputModule } from "@angular/material/input";
 import { MatSidenavModule } from '@angular/material/sidenav';
 import {MatExpansionModule} from '@angular/material/expansion';
 import {MatCheckboxModule} from '@angular/material/checkbox';
+import { MatTreeModule } from "@angular/material/tree";
+import { MatIconModule } from "@angular/material/icon";
+import { MatButtonModule } from "@angular/material/button";
 
 
 @NgModule({
@@ -29,13 +32,16 @@ import {MatCheckboxModule} from '@angular/material/checkbox';
     DataTableModule,
     GraphQLModule,
     HttpClientModule,
+    MatButtonModule,
     MatCardModule,
     MatCheckboxModule,
+    MatExpansionModule,
+    MatIconModule,
     MatPaginatorModule,
     MatSelectModule,
     MatInputModule,
     MatSidenavModule,
-    MatExpansionModule,
+    MatTreeModule,
     TextFieldModule,
     StacksComponent,
     RouterModule,

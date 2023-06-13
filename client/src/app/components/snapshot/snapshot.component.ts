@@ -2,12 +2,49 @@ import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import {
   GetAvailableVariablesGQL, GetAvailableVariablesQuery,
   GetCollectionGQL,
-  ProcessSnapshot
+  ProcessSnapshot, TypeInfo
 } from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute } from "@angular/router";
 import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
-import { Action, IntegerValue, Update, ValueMap, } from "traceviz-client-core";
+import { Action, IntegerValue, Tree, Update, ValueMap, } from "traceviz-client-core";
 import { MatDrawer } from "@angular/material/sidenav";
+import { MatTreeNestedDataSource } from "@angular/material/tree";
+import { NestedTreeControl } from "@angular/cdk/tree";
+
+// !!!
+interface FoodNode {
+  name: string;
+  children?: FoodNode[];
+}
+
+interface TreeNode {
+  name: string;
+  type: string;
+  children: TreeNode[];
+}
+
+
+
+const TREE_DATA: FoodNode[] = [
+  {
+    name: 'Fruit',
+    children: [{name: 'Apple'}, {name: 'Banana'}, {name: 'Fruit loops'}],
+  },
+  {
+    name: 'Vegetables',
+    children: [
+      {
+        name: 'Green',
+        children: [{name: 'Broccoli'}, {name: 'Brussels sprouts'}],
+      },
+      {
+        name: 'Orange',
+        children: [{name: 'Pumpkins'}, {name: 'Carrots'}],
+      },
+    ],
+  },
+];
+
 
 @Component({
   selector: 'snapshot',
@@ -31,6 +68,9 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected availableVars: GetAvailableVariablesQuery['availableVars']['Vars'];
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') input!: MatDrawer;
+  dataSource = new MatTreeNestedDataSource<TreeNode>();
+  treeControl = new NestedTreeControl<TreeNode>(node => node.children);
+
 
   // Data about the selected node. Each element is a string containing all the
   // captured variables from one frame (where all frames correspond to the
@@ -82,6 +122,40 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
        results => {
        console.log("!!! got available vars: ", results.data.availableVars);
        this.availableVars = results.data.availableVars.Vars;
+
+       function structToTree(ti: TypeInfo, types: TypeInfo[], level: number): TreeNode[] {
+         if (level == 3) {
+           return [];
+         }
+         const res: TreeNode[] = [];
+         for (var f of ti.Fields!) {
+           if (!f) continue;
+           const n: TreeNode = {name: f.Name, type: f.Type, children: []};
+           const ti = types.find(t => t.Name == f!.Type);
+           if (ti) {
+             n.children = structToTree(ti, types, level+1)
+           }
+           res.push(n);
+         }
+         return res;
+       }
+
+
+         function convertToTree(vars: Array<{
+         Name: string;
+         Type: string;
+         VarType: number
+       }>, types: TypeInfo[]): Array<TreeNode> {
+         return vars.map<TreeNode>(v => {
+           const n = {name: v.Name, type: v.Type, children: Array<TreeNode>()}
+           const ti = types.find(t => t.Name == v.Type);
+           if (ti) {
+             n.children = structToTree(ti, types, 0)
+           }
+           return n
+         })
+       }
+       this.dataSource.data = convertToTree(results.data.availableVars.Vars!, results.data.availableVars.Types!);
      })
 
     this.input.toggle();
@@ -91,6 +165,9 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     let newSnapshotID = Number(newValue);
     this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(newSnapshotID), false /* toggle */);
   }
+
+  // !!! hasChild = (_: number, node: FoodNode) => !!node.children && node.children.length > 0;
+  hasChild = (_: number, node: TreeNode) => node.children.length > 0;
 }
 
 // Call is an implementation of Update that calls the provided function.
