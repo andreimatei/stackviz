@@ -52,6 +52,11 @@ type ComplexityRoot struct {
 		ProcessSnapshots func(childComplexity int) int
 	}
 
+	FieldInfo struct {
+		Name func(childComplexity int) int
+		Type func(childComplexity int) int
+	}
+
 	Mutation struct {
 		CollectCollection func(childComplexity int) int
 		CreateCollection  func(childComplexity int, input *ent.CreateCollectionInput) int
@@ -72,7 +77,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AvailableVars    func(childComplexity int, funcArg string, pc int) int
+		AvailableVars    func(childComplexity int, funcArg string, pcOff int) int
 		CollectionByID   func(childComplexity int, id int) int
 		Collections      func(childComplexity int) int
 		Node             func(childComplexity int, id int) int
@@ -80,10 +85,20 @@ type ComplexityRoot struct {
 		ProcessSnapshots func(childComplexity int) int
 	}
 
+	TypeInfo struct {
+		Fields func(childComplexity int) int
+		Name   func(childComplexity int) int
+	}
+
 	VarInfo struct {
 		Name    func(childComplexity int) int
 		Type    func(childComplexity int) int
 		VarType func(childComplexity int) int
+	}
+
+	VarsAndTypes struct {
+		Types func(childComplexity int) int
+		Vars  func(childComplexity int) int
 	}
 }
 
@@ -97,7 +112,7 @@ type QueryResolver interface {
 	Collections(ctx context.Context) ([]*ent.Collection, error)
 	ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
-	AvailableVars(ctx context.Context, funcArg string, pc int) ([]*VarInfo, error)
+	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
 }
 
 type executableSchema struct {
@@ -135,6 +150,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Collection.ProcessSnapshots(childComplexity), true
+
+	case "FieldInfo.Name":
+		if e.complexity.FieldInfo.Name == nil {
+			break
+		}
+
+		return e.complexity.FieldInfo.Name(childComplexity), true
+
+	case "FieldInfo.Type":
+		if e.complexity.FieldInfo.Type == nil {
+			break
+		}
+
+		return e.complexity.FieldInfo.Type(childComplexity), true
 
 	case "Mutation.collectCollection":
 		if e.complexity.Mutation.CollectCollection == nil {
@@ -221,7 +250,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.AvailableVars(childComplexity, args["func"].(string), args["pc"].(int)), true
+		return e.complexity.Query.AvailableVars(childComplexity, args["func"].(string), args["pcOff"].(int)), true
 
 	case "Query.collectionByID":
 		if e.complexity.Query.CollectionByID == nil {
@@ -273,6 +302,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.ProcessSnapshots(childComplexity), true
 
+	case "TypeInfo.Fields":
+		if e.complexity.TypeInfo.Fields == nil {
+			break
+		}
+
+		return e.complexity.TypeInfo.Fields(childComplexity), true
+
+	case "TypeInfo.Name":
+		if e.complexity.TypeInfo.Name == nil {
+			break
+		}
+
+		return e.complexity.TypeInfo.Name(childComplexity), true
+
 	case "VarInfo.Name":
 		if e.complexity.VarInfo.Name == nil {
 			break
@@ -293,6 +336,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.VarInfo.VarType(childComplexity), true
+
+	case "VarsAndTypes.Types":
+		if e.complexity.VarsAndTypes.Types == nil {
+			break
+		}
+
+		return e.complexity.VarsAndTypes.Types(childComplexity), true
+
+	case "VarsAndTypes.Vars":
+		if e.complexity.VarsAndTypes.Vars == nil {
+			break
+		}
+
+		return e.complexity.VarsAndTypes.Vars(childComplexity), true
 
 	}
 	return 0, false
@@ -427,14 +484,14 @@ func (ec *executionContext) field_Query_availableVars_args(ctx context.Context, 
 	}
 	args["func"] = arg0
 	var arg1 int
-	if tmp, ok := rawArgs["pc"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pc"))
+	if tmp, ok := rawArgs["pcOff"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pcOff"))
 		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["pc"] = arg1
+	args["pcOff"] = arg1
 	return args, nil
 }
 
@@ -655,6 +712,94 @@ func (ec *executionContext) fieldContext_Collection_processSnapshots(ctx context
 				return ec.fieldContext_ProcessSnapshot_framesOfInterest(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProcessSnapshot", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FieldInfo_Name(ctx context.Context, field graphql.CollectedField, obj *FieldInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FieldInfo_Name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FieldInfo_Name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FieldInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FieldInfo_Type(ctx context.Context, field graphql.CollectedField, obj *FieldInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FieldInfo_Type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FieldInfo_Type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FieldInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1399,18 +1544,21 @@ func (ec *executionContext) _Query_availableVars(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().AvailableVars(rctx, fc.Args["func"].(string), fc.Args["pc"].(int))
+		return ec.resolvers.Query().AvailableVars(rctx, fc.Args["func"].(string), fc.Args["pcOff"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([]*VarInfo)
+	res := resTmp.(*VarsAndTypes)
 	fc.Result = res
-	return ec.marshalOVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNVarsAndTypes2ᚖstacksvizᚐVarsAndTypes(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_availableVars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1421,14 +1569,12 @@ func (ec *executionContext) fieldContext_Query_availableVars(ctx context.Context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "Name":
-				return ec.fieldContext_VarInfo_Name(ctx, field)
-			case "Type":
-				return ec.fieldContext_VarInfo_Type(ctx, field)
-			case "VarType":
-				return ec.fieldContext_VarInfo_VarType(ctx, field)
+			case "Vars":
+				return ec.fieldContext_VarsAndTypes_Vars(ctx, field)
+			case "Types":
+				return ec.fieldContext_VarsAndTypes_Types(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type VarInfo", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type VarsAndTypes", field.Name)
 		},
 	}
 	defer func() {
@@ -1574,6 +1720,97 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _TypeInfo_Name(ctx context.Context, field graphql.CollectedField, obj *TypeInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TypeInfo_Name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TypeInfo_Name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TypeInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TypeInfo_Fields(ctx context.Context, field graphql.CollectedField, obj *TypeInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TypeInfo_Fields(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fields, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*FieldInfo)
+	fc.Result = res
+	return ec.marshalOFieldInfo2ᚕᚖstacksvizᚐFieldInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TypeInfo_Fields(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TypeInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Name":
+				return ec.fieldContext_FieldInfo_Name(ctx, field)
+			case "Type":
+				return ec.fieldContext_FieldInfo_Type(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FieldInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _VarInfo_Name(ctx context.Context, field graphql.CollectedField, obj *VarInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VarInfo_Name(ctx, field)
 	if err != nil {
@@ -1701,6 +1938,102 @@ func (ec *executionContext) fieldContext_VarInfo_VarType(ctx context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VarsAndTypes_Vars(ctx context.Context, field graphql.CollectedField, obj *VarsAndTypes) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_VarsAndTypes_Vars(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Vars, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*VarInfo)
+	fc.Result = res
+	return ec.marshalOVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_VarsAndTypes_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VarsAndTypes",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Name":
+				return ec.fieldContext_VarInfo_Name(ctx, field)
+			case "Type":
+				return ec.fieldContext_VarInfo_Type(ctx, field)
+			case "VarType":
+				return ec.fieldContext_VarInfo_VarType(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type VarInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VarsAndTypes_Types(ctx context.Context, field graphql.CollectedField, obj *VarsAndTypes) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_VarsAndTypes_Types(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Types, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*TypeInfo)
+	fc.Result = res
+	return ec.marshalOTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_VarsAndTypes_Types(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VarsAndTypes",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Name":
+				return ec.fieldContext_TypeInfo_Name(ctx, field)
+			case "Fields":
+				return ec.fieldContext_TypeInfo_Fields(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TypeInfo", field.Name)
 		},
 	}
 	return fc, nil
@@ -3643,6 +3976,41 @@ func (ec *executionContext) _Collection(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var fieldInfoImplementors = []string{"FieldInfo"}
+
+func (ec *executionContext) _FieldInfo(ctx context.Context, sel ast.SelectionSet, obj *FieldInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fieldInfoImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FieldInfo")
+		case "Name":
+
+			out.Values[i] = ec._FieldInfo_Name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Type":
+
+			out.Values[i] = ec._FieldInfo_Type(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -3912,6 +4280,9 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_availableVars(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -3933,6 +4304,38 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___schema(ctx, field)
 			})
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var typeInfoImplementors = []string{"TypeInfo"}
+
+func (ec *executionContext) _TypeInfo(ctx context.Context, sel ast.SelectionSet, obj *TypeInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, typeInfoImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TypeInfo")
+		case "Name":
+
+			out.Values[i] = ec._TypeInfo_Name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Fields":
+
+			out.Values[i] = ec._TypeInfo_Fields(ctx, field, obj)
 
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -3976,6 +4379,35 @@ func (ec *executionContext) _VarInfo(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var varsAndTypesImplementors = []string{"VarsAndTypes"}
+
+func (ec *executionContext) _VarsAndTypes(ctx context.Context, sel ast.SelectionSet, obj *VarsAndTypes) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, varsAndTypesImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("VarsAndTypes")
+		case "Vars":
+
+			out.Values[i] = ec._VarsAndTypes_Vars(ctx, field, obj)
+
+		case "Types":
+
+			out.Values[i] = ec._VarsAndTypes_Types(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4543,6 +4975,16 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
+func (ec *executionContext) marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx context.Context, sel ast.SelectionSet, v *TypeInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TypeInfo(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNVarInfo2ᚖstacksvizᚐVarInfo(ctx context.Context, sel ast.SelectionSet, v *VarInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -4551,6 +4993,20 @@ func (ec *executionContext) marshalNVarInfo2ᚖstacksvizᚐVarInfo(ctx context.C
 		return graphql.Null
 	}
 	return ec._VarInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNVarsAndTypes2stacksvizᚐVarsAndTypes(ctx context.Context, sel ast.SelectionSet, v VarsAndTypes) graphql.Marshaler {
+	return ec._VarsAndTypes(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNVarsAndTypes2ᚖstacksvizᚐVarsAndTypes(ctx context.Context, sel ast.SelectionSet, v *VarsAndTypes) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._VarsAndTypes(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -4863,6 +5319,54 @@ func (ec *executionContext) marshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCu
 	return v
 }
 
+func (ec *executionContext) marshalOFieldInfo2ᚕᚖstacksvizᚐFieldInfo(ctx context.Context, sel ast.SelectionSet, v []*FieldInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOFieldInfo2ᚖstacksvizᚐFieldInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOFieldInfo2ᚖstacksvizᚐFieldInfo(ctx context.Context, sel ast.SelectionSet, v *FieldInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FieldInfo(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOID2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {
 	if v == nil {
 		return nil, nil
@@ -5017,6 +5521,53 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	}
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*TypeInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*VarInfo) graphql.Marshaler {

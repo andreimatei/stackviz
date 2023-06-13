@@ -3,6 +3,29 @@
   <mat-drawer #functionDrawer mode="side" position="end"  class="func-details-drawer">
     <div>
       <h3>Function details</h3>
+
+
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            Available variables
+          </mat-panel-title>
+          <mat-panel-description>
+            The variables available in this frame.
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <ul class="vars-list">
+          <li *ngFor="let v of availableVars" >
+            <mat-checkbox>
+              <pre>{{v.Name}}: {{v.Type}} ({{v.VarType}})</pre>
+            </mat-checkbox>
+          </li>
+        </ul>
+
+      </mat-expansion-panel>
+
+
       <mat-expansion-panel expanded>
         <mat-expansion-panel-header>
           <mat-panel-title>

@@ -46,6 +46,12 @@ export type CreateProcessSnapshotInput = {
   snapshot: Scalars['String'];
 };
 
+export type FieldInfo = {
+  __typename?: 'FieldInfo';
+  Name: Scalars['String'];
+  Type: Scalars['String'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   collectCollection?: Maybe<Collection>;
@@ -100,7 +106,7 @@ export type ProcessSnapshot = Node & {
 
 export type Query = {
   __typename?: 'Query';
-  availableVars?: Maybe<Array<VarInfo>>;
+  availableVars: VarsAndTypes;
   collectionByID?: Maybe<Collection>;
   collections: Array<Collection>;
   /** Fetches an object given its ID. */
@@ -113,7 +119,7 @@ export type Query = {
 
 export type QueryAvailableVarsArgs = {
   func: Scalars['String'];
-  pc: Scalars['Int'];
+  pcOff: Scalars['Int'];
 };
 
 
@@ -131,11 +137,23 @@ export type QueryNodesArgs = {
   ids: Array<Scalars['ID']>;
 };
 
+export type TypeInfo = {
+  __typename?: 'TypeInfo';
+  Fields?: Maybe<Array<Maybe<FieldInfo>>>;
+  Name: Scalars['String'];
+};
+
 export type VarInfo = {
   __typename?: 'VarInfo';
   Name: Scalars['String'];
   Type: Scalars['String'];
   VarType: Scalars['Int'];
+};
+
+export type VarsAndTypes = {
+  __typename?: 'VarsAndTypes';
+  Types?: Maybe<Array<TypeInfo>>;
+  Vars?: Maybe<Array<VarInfo>>;
 };
 
 export type AllCollectionsQueryVariables = Exact<{ [key: string]: never; }>;
@@ -157,11 +175,11 @@ export type CollectCollectionMutation = { __typename?: 'Mutation', collectCollec
 
 export type GetAvailableVariablesQueryVariables = Exact<{
   func: Scalars['String'];
-  pc: Scalars['Int'];
+  pcOff: Scalars['Int'];
 }>;
 
 
-export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars?: Array<{ __typename?: 'VarInfo', Name: string, Type: string, VarType: number }> | null };
+export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars?: Array<{ __typename?: 'VarInfo', Name: string, Type: string, VarType: number }> | null, Types?: Array<{ __typename?: 'TypeInfo', Name: string, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string } | null> | null }> | null } };
 
 export const AllCollectionsDocument = gql`
     query AllCollections {
@@ -224,11 +242,20 @@ export const CollectCollectionDocument = gql`
     }
   }
 export const GetAvailableVariablesDocument = gql`
-    query GetAvailableVariables($func: String!, $pc: Int!) {
-  availableVars(func: $func, pc: $pc) {
-    Name
-    Type
-    VarType
+    query GetAvailableVariables($func: String!, $pcOff: Int!) {
+  availableVars(func: $func, pcOff: $pcOff) {
+    Vars {
+      Name
+      Type
+      VarType
+    }
+    Types {
+      Name
+      Fields {
+        Name
+        Type
+      }
+    }
   }
 }
     `;

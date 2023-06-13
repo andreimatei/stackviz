@@ -5,11 +5,26 @@ type Mutation {
 
 extend type Query {
   collectionByID(id: ID!): Collection
-  availableVars(func: String!, pc: Int!): [VarInfo!]
+  availableVars(func: String!, pcOff: Int!): VarsAndTypes!
+}
+
+type VarsAndTypes {
+  Vars: [VarInfo!]
+  Types: [TypeInfo!]
 }
 
 type VarInfo {
   Name: String!
   Type: String!
   VarType: Int!
+}
+
+type TypeInfo {
+  Name: String!
+  Fields: [FieldInfo]
+}
+
+type FieldInfo {
+  Name: String!
+  Type: String!
 }

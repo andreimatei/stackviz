@@ -14,6 +14,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from "@angular/material/input";
 import { MatSidenavModule } from '@angular/material/sidenav';
 import {MatExpansionModule} from '@angular/material/expansion';
+import {MatCheckboxModule} from '@angular/material/checkbox';
+
 
 @NgModule({
   declarations: [
@@ -28,6 +30,7 @@ import {MatExpansionModule} from '@angular/material/expansion';
     GraphQLModule,
     HttpClientModule,
     MatCardModule,
+    MatCheckboxModule,
     MatPaginatorModule,
     MatSelectModule,
     MatInputModule,

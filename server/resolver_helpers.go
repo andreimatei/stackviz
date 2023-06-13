@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/go-delve/delve/pkg/proc"
 	"io"
 	"log"
 	"net/http"
@@ -52,7 +53,7 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(agentAddr string) (agentrpc
 	return res.Snapshot, nil
 }
 
-func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn string, pcOff int64) ([]agentrpc.VarInfo, error) {
+func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn string, pcOff int64) ([]proc.VarInfo, []proc.TypeInfo, error) {
 	log.Printf("!!! getting available vars for %s:0x%x", fn, pcOff)
 	client, err := rpc.DialHTTP("tcp", agentAddr)
 	if err != nil {
@@ -66,7 +67,7 @@ func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn stri
 		log.Fatal("call to agent failed: ", err)
 	}
 	pretty.Print(res) // !!!
-	return res.Vars, nil
+	return res.Vars, res.Types, nil
 }
 
 func snapToString(s agentrpc.Snapshot) string {

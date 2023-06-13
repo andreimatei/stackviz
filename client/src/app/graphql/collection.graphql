@@ -22,10 +22,19 @@ mutation CollectCollection {
   }
 }
 
-query GetAvailableVariables($func: String!, $pc: Int!) {
-  availableVars(func: $func, pc: $pc) {
-    Name
-    Type
-    VarType
+query GetAvailableVariables($func: String!, $pcOff: Int!) {
+  availableVars(func: $func, pcOff: $pcOff) {
+    Vars {
+      Name
+      Type
+      VarType
+    }
+    Types {
+      Name
+      Fields {
+        Name
+        Type
+      }
+    }
   }
 }

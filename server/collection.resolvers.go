@@ -81,7 +81,7 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 }
 
 // AvailableVars is the resolver for the availableVars field.
-func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff int) ([]*VarInfo, error) {
+func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error) {
 	var svcName string
 	for serviceName, _ := range r.conf.Targets {
 		// TODO(andrei): deal with multiple services
@@ -95,17 +95,35 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 	}
 
 	log.Printf("!!! calling AvailableVars on Delve agent")
-	vars, err := r.getAvailableVarsFromDelveAgent(agentURL, funcArg, int64(pcOff))
+	vars, types, err := r.getAvailableVarsFromDelveAgent(agentURL, funcArg, int64(pcOff))
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*VarInfo, len(vars))
+	resVars := make([]*VarInfo, len(vars))
 	for i, v := range vars {
-		res[i] = &VarInfo{
+		resVars[i] = &VarInfo{
 			Name:    v.Name,
-			Type:    v.Type,
+			Type:    v.TypeName,
 			VarType: v.VarType,
 		}
+	}
+	resTypes := make([]*TypeInfo, len(types))
+	for i, v := range types {
+		resTypes[i] = &TypeInfo{
+			Name: v.Name,
+		}
+		resTypes[i].Fields = make([]*FieldInfo, len(v.Fields))
+		for j, f := range v.Fields {
+			resTypes[i].Fields[j] = &FieldInfo{
+				Name: f.Name,
+				Type: f.TypeName,
+			}
+		}
+	}
+
+	res := &VarsAndTypes{
+		Vars:  resVars,
+		Types: resTypes,
 	}
 	return res, nil
 }

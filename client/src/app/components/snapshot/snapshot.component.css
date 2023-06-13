@@ -1,3 +1,13 @@
 .func-details-drawer {
   max-width: 30%;
 }
+
+.vars-list {
+  list-style-type: none; /* Remove bullets */
+  padding: 0; /* Remove padding */
+  /*margin: 0 0 0 0; !* Remove margins *!*/
+}
+.vars-list pre {
+  /*padding: 0 0 0 0; !* Remove padding *!*/
+  margin: 0; /* Remove margins */
+}

@@ -2,8 +2,23 @@
 
 package server
 
+type FieldInfo struct {
+	Name string `json:"Name"`
+	Type string `json:"Type"`
+}
+
+type TypeInfo struct {
+	Name   string       `json:"Name"`
+	Fields []*FieldInfo `json:"Fields,omitempty"`
+}
+
 type VarInfo struct {
 	Name    string `json:"Name"`
 	Type    string `json:"Type"`
 	VarType int    `json:"VarType"`
+}
+
+type VarsAndTypes struct {
+	Vars  []*VarInfo  `json:"Vars,omitempty"`
+	Types []*TypeInfo `json:"Types,omitempty"`
 }

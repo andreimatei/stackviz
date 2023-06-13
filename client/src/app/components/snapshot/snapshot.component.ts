@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import {
-  GetAvailableVariablesGQL,
+  GetAvailableVariablesGQL, GetAvailableVariablesQuery,
   GetCollectionGQL,
   ProcessSnapshot
 } from "../../graphql/graphql-codegen-generated";
@@ -28,6 +28,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshotID!: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
+  protected availableVars: GetAvailableVariablesQuery['availableVars']['Vars'];
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') input!: MatDrawer;
 
@@ -76,13 +77,12 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     const funcName = localState.expectString('full_name');
     const pcOffset = localState.expectNumber('pc_off');
     console.log("!!! issuing available vars query: ", funcName, pcOffset);
-    this.varsQuery.fetch({func: funcName, pc: pcOffset})
+    this.varsQuery.fetch({func: funcName, pcOff: pcOffset})
      .subscribe(
        results => {
        console.log("!!! got available vars: ", results.data.availableVars);
-     },
-       error => console.log("!!! failed: ", error),
-     )
+       this.availableVars = results.data.availableVars.Vars;
+     })
 
     this.input.toggle();
   }
