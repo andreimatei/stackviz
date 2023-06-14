@@ -11,40 +11,11 @@ import { MatDrawer } from "@angular/material/sidenav";
 import { MatTreeNestedDataSource } from "@angular/material/tree";
 import { NestedTreeControl } from "@angular/cdk/tree";
 
-// !!!
-interface FoodNode {
-  name: string;
-  children?: FoodNode[];
-}
-
 interface TreeNode {
   name: string;
   type: string;
   children: TreeNode[];
 }
-
-
-
-const TREE_DATA: FoodNode[] = [
-  {
-    name: 'Fruit',
-    children: [{name: 'Apple'}, {name: 'Banana'}, {name: 'Fruit loops'}],
-  },
-  {
-    name: 'Vegetables',
-    children: [
-      {
-        name: 'Green',
-        children: [{name: 'Broccoli'}, {name: 'Brussels sprouts'}],
-      },
-      {
-        name: 'Orange',
-        children: [{name: 'Pumpkins'}, {name: 'Carrots'}],
-      },
-    ],
-  },
-];
-
 
 @Component({
   selector: 'snapshot',
@@ -166,7 +137,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(newSnapshotID), false /* toggle */);
   }
 
-  // !!! hasChild = (_: number, node: FoodNode) => !!node.children && node.children.length > 0;
   hasChild = (_: number, node: TreeNode) => node.children.length > 0;
 }
 

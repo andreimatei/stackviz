@@ -1,203 +1,218 @@
 <div class="app">
-<mat-drawer-container class="example-container" autosize>
-  <mat-drawer #functionDrawer mode="side" position="end"  class="func-details-drawer">
-    <div>
-      <h3>Function details</h3>
+  <mat-drawer-container class="example-container" autosize>
+    <mat-drawer #functionDrawer mode="side" position="end" class="func-details-drawer">
+      <div>
+        <h3>Function details</h3>
 
 
-      <mat-expansion-panel expanded>
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            Available variables
-          </mat-panel-title>
-          <mat-panel-description>
-            The variables available in this frame.
-          </mat-panel-description>
-        </mat-expansion-panel-header>
+        <mat-expansion-panel expanded>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              Available variables
+            </mat-panel-title>
+            <mat-panel-description>
+              The variables available in this frame.
+            </mat-panel-description>
+          </mat-expansion-panel-header>
 
-        <ul class="vars-list">
-          <li *ngFor="let v of availableVars" >
-            <mat-checkbox>
-              <pre>{{v.Name}}: {{v.Type}} ({{v.VarType}})</pre>
-            </mat-checkbox>
-          </li>
-        </ul>
-
-        <mat-tree [dataSource]="dataSource" [treeControl]="treeControl" class="example-tree">
-          <!-- This is the tree node template for leaf nodes -->
-          <!-- There is inline padding applied to this node using styles.
-            This padding value depends on the mat-icon-button width. -->
-          <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle>
-            {{node.name}}:{{node.type}}
-          </mat-tree-node>
-          <!-- This is the tree node template for expandable nodes -->
-          <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild">
-            <div class="mat-tree-node">
-              <button mat-icon-button matTreeNodeToggle
-                      [attr.aria-label]="'Toggle ' + node.name">
-                <mat-icon class="mat-icon-rtl-mirror">
-                  {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
-                </mat-icon>
-              </button>
-              {{node.name}}
-            </div>
-            <!-- There is inline padding applied to this div using styles.
-                This padding value depends on the mat-icon-button width.  -->
-            <div [class.example-tree-invisible]="!treeControl.isExpanded(node)"
-                 role="group">
-              <ng-container matTreeNodeOutlet></ng-container>
-            </div>
-          </mat-nested-tree-node>
-        </mat-tree>
+          <mat-tree [dataSource]="dataSource" [treeControl]="treeControl" class="example-tree">
+            <!-- This is the tree node template for leaf nodes -->
+            <!-- There is inline padding applied to this node using styles.
+              This padding value depends on the mat-icon-button width. -->
+            <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle>
+              <mat-checkbox>
+                {{node.name}}:{{node.type}}
+              </mat-checkbox>
+            </mat-tree-node>
+            <!-- This is the tree node template for expandable nodes -->
+            <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild">
+              <div class="mat-tree-node">
+                <button mat-icon-button matTreeNodeToggle
+                        [attr.aria-label]="'Toggle ' + node.name">
+                  <mat-icon class="mat-icon-rtl-mirror">
+                    {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
+                  </mat-icon>
+                </button>
+                <mat-checkbox>
+                  {{node.name}}:{{node.type}}
+                </mat-checkbox>
+              </div>
+              <!-- There is inline padding applied to this div using styles.
+                  This padding value depends on the mat-icon-button width.  -->
+              <div [class.example-tree-invisible]="!treeControl.isExpanded(node)"
+                   role="group">
+                <ng-container matTreeNodeOutlet></ng-container>
+              </div>
+            </mat-nested-tree-node>
+          </mat-tree>
 
 
-      </mat-expansion-panel>
+        </mat-expansion-panel>
 
 
-      <mat-expansion-panel expanded>
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            Captured variables
-          </mat-panel-title>
-          <mat-panel-description>
-            The variables captured from all stack traces featuring this frame.
-          </mat-panel-description>
-        </mat-expansion-panel-header>
+        <mat-expansion-panel expanded>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              Captured variables
+            </mat-panel-title>
+            <mat-panel-description>
+              The variables captured from all stack traces featuring this frame.
+            </mat-panel-description>
+          </mat-expansion-panel-header>
 
-        <mat-accordion multi>
-          <mat-expansion-panel expanded *ngFor="let v of funcInfo">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Frame info
-              </mat-panel-title>
-            </mat-expansion-panel-header>
-            {{v}}
-          </mat-expansion-panel>
-        </mat-accordion>
+          <mat-accordion multi>
+            <mat-expansion-panel expanded *ngFor="let v of funcInfo">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  Frame info
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+              {{v}}
+            </mat-expansion-panel>
+          </mat-accordion>
 
 
-      </mat-expansion-panel>
-    </div>
-  </mat-drawer>
-  <mat-drawer-content>
+        </mat-expansion-panel>
+      </div>
+    </mat-drawer>
+    <mat-drawer-content>
 
-    <!--
-  <p><button mat-button (click)="sidenav.toggle()">sidenav.toggle()</button></p>
-  -->
-
-  <app-core>
-    <!--
-      Define the global key-value mapping, with it initial values.  This global state provides
-      communication between components.
-    -->
-    <global-state>
-      <value-map>
-        <value key="path_prefix">
-          <string-list></string-list>
-        </value>
-        <value key="filter">
-          <string></string>
-        </value>
-      </value-map>
-    </global-state>
-
-    <!--
-      A handler for Data queries issued to a connected backend via HTTP.
-      Multiple components may use this to subscribe to DataSeries streams;
-      these will be automatically updated as new data becomes available.
-    -->
-    <data-query [debounceMs]="50">
       <!--
-        The set of filters to attach to DataRequests.  Each specified global
-        value is provided with each DataRequest under the provided query key.
-        Note that backend data series providers may ignore some global filters.
-      -->
-      <value-map>
-        <value key="snapshot_id"><global-ref key="snapshot_id"></global-ref></value>
-        <value key="path_prefix"><global-ref key="path_prefix"></global-ref></value>
-        <value key="filter"><global-ref key="filter"></global-ref></value>
-      </value-map>
-    </data-query>
-  </app-core>
+    <p><button mat-button (click)="sidenav.toggle()">sidenav.toggle()</button></p>
+    -->
 
-  <p>
-    Collection <a routerLink="/collections"> {{ collectionName }} </a>
-  </p>
+      <app-core>
+        <!--
+          Define the global key-value mapping, with it initial values.  This global state provides
+          communication between components.
+        -->
+        <global-state>
+          <value-map>
+            <value key="path_prefix">
+              <string-list></string-list>
+            </value>
+            <value key="filter">
+              <string></string>
+            </value>
+          </value-map>
+        </global-state>
 
-  <mat-form-field>
-    <mat-label>Snapshots</mat-label>
-    <select matNativeControl #snapshot (change)="onSelectedSnapshotChange(snapshot.value)">
-      <option *ngFor="let snap of snapshots" [value]="snap.id" >{{ snap.processID }}</option>
-    </select>
-  </mat-form-field>
+        <!--
+          A handler for Data queries issued to a connected backend via HTTP.
+          Multiple components may use this to subscribe to DataSeries streams;
+          these will be automatically updated as new data becomes available.
+        -->
+        <data-query [debounceMs]="50">
+          <!--
+            The set of filters to attach to DataRequests.  Each specified global
+            value is provided with each DataRequest under the provided query key.
+            Note that backend data series providers may ignore some global filters.
+          -->
+          <value-map>
+            <value key="snapshot_id">
+              <global-ref key="snapshot_id"></global-ref>
+            </value>
+            <value key="path_prefix">
+              <global-ref key="path_prefix"></global-ref>
+            </value>
+            <value key="filter">
+              <global-ref key="filter"></global-ref>
+            </value>
+          </value-map>
+        </data-query>
+      </app-core>
 
-  <text-field label="Filter" placeholder="filter by package or function name" updateOnEnter=false>
-    <interactions>
-      <action target="text_field" type="update">
-        <set>
-          <global-ref key="filter"></global-ref>
-          <local-ref key="contents"></local-ref>
-        </set>
-      </action>
-    </interactions>
-  </text-field>
+      <p>
+        Collection <a routerLink="/collections"> {{ collectionName }} </a>
+      </p>
 
-  <weighted-tree>
-    <data-series>
-      <query>
-        <string>stacks.tree</string>
-      </query>
+      <mat-form-field>
+        <mat-label>Snapshots</mat-label>
+        <select matNativeControl #snapshot (change)="onSelectedSnapshotChange(snapshot.value)">
+          <option *ngFor="let snap of snapshots" [value]="snap.id">{{ snap.processID }}</option>
+        </select>
+      </mat-form-field>
 
-      <interactions>
-        <reaction target="data-series" type="fetch">
-          <or>
-            <changed><global-ref key="snapshot_id"></global-ref></changed>
-            <changed><global-ref key="path_prefix"></global-ref></changed>
-            <changed><global-ref key="filter"></global-ref></changed>
-          </or>
-        </reaction>
-      </interactions>
-    </data-series>
+      <text-field label="Filter" placeholder="filter by package or function name"
+                  updateOnEnter=false>
+        <interactions>
+          <action target="text_field" type="update">
+            <set>
+              <global-ref key="filter"></global-ref>
+              <local-ref key="contents"></local-ref>
+            </set>
+          </action>
+        </interactions>
+      </text-field>
+
+      <weighted-tree>
+        <data-series>
+          <query>
+            <string>stacks.tree</string>
+          </query>
+
+          <interactions>
+            <reaction target="data-series" type="fetch">
+              <or>
+                <changed>
+                  <global-ref key="snapshot_id"></global-ref>
+                </changed>
+                <changed>
+                  <global-ref key="path_prefix"></global-ref>
+                </changed>
+                <changed>
+                  <global-ref key="filter"></global-ref>
+                </changed>
+              </or>
+            </reaction>
+          </interactions>
+        </data-series>
 
 
-    <interactions>
-      <action target="node" type="click">
-        <set>
-          <global-ref key="path_prefix"></global-ref>
-          <local-ref key="path"></local-ref>
-        </set>
-      </action>
-      <action target="node" type="ctrl-click">
-      </action>
-      <!-- example reaction
-      <reaction target="node" type="highlight">
-        <includes>
-          <local-ref key="name"></local-ref>
-          <string>sync.runtime_notifyListWait</string>
-        </includes>
-      </reaction>
-      -->
-    </interactions>
+        <interactions>
+          <action target="node" type="click">
+            <set>
+              <global-ref key="path_prefix"></global-ref>
+              <local-ref key="path"></local-ref>
+            </set>
+          </action>
+          <action target="node" type="ctrl-click">
+          </action>
+          <!-- example reaction
+          <reaction target="node" type="highlight">
+            <includes>
+              <local-ref key="name"></local-ref>
+              <string>sync.runtime_notifyListWait</string>
+            </includes>
+          </reaction>
+          -->
+        </interactions>
 
-  </weighted-tree>
+      </weighted-tree>
 
-  <app-stacks>
-    <data-series>
-      <query>
-        <string>stacks.raw</string>
-      </query>
+      <app-stacks>
+        <data-series>
+          <query>
+            <string>stacks.raw</string>
+          </query>
 
-      <interactions>
-        <reaction target="data-series" type="fetch">
-          <or>
-            <changed><global-ref key="snapshot_id"></global-ref></changed>
-            <changed><global-ref key="path_prefix"></global-ref></changed>
-            <changed><global-ref key="filter"></global-ref></changed>
-          </or>
-        </reaction>
-      </interactions>
-    </data-series>
-  </app-stacks>
-</mat-drawer-content>
-</mat-drawer-container>
+          <interactions>
+            <reaction target="data-series" type="fetch">
+              <or>
+                <changed>
+                  <global-ref key="snapshot_id"></global-ref>
+                </changed>
+                <changed>
+                  <global-ref key="path_prefix"></global-ref>
+                </changed>
+                <changed>
+                  <global-ref key="filter"></global-ref>
+                </changed>
+              </or>
+            </reaction>
+          </interactions>
+        </data-series>
+      </app-stacks>
+    </mat-drawer-content>
+  </mat-drawer-container>
 </div>
