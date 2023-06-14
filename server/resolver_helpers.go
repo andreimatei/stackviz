@@ -1,11 +1,13 @@
 package server
 
 import (
+	"context"
 	"github.com/go-delve/delve/pkg/proc"
 	"io"
 	"log"
 	"net/http"
 	"net/rpc"
+	"stacksviz/ent"
 	"strings"
 
 	"github.com/andreimatei/delve-agent/agentrpc"
@@ -28,13 +30,23 @@ func (r *mutationResolver) getSnapshotFromPprof(targetURL string) (string, error
 	return string(snap), nil
 }
 
-func (r *mutationResolver) getSnapshotFromDelveAgent(agentAddr string) (agentrpc.Snapshot, error) {
+func (r *mutationResolver) getSnapshotFromDelveAgent(ctx context.Context, agentAddr string, spec *ent.CollectSpec) (agentrpc.Snapshot, error) {
 	client, err := rpc.DialHTTP("tcp", agentAddr)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
 
-	args := &agentrpc.GetSnapshotIn{}
+	frames, err := spec.Frames(ctx)
+	if err != nil {
+		return agentrpc.Snapshot{}, err
+	}
+	framesSpec := make(map[string][]string)
+	for _, f := range frames {
+		for _, e := range f.Exprs {
+			framesSpec[f.Frame] = append(framesSpec[f.Frame], e)
+		}
+	}
+	args := &agentrpc.GetSnapshotIn{FramesSpec: framesSpec}
 
 	var res = &agentrpc.GetSnapshotOut{}
 	err = client.Call("Agent.GetSnapshot", args, &res)

@@ -41,7 +41,8 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 		i++
 		log.Printf("collecting snapshot from process %d: %s-%s - %s", i, svcName, processName, url)
 		// !!! snap, err := r.getSnapshotFromPprof(url)
-		snap, err := r.getSnapshotFromDelveAgent(url)
+		spec := r.getOrCreateCollectSpec(ctx)
+		snap, err := r.getSnapshotFromDelveAgent(ctx, url, spec)
 		if err != nil {
 			return nil, err
 		}
