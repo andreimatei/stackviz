@@ -1,16 +1,20 @@
 type Mutation {
   createCollection(input: CreateCollectionInput): Collection
+  # collect snapshots from all the nodes
   collectCollection: Collection
+  addExprToCollectSpec(frame: String!, expr: String!): CollectSpec!
+  removeExprFromCollectSpec(expr: String!, frame: String!): CollectSpec!
 }
 
 extend type Query {
   collectionByID(id: ID!): Collection
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
+  frameInfo(func: String!): FrameInfo
 }
 
 type VarsAndTypes {
-  Vars: [VarInfo!]
-  Types: [TypeInfo!]
+  Vars: [VarInfo!]!
+  Types: [TypeInfo!]!
 }
 
 type VarInfo {

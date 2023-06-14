@@ -66,7 +66,6 @@ func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn stri
 	if err != nil {
 		log.Fatal("call to agent failed: ", err)
 	}
-	pretty.Print(res) // !!!
 	return res.Vars, res.Types, nil
 }
 

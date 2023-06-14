@@ -20,9 +20,19 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []int) ([]ent.Noder, erro
 	panic(fmt.Errorf("not implemented: Nodes - nodes"))
 }
 
+// CollectSpecs is the resolver for the collectSpecs field.
+func (r *queryResolver) CollectSpecs(ctx context.Context) ([]*ent.CollectSpec, error) {
+	panic(fmt.Errorf("not implemented: CollectSpecs - collectSpecs"))
+}
+
 // Collections is the resolver for the collections field.
 func (r *queryResolver) Collections(ctx context.Context) ([]*ent.Collection, error) {
 	return r.dbClient.Collection.Query().All(ctx)
+}
+
+// FrameInfos is the resolver for the frameInfos field.
+func (r *queryResolver) FrameInfos(ctx context.Context) ([]*ent.FrameInfo, error) {
+	panic(fmt.Errorf("not implemented: FrameInfos - frameInfos"))
 }
 
 // ProcessSnapshots is the resolver for the processSnapshots field.

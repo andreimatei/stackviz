@@ -8,6 +8,18 @@ import (
 	"stacksviz/ent"
 )
 
+// The CollectSpecFunc type is an adapter to allow the use of ordinary
+// function as CollectSpec mutator.
+type CollectSpecFunc func(context.Context, *ent.CollectSpecMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CollectSpecFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CollectSpecMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CollectSpecMutation", m)
+}
+
 // The CollectionFunc type is an adapter to allow the use of ordinary
 // function as Collection mutator.
 type CollectionFunc func(context.Context, *ent.CollectionMutation) (ent.Value, error)
@@ -18,6 +30,18 @@ func (f CollectionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CollectionMutation", m)
+}
+
+// The FrameInfoFunc type is an adapter to allow the use of ordinary
+// function as FrameInfo mutator.
+type FrameInfoFunc func(context.Context, *ent.FrameInfoMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FrameInfoFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FrameInfoMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FrameInfoMutation", m)
 }
 
 // The ProcessSnapshotFunc type is an adapter to allow the use of ordinary

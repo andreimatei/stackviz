@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"stacksviz/ent/collection"
+	"stacksviz/ent/collectspec"
+	"stacksviz/ent/frameinfo"
 	"stacksviz/ent/processsnapshot"
 	"sync"
 	"sync/atomic"
@@ -24,10 +26,20 @@ type Noder interface {
 	IsNode()
 }
 
+var collectspecImplementors = []string{"CollectSpec", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*CollectSpec) IsNode() {}
+
 var collectionImplementors = []string{"Collection", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Collection) IsNode() {}
+
+var frameinfoImplementors = []string{"FrameInfo", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*FrameInfo) IsNode() {}
 
 var processsnapshotImplementors = []string{"ProcessSnapshot", "Node"}
 
@@ -92,10 +104,34 @@ func (c *Client) Noder(ctx context.Context, id int, opts ...NodeOption) (_ Noder
 
 func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error) {
 	switch table {
+	case collectspec.Table:
+		query := c.CollectSpec.Query().
+			Where(collectspec.ID(id))
+		query, err := query.CollectFields(ctx, collectspecImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		n, err := query.Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return n, nil
 	case collection.Table:
 		query := c.Collection.Query().
 			Where(collection.ID(id))
 		query, err := query.CollectFields(ctx, collectionImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		n, err := query.Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return n, nil
+	case frameinfo.Table:
+		query := c.FrameInfo.Query().
+			Where(frameinfo.ID(id))
+		query, err := query.CollectFields(ctx, frameinfoImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -189,10 +225,42 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		idmap[id] = append(idmap[id], &noders[i])
 	}
 	switch table {
+	case collectspec.Table:
+		query := c.CollectSpec.Query().
+			Where(collectspec.IDIn(ids...))
+		query, err := query.CollectFields(ctx, collectspecImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
 	case collection.Table:
 		query := c.Collection.Query().
 			Where(collection.IDIn(ids...))
 		query, err := query.CollectFields(ctx, collectionImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case frameinfo.Table:
+		query := c.FrameInfo.Query().
+			Where(frameinfo.IDIn(ids...))
+		query, err := query.CollectFields(ctx, frameinfoImplementors...)
 		if err != nil {
 			return nil, err
 		}

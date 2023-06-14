@@ -7,10 +7,12 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"stacksviz/ent"
 	"stacksviz/ent/collection"
+	"stacksviz/ent/frameinfo"
 	"time"
 )
 
@@ -74,6 +76,51 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 	}).Save(ctx)
 }
 
+// AddExprToCollectSpec is the resolver for the addExprToCollectSpec mutation.
+func (r *mutationResolver) AddExprToCollectSpec(ctx context.Context, frame string, expr string) (*ent.CollectSpec, error) {
+	// TODO(andrei): use transactions
+	ci := r.getOrCreateCollectSpec(ctx)
+	// Create of update the frame info.
+	fi, err := ci.QueryFrames().Where(frameinfo.Frame(frame)).Only(ctx)
+	nfe := &ent.NotFoundError{}
+	if errors.As(err, &nfe) {
+		fi = r.dbClient.FrameInfo.Create().SetFrame(frame).SetExprs([]string{expr}).SaveX(ctx)
+		ci = ci.Update().AddFrames(fi).SaveX(ctx)
+		return ci, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range fi.Exprs {
+		if e == expr {
+			return ci, nil
+		}
+	}
+	fi.Update().SetExprs(append(fi.Exprs, expr)).SaveX(ctx)
+	return ci, nil
+}
+
+// RemoveExprFromCollectSpec is the resolver for the removeExprFromCollectSpec field.
+func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr string, frame string) (*ent.CollectSpec, error) {
+	ci := r.getOrCreateCollectSpec(ctx)
+	fi, err := ci.QueryFrames().Where(frameinfo.Frame(frame)).Only(ctx)
+	nfe := &ent.NotFoundError{}
+	if errors.As(err, nfe) {
+		return ci, nil
+	}
+	foundIndex := -1
+	for i, e := range fi.Exprs {
+		if e == expr {
+			foundIndex = i
+			break
+		}
+	}
+	if foundIndex != -1 {
+		fi.Update().SetExprs(append(fi.Exprs[:foundIndex], fi.Exprs[foundIndex+1:]...)).SaveX(ctx)
+	}
+	return ci, nil
+}
+
 // CollectionByID is the resolver for the collectionByID field.
 func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collection, error) {
 	log.Printf("!!! querying collection by ID: %d", id)
@@ -128,7 +175,32 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 	return res, nil
 }
 
+// FrameInfo is the resolver for the frameInfo field.
+func (r *queryResolver) FrameInfo(ctx context.Context, funcArg string) (*ent.FrameInfo, error) {
+	fi, err := r.dbClient.FrameInfo.Query().Where(frameinfo.Frame(funcArg)).Only(ctx)
+	nfe := &ent.NotFoundError{}
+	if errors.As(err, &nfe) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return fi, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
+
+func (r *mutationResolver) getOrCreateCollectSpec(ctx context.Context) *ent.CollectSpec {
+	cis := r.dbClient.CollectSpec.Query().AllX(ctx)
+	if len(cis) > 1 {
+		log.Fatalf("expected at most one CollectSpec, got: %d", len(cis))
+	}
+	// If there isn't a CollectSpec already, create one.
+	if len(cis) == 0 {
+		return r.dbClient.CollectSpec.Create().SaveX(ctx)
+	}
+	return cis[0]
+}

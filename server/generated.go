@@ -46,6 +46,11 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	CollectSpec struct {
+		Frames func(childComplexity int) int
+		ID     func(childComplexity int) int
+	}
+
 	Collection struct {
 		ID               func(childComplexity int) int
 		Name             func(childComplexity int) int
@@ -57,9 +62,17 @@ type ComplexityRoot struct {
 		Type func(childComplexity int) int
 	}
 
+	FrameInfo struct {
+		Exprs func(childComplexity int) int
+		Frame func(childComplexity int) int
+		ID    func(childComplexity int) int
+	}
+
 	Mutation struct {
-		CollectCollection func(childComplexity int) int
-		CreateCollection  func(childComplexity int, input *ent.CreateCollectionInput) int
+		AddExprToCollectSpec      func(childComplexity int, frame string, expr string) int
+		CollectCollection         func(childComplexity int) int
+		CreateCollection          func(childComplexity int, input *ent.CreateCollectionInput) int
+		RemoveExprFromCollectSpec func(childComplexity int, expr string, frame string) int
 	}
 
 	PageInfo struct {
@@ -78,8 +91,11 @@ type ComplexityRoot struct {
 
 	Query struct {
 		AvailableVars    func(childComplexity int, funcArg string, pcOff int) int
+		CollectSpecs     func(childComplexity int) int
 		CollectionByID   func(childComplexity int, id int) int
 		Collections      func(childComplexity int) int
+		FrameInfo        func(childComplexity int, funcArg string) int
+		FrameInfos       func(childComplexity int) int
 		Node             func(childComplexity int, id int) int
 		Nodes            func(childComplexity int, ids []int) int
 		ProcessSnapshots func(childComplexity int) int
@@ -105,14 +121,19 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	CreateCollection(ctx context.Context, input *ent.CreateCollectionInput) (*ent.Collection, error)
 	CollectCollection(ctx context.Context) (*ent.Collection, error)
+	AddExprToCollectSpec(ctx context.Context, frame string, expr string) (*ent.CollectSpec, error)
+	RemoveExprFromCollectSpec(ctx context.Context, expr string, frame string) (*ent.CollectSpec, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id int) (ent.Noder, error)
 	Nodes(ctx context.Context, ids []int) ([]ent.Noder, error)
+	CollectSpecs(ctx context.Context) ([]*ent.CollectSpec, error)
 	Collections(ctx context.Context) ([]*ent.Collection, error)
+	FrameInfos(ctx context.Context) ([]*ent.FrameInfo, error)
 	ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
+	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameInfo, error)
 }
 
 type executableSchema struct {
@@ -129,6 +150,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "CollectSpec.frames":
+		if e.complexity.CollectSpec.Frames == nil {
+			break
+		}
+
+		return e.complexity.CollectSpec.Frames(childComplexity), true
+
+	case "CollectSpec.id":
+		if e.complexity.CollectSpec.ID == nil {
+			break
+		}
+
+		return e.complexity.CollectSpec.ID(childComplexity), true
 
 	case "Collection.id":
 		if e.complexity.Collection.ID == nil {
@@ -165,6 +200,39 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.FieldInfo.Type(childComplexity), true
 
+	case "FrameInfo.exprs":
+		if e.complexity.FrameInfo.Exprs == nil {
+			break
+		}
+
+		return e.complexity.FrameInfo.Exprs(childComplexity), true
+
+	case "FrameInfo.frame":
+		if e.complexity.FrameInfo.Frame == nil {
+			break
+		}
+
+		return e.complexity.FrameInfo.Frame(childComplexity), true
+
+	case "FrameInfo.id":
+		if e.complexity.FrameInfo.ID == nil {
+			break
+		}
+
+		return e.complexity.FrameInfo.ID(childComplexity), true
+
+	case "Mutation.addExprToCollectSpec":
+		if e.complexity.Mutation.AddExprToCollectSpec == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addExprToCollectSpec_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddExprToCollectSpec(childComplexity, args["frame"].(string), args["expr"].(string)), true
+
 	case "Mutation.collectCollection":
 		if e.complexity.Mutation.CollectCollection == nil {
 			break
@@ -183,6 +251,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CreateCollection(childComplexity, args["input"].(*ent.CreateCollectionInput)), true
+
+	case "Mutation.removeExprFromCollectSpec":
+		if e.complexity.Mutation.RemoveExprFromCollectSpec == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeExprFromCollectSpec_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveExprFromCollectSpec(childComplexity, args["expr"].(string), args["frame"].(string)), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -252,6 +332,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.AvailableVars(childComplexity, args["func"].(string), args["pcOff"].(int)), true
 
+	case "Query.collectSpecs":
+		if e.complexity.Query.CollectSpecs == nil {
+			break
+		}
+
+		return e.complexity.Query.CollectSpecs(childComplexity), true
+
 	case "Query.collectionByID":
 		if e.complexity.Query.CollectionByID == nil {
 			break
@@ -270,6 +357,25 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Collections(childComplexity), true
+
+	case "Query.frameInfo":
+		if e.complexity.Query.FrameInfo == nil {
+			break
+		}
+
+		args, err := ec.field_Query_frameInfo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FrameInfo(childComplexity, args["func"].(string)), true
+
+	case "Query.frameInfos":
+		if e.complexity.Query.FrameInfos == nil {
+			break
+		}
+
+		return e.complexity.Query.FrameInfos(childComplexity), true
 
 	case "Query.node":
 		if e.complexity.Query.Node == nil {
@@ -359,7 +465,9 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputCreateCollectSpecInput,
 		ec.unmarshalInputCreateCollectionInput,
+		ec.unmarshalInputCreateFrameInfoInput,
 		ec.unmarshalInputCreateProcessSnapshotInput,
 	)
 	first := true
@@ -441,6 +549,30 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) field_Mutation_addExprToCollectSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["frame"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frame"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["frame"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["expr"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expr"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["expr"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createCollection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -453,6 +585,30 @@ func (ec *executionContext) field_Mutation_createCollection_args(ctx context.Con
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeExprFromCollectSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["expr"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expr"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["expr"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["frame"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frame"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["frame"] = arg1
 	return args, nil
 }
 
@@ -507,6 +663,21 @@ func (ec *executionContext) field_Query_collectionByID_args(ctx context.Context,
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_frameInfo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["func"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("func"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["func"] = arg0
 	return args, nil
 }
 
@@ -577,6 +748,99 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _CollectSpec_id(ctx context.Context, field graphql.CollectedField, obj *ent.CollectSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CollectSpec_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNID2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CollectSpec_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CollectSpec",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CollectSpec_frames(ctx context.Context, field graphql.CollectedField, obj *ent.CollectSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CollectSpec_frames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Frames(ctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.FrameInfo)
+	fc.Result = res
+	return ec.marshalOFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CollectSpec",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_FrameInfo_id(ctx, field)
+			case "frame":
+				return ec.fieldContext_FrameInfo_frame(ctx, field)
+			case "exprs":
+				return ec.fieldContext_FrameInfo_exprs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Collection_id(ctx context.Context, field graphql.CollectedField, obj *ent.Collection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Collection_id(ctx, field)
@@ -805,6 +1069,138 @@ func (ec *executionContext) fieldContext_FieldInfo_Type(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _FrameInfo_id(ctx context.Context, field graphql.CollectedField, obj *ent.FrameInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameInfo_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNID2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameInfo_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameInfo_frame(ctx context.Context, field graphql.CollectedField, obj *ent.FrameInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameInfo_frame(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Frame, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameInfo_frame(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameInfo_exprs(ctx context.Context, field graphql.CollectedField, obj *ent.FrameInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameInfo_exprs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exprs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameInfo_exprs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createCollection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_createCollection(ctx, field)
 	if err != nil {
@@ -910,6 +1306,128 @@ func (ec *executionContext) fieldContext_Mutation_collectCollection(ctx context.
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Collection", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addExprToCollectSpec(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addExprToCollectSpec(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddExprToCollectSpec(rctx, fc.Args["frame"].(string), fc.Args["expr"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CollectSpec)
+	fc.Result = res
+	return ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addExprToCollectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CollectSpec_id(ctx, field)
+			case "frames":
+				return ec.fieldContext_CollectSpec_frames(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectSpec", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addExprToCollectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeExprFromCollectSpec(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeExprFromCollectSpec(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveExprFromCollectSpec(rctx, fc.Args["expr"].(string), fc.Args["frame"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CollectSpec)
+	fc.Result = res
+	return ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeExprFromCollectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CollectSpec_id(ctx, field)
+			case "frames":
+				return ec.fieldContext_CollectSpec_frames(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectSpec", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeExprFromCollectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
@@ -1364,6 +1882,56 @@ func (ec *executionContext) fieldContext_Query_nodes(ctx context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_collectSpecs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_collectSpecs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CollectSpecs(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.CollectSpec)
+	fc.Result = res
+	return ec.marshalNCollectSpec2ᚕᚖstacksvizᚋentᚐCollectSpecᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_collectSpecs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CollectSpec_id(ctx, field)
+			case "frames":
+				return ec.fieldContext_CollectSpec_frames(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectSpec", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_collections(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_collections(ctx, field)
 	if err != nil {
@@ -1411,6 +1979,58 @@ func (ec *executionContext) fieldContext_Query_collections(ctx context.Context, 
 				return ec.fieldContext_Collection_processSnapshots(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Collection", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_frameInfos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_frameInfos(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().FrameInfos(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.FrameInfo)
+	fc.Result = res
+	return ec.marshalNFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_frameInfos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_FrameInfo_id(ctx, field)
+			case "frame":
+				return ec.fieldContext_FrameInfo_frame(ctx, field)
+			case "exprs":
+				return ec.fieldContext_FrameInfo_exprs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
 		},
 	}
 	return fc, nil
@@ -1585,6 +2205,66 @@ func (ec *executionContext) fieldContext_Query_availableVars(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_availableVars_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_frameInfo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_frameInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().FrameInfo(rctx, fc.Args["func"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.FrameInfo)
+	fc.Result = res
+	return ec.marshalOFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_frameInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_FrameInfo_id(ctx, field)
+			case "frame":
+				return ec.fieldContext_FrameInfo_frame(ctx, field)
+			case "exprs":
+				return ec.fieldContext_FrameInfo_exprs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_frameInfo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -1964,11 +2644,14 @@ func (ec *executionContext) _VarsAndTypes_Vars(ctx context.Context, field graphq
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*VarInfo)
 	fc.Result = res
-	return ec.marshalOVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_VarsAndTypes_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2013,11 +2696,14 @@ func (ec *executionContext) _VarsAndTypes_Types(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*TypeInfo)
 	fc.Result = res
-	return ec.marshalOTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_VarsAndTypes_Types(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3812,6 +4498,35 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCreateCollectSpecInput(ctx context.Context, obj interface{}) (ent.CreateCollectSpecInput, error) {
+	var it ent.CreateCollectSpecInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"frameIDs"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "frameIDs":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameIDs"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameIDs = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateCollectionInput(ctx context.Context, obj interface{}) (ent.CreateCollectionInput, error) {
 	var it ent.CreateCollectionInput
 	asMap := map[string]interface{}{}
@@ -3844,6 +4559,44 @@ func (ec *executionContext) unmarshalInputCreateCollectionInput(ctx context.Cont
 				return it, err
 			}
 			it.ProcessSnapshotIDs = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateFrameInfoInput(ctx context.Context, obj interface{}) (ent.CreateFrameInfoInput, error) {
+	var it ent.CreateFrameInfoInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"frame", "exprs"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "frame":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frame"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Frame = data
+		case "exprs":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exprs"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Exprs = data
 		}
 	}
 
@@ -3905,11 +4658,21 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 	switch obj := (obj).(type) {
 	case nil:
 		return graphql.Null
+	case *ent.CollectSpec:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._CollectSpec(ctx, sel, obj)
 	case *ent.Collection:
 		if obj == nil {
 			return graphql.Null
 		}
 		return ec._Collection(ctx, sel, obj)
+	case *ent.FrameInfo:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._FrameInfo(ctx, sel, obj)
 	case *ent.ProcessSnapshot:
 		if obj == nil {
 			return graphql.Null
@@ -3923,6 +4686,51 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var collectSpecImplementors = []string{"CollectSpec", "Node"}
+
+func (ec *executionContext) _CollectSpec(ctx context.Context, sel ast.SelectionSet, obj *ent.CollectSpec) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, collectSpecImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CollectSpec")
+		case "id":
+
+			out.Values[i] = ec._CollectSpec_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "frames":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._CollectSpec_frames(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
 
 var collectionImplementors = []string{"Collection", "Node"}
 
@@ -4011,6 +4819,48 @@ func (ec *executionContext) _FieldInfo(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var frameInfoImplementors = []string{"FrameInfo", "Node"}
+
+func (ec *executionContext) _FrameInfo(ctx context.Context, sel ast.SelectionSet, obj *ent.FrameInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, frameInfoImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FrameInfo")
+		case "id":
+
+			out.Values[i] = ec._FrameInfo_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "frame":
+
+			out.Values[i] = ec._FrameInfo_frame(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "exprs":
+
+			out.Values[i] = ec._FrameInfo_exprs(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -4042,6 +4892,24 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 				return ec._Mutation_collectCollection(ctx, field)
 			})
 
+		case "addExprToCollectSpec":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addExprToCollectSpec(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "removeExprFromCollectSpec":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeExprFromCollectSpec(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4204,6 +5072,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
+		case "collectSpecs":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_collectSpecs(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "collections":
 			field := field
 
@@ -4214,6 +5105,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_collections(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "frameInfos":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_frameInfos(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -4283,6 +5197,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "frameInfo":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_frameInfo(ctx, field)
 				return res
 			}
 
@@ -4404,10 +5338,16 @@ func (ec *executionContext) _VarsAndTypes(ctx context.Context, sel ast.Selection
 
 			out.Values[i] = ec._VarsAndTypes_Vars(ctx, field, obj)
 
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "Types":
 
 			out.Values[i] = ec._VarsAndTypes_Types(ctx, field, obj)
 
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4752,6 +5692,64 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNCollectSpec2stacksvizᚋentᚐCollectSpec(ctx context.Context, sel ast.SelectionSet, v ent.CollectSpec) graphql.Marshaler {
+	return ec._CollectSpec(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCollectSpec2ᚕᚖstacksvizᚋentᚐCollectSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.CollectSpec) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx context.Context, sel ast.SelectionSet, v *ent.CollectSpec) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CollectSpec(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNCollection2ᚕᚖstacksvizᚋentᚐCollectionᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Collection) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -4804,6 +5802,60 @@ func (ec *executionContext) marshalNCollection2ᚖstacksvizᚋentᚐCollection(c
 		return graphql.Null
 	}
 	return ec._Collection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameInfo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx context.Context, sel ast.SelectionSet, v *ent.FrameInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FrameInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNID2int(ctx context.Context, v interface{}) (int, error) {
@@ -4975,6 +6027,82 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
+func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*TypeInfo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx context.Context, sel ast.SelectionSet, v *TypeInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -4983,6 +6111,50 @@ func (ec *executionContext) marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx context
 		return graphql.Null
 	}
 	return ec._TypeInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*VarInfo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNVarInfo2ᚖstacksvizᚐVarInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNVarInfo2ᚖstacksvizᚐVarInfo(ctx context.Context, sel ast.SelectionSet, v *VarInfo) graphql.Marshaler {
@@ -5367,6 +6539,60 @@ func (ec *executionContext) marshalOFieldInfo2ᚖstacksvizᚐFieldInfo(ctx conte
 	return ec._FieldInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx context.Context, sel ast.SelectionSet, v *ent.FrameInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FrameInfo(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOID2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {
 	if v == nil {
 		return nil, nil
@@ -5521,100 +6747,6 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	}
 	res := graphql.MarshalString(*v)
 	return res
-}
-
-func (ec *executionContext) marshalOTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*TypeInfo) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalOVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*VarInfo) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNVarInfo2ᚖstacksvizᚐVarInfo(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

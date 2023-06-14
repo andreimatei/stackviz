@@ -5,11 +5,71 @@ package ent
 import (
 	"context"
 	"stacksviz/ent/collection"
+	"stacksviz/ent/frameinfo"
 	"stacksviz/ent/processsnapshot"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
 )
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (cs *CollectSpecQuery) CollectFields(ctx context.Context, satisfies ...string) (*CollectSpecQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return cs, nil
+	}
+	if err := cs.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return cs, nil
+}
+
+func (cs *CollectSpecQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "frames":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&FrameInfoClient{config: cs.config}).Query()
+			)
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, frameinfoImplementors)...); err != nil {
+				return err
+			}
+			cs.WithNamedFrames(alias, func(wq *FrameInfoQuery) {
+				*wq = *query
+			})
+		}
+	}
+	return nil
+}
+
+type collectspecPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []CollectSpecPaginateOption
+}
+
+func newCollectSpecPaginateArgs(rv map[string]any) *collectspecPaginateArgs {
+	args := &collectspecPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (c *CollectionQuery) CollectFields(ctx context.Context, satisfies ...string) (*CollectionQuery, error) {
@@ -69,6 +129,75 @@ type collectionPaginateArgs struct {
 
 func newCollectionPaginateArgs(rv map[string]any) *collectionPaginateArgs {
 	args := &collectionPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (fi *FrameInfoQuery) CollectFields(ctx context.Context, satisfies ...string) (*FrameInfoQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return fi, nil
+	}
+	if err := fi.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return fi, nil
+}
+
+func (fi *FrameInfoQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(frameinfo.Columns))
+		selectedFields = []string{frameinfo.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "frame":
+			if _, ok := fieldSeen[frameinfo.FieldFrame]; !ok {
+				selectedFields = append(selectedFields, frameinfo.FieldFrame)
+				fieldSeen[frameinfo.FieldFrame] = struct{}{}
+			}
+		case "exprs":
+			if _, ok := fieldSeen[frameinfo.FieldExprs]; !ok {
+				selectedFields = append(selectedFields, frameinfo.FieldExprs)
+				fieldSeen[frameinfo.FieldExprs] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		fi.Select(selectedFields...)
+	}
+	return nil
+}
+
+type frameinfoPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []FrameInfoPaginateOption
+}
+
+func newFrameInfoPaginateArgs(rv map[string]any) *frameinfoPaginateArgs {
+	args := &frameinfoPaginateArgs{}
 	if rv == nil {
 		return args
 	}

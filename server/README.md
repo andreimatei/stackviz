@@ -8,7 +8,11 @@ serving GraphQL queries. Regenerate with:
 go generate ./...
 ```
 
-The `ent` schema is defined in `ent/schema/collection.go` and
-`ent/schema/processsnapshot.go`. There's `gqlgen.yml`, which configures
-`gqlgen`. The connection between `ent` and `gqlgen` is done in `ent/entc.go`. I
+The `ent` schema is defined in `ent/schema/*.go`. There's `gqlgen.yml`, which
+configures `gqlgen`. This file lists `.graphql` files to use for the schema.
+These files are created by hand, except for `ent.graphql` which is created by
+`entgql`: the connection between `ent` and `gqlgen` is done in `ent/entc.go`. I
 think that tells `ent` to generate `ent.graphql`, which then `gqlgen` uses.
+
+GraphQL queries and mutations defined in the `.graphql` files get a generated
+"resolver", which we need to implement, in `collection.resolvers.go`.

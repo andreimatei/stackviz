@@ -8,6 +8,16 @@ import (
 )
 
 var (
+	// CollectSpecsColumns holds the columns for the "collect_specs" table.
+	CollectSpecsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+	}
+	// CollectSpecsTable holds the schema information for the "collect_specs" table.
+	CollectSpecsTable = &schema.Table{
+		Name:       "collect_specs",
+		Columns:    CollectSpecsColumns,
+		PrimaryKey: []*schema.Column{CollectSpecsColumns[0]},
+	}
 	// CollectionsColumns holds the columns for the "collections" table.
 	CollectionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -18,6 +28,27 @@ var (
 		Name:       "collections",
 		Columns:    CollectionsColumns,
 		PrimaryKey: []*schema.Column{CollectionsColumns[0]},
+	}
+	// FrameInfosColumns holds the columns for the "frame_infos" table.
+	FrameInfosColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "frame", Type: field.TypeString},
+		{Name: "exprs", Type: field.TypeJSON},
+		{Name: "collect_spec_frames", Type: field.TypeInt, Nullable: true},
+	}
+	// FrameInfosTable holds the schema information for the "frame_infos" table.
+	FrameInfosTable = &schema.Table{
+		Name:       "frame_infos",
+		Columns:    FrameInfosColumns,
+		PrimaryKey: []*schema.Column{FrameInfosColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "frame_infos_collect_specs_frames",
+				Columns:    []*schema.Column{FrameInfosColumns[3]},
+				RefColumns: []*schema.Column{CollectSpecsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// ProcessSnapshotsColumns holds the columns for the "process_snapshots" table.
 	ProcessSnapshotsColumns = []*schema.Column{
@@ -43,11 +74,14 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		CollectSpecsTable,
 		CollectionsTable,
+		FrameInfosTable,
 		ProcessSnapshotsTable,
 	}
 )
 
 func init() {
+	FrameInfosTable.ForeignKeys[0].RefTable = CollectSpecsTable
 	ProcessSnapshotsTable.ForeignKeys[0].RefTable = CollectionsTable
 }

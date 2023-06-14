@@ -1,8 +1,12 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import {
-  GetAvailableVariablesGQL, GetAvailableVariablesQuery,
+  AddExprToCollectSpecGQL,
+  GetAvailableVariablesGQL,
+  GetAvailableVariablesQuery,
   GetCollectionGQL,
-  ProcessSnapshot, TypeInfo
+  ProcessSnapshot,
+  RemoveExprFromCollectSpecGQL,
+  TypeInfo
 } from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute } from "@angular/router";
 import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
@@ -10,11 +14,14 @@ import { Action, IntegerValue, Tree, Update, ValueMap, } from "traceviz-client-c
 import { MatDrawer } from "@angular/material/sidenav";
 import { MatTreeNestedDataSource } from "@angular/material/tree";
 import { NestedTreeControl } from "@angular/cdk/tree";
+import { MatCheckboxChange } from "@angular/material/checkbox";
 
 interface TreeNode {
   name: string;
+  expr: string;
   type: string;
   children: TreeNode[];
+  checked: boolean;
 }
 
 @Component({
@@ -36,13 +43,14 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshotID!: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
-  protected availableVars: GetAvailableVariablesQuery['availableVars']['Vars'];
+  protected availableVars?: GetAvailableVariablesQuery['availableVars']['Vars'];
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
-  @ViewChild('functionDrawer') input!: MatDrawer;
+  @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   dataSource = new MatTreeNestedDataSource<TreeNode>();
   treeControl = new NestedTreeControl<TreeNode>(node => node.children);
 
 
+  protected selectedFrame?: string;
   // Data about the selected node. Each element is a string containing all the
   // captured variables from one frame (where all frames correspond to the
   // selected node).
@@ -52,6 +60,8 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly appCoreService: AppCoreService,
     private readonly getCollectionQuery: GetCollectionGQL,
     private readonly varsQuery: GetAvailableVariablesGQL,
+    private readonly addExpr: AddExprToCollectSpecGQL,
+    private readonly removeExpr: RemoveExprFromCollectSpecGQL,
     private readonly route: ActivatedRoute) {
   }
 
@@ -79,57 +89,70 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   onNodeCtrlClick(localState: ValueMap): void {
     console.log(localState);
-    console.log(this.input!);
+    console.log(this.frameDetailsSidebar!);
     if (localState.has('vars')) {
       console.log("!!! vars: ", localState.get('vars').toString());
       this.funcInfo = localState.expectStringList('vars');
     }
 
     const funcName = localState.expectString('full_name');
+    this.selectedFrame = funcName
     const pcOffset = localState.expectNumber('pc_off');
     console.log("!!! issuing available vars query: ", funcName, pcOffset);
     this.varsQuery.fetch({func: funcName, pcOff: pcOffset})
-     .subscribe(
-       results => {
-       console.log("!!! got available vars: ", results.data.availableVars);
-       this.availableVars = results.data.availableVars.Vars;
+      .subscribe(
+        results => {
+          if (results.error) {
+            console.log("!!! err: ", results.error)
+            return
+          }
+          this.availableVars = results.data.availableVars.Vars;
 
-       function structToTree(ti: TypeInfo, types: TypeInfo[], level: number): TreeNode[] {
-         if (level == 3) {
-           return [];
-         }
-         const res: TreeNode[] = [];
-         for (var f of ti.Fields!) {
-           if (!f) continue;
-           const n: TreeNode = {name: f.Name, type: f.Type, children: []};
-           const ti = types.find(t => t.Name == f!.Type);
-           if (ti) {
-             n.children = structToTree(ti, types, level+1)
-           }
-           res.push(n);
-         }
-         return res;
-       }
+          function structToTree(ti: TypeInfo, types: TypeInfo[], path: string, level: number, exprs: string[]): TreeNode[] {
+            if (level == 3) {
+              return [];
+            }
+            const res: TreeNode[] = [];
+            for (var f of ti.Fields!) {
+              if (!f) continue;
+              let expr = path + "." + f.Name
+              const n: TreeNode = {name: f.Name, type: f.Type, expr: expr, children: [], checked: exprs.includes(expr)};
+              const ti = types.find(t => t.Name == f!.Type);
+              if (ti) {
+                n.children = structToTree(ti, types, expr, level + 1, exprs)
+              }
+              res.push(n);
+            }
+            return res;
+          }
 
+          function convertToTree(vars: Array<{
+            Name: string;
+            Type: string;
+            VarType: number;
+          }>, types: TypeInfo[], exprs: string[]): Array<TreeNode> {
+            return vars.map<TreeNode>(v => {
+              const n: TreeNode = {name: v.Name, type: v.Type, expr: v.Name, children: Array<TreeNode>(), checked: exprs.includes(v.Name)}
+              const ti = types.find(t => t.Name == v.Type);
+              if (ti) {
+                n.children = structToTree(ti, types, v.Name, 0, exprs)
+              }
+              return n
+            })
+          }
 
-         function convertToTree(vars: Array<{
-         Name: string;
-         Type: string;
-         VarType: number
-       }>, types: TypeInfo[]): Array<TreeNode> {
-         return vars.map<TreeNode>(v => {
-           const n = {name: v.Name, type: v.Type, children: Array<TreeNode>()}
-           const ti = types.find(t => t.Name == v.Type);
-           if (ti) {
-             n.children = structToTree(ti, types, 0)
-           }
-           return n
-         })
-       }
-       this.dataSource.data = convertToTree(results.data.availableVars.Vars!, results.data.availableVars.Types!);
-     })
+          let exprs: string[] = results.data.frameInfo ? results.data.frameInfo.exprs : [];
+          this.dataSource.data = convertToTree(
+            results.data.availableVars.Vars,
+            results.data.availableVars.Types,
+            exprs);
+        })
 
-    this.input.toggle();
+    this.frameDetailsSidebar.open();
+  }
+
+  closeSidebar() {
+    this.frameDetailsSidebar.close()
   }
 
   onSelectedSnapshotChange(newValue: string) {
@@ -138,6 +161,19 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   }
 
   hasChild = (_: number, node: TreeNode) => node.children.length > 0;
+
+  varChange(ev: MatCheckboxChange, node: TreeNode) {
+    console.log(`clicked on ${node.name} in func ${this.selectedFrame}`);
+    if (ev.checked) {
+      this.addExpr.mutate({frame: this.selectedFrame!, expr: node.expr}).subscribe({
+        next: value => console.log(value.data?.addExprToCollectSpec.frames![0].exprs)
+      })
+    } else {
+      this.removeExpr.mutate({frame: this.selectedFrame!, expr: node.expr}).subscribe({
+        next: value => console.log(value.data?.removeExprFromCollectSpec.frames![0].exprs)
+      })
+    }
+  }
 }
 
 // Call is an implementation of Update that calls the provided function.

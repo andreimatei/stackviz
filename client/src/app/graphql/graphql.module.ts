@@ -44,9 +44,17 @@ export function createApollo(httpLink: HttpLink): ApolloClientOptions<any> {
     connectToDevTools: true,  // !!! change it based on environment (dev vs prod)
     assumeImmutableResults: true,
     defaultOptions: {
+      // TODO(andrei): I've disabled the cache because I'm not sure of the best
+      // pattern for invalidating it / refetching when the data changes.
       watchQuery: {
-        errorPolicy: 'all',
+        fetchPolicy: "no-cache",
       },
+      query: {
+        fetchPolicy: "no-cache",
+      },
+      mutate: {
+        fetchPolicy: "no-cache",
+      }
     },
   };
 }

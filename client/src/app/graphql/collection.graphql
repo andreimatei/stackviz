@@ -22,6 +22,24 @@ mutation CollectCollection {
   }
 }
 
+mutation AddExprToCollectSpec($frame: String!, $expr: String!) {
+  addExprToCollectSpec(frame: $frame, expr: $expr){
+    frames {
+      frame
+      exprs
+    }
+  }
+}
+
+mutation RemoveExprFromCollectSpec ($frame: String!, $expr: String!) {
+  removeExprFromCollectSpec(frame: $frame, expr: $expr){
+    frames {
+      frame
+      exprs
+    }
+  }
+}
+
 query GetAvailableVariables($func: String!, $pcOff: Int!) {
   availableVars(func: $func, pcOff: $pcOff) {
     Vars {
@@ -36,5 +54,8 @@ query GetAvailableVariables($func: String!, $pcOff: Int!) {
         Type
       }
     }
+  }
+  frameInfo(func: $func) {
+    exprs
   }
 }

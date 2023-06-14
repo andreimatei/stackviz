@@ -19,6 +19,6 @@ type VarInfo struct {
 }
 
 type VarsAndTypes struct {
-	Vars  []*VarInfo  `json:"Vars,omitempty"`
-	Types []*TypeInfo `json:"Types,omitempty"`
+	Vars  []*VarInfo  `json:"Vars"`
+	Types []*TypeInfo `json:"Types"`
 }

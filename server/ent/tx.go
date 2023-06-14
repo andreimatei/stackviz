@@ -12,8 +12,12 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// CollectSpec is the client for interacting with the CollectSpec builders.
+	CollectSpec *CollectSpecClient
 	// Collection is the client for interacting with the Collection builders.
 	Collection *CollectionClient
+	// FrameInfo is the client for interacting with the FrameInfo builders.
+	FrameInfo *FrameInfoClient
 	// ProcessSnapshot is the client for interacting with the ProcessSnapshot builders.
 	ProcessSnapshot *ProcessSnapshotClient
 
@@ -147,7 +151,9 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.CollectSpec = NewCollectSpecClient(tx.config)
 	tx.Collection = NewCollectionClient(tx.config)
+	tx.FrameInfo = NewFrameInfoClient(tx.config)
 	tx.ProcessSnapshot = NewProcessSnapshotClient(tx.config)
 }
 
@@ -158,7 +164,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: Collection.QueryXXX(), the query will be executed
+// applies a query, for example: CollectSpec.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

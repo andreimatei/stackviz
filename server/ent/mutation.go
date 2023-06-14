@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"stacksviz/ent/collection"
+	"stacksviz/ent/collectspec"
+	"stacksviz/ent/frameinfo"
 	"stacksviz/ent/predicate"
 	"stacksviz/ent/processsnapshot"
 	"sync"
@@ -24,9 +26,368 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
+	TypeCollectSpec     = "CollectSpec"
 	TypeCollection      = "Collection"
+	TypeFrameInfo       = "FrameInfo"
 	TypeProcessSnapshot = "ProcessSnapshot"
 )
+
+// CollectSpecMutation represents an operation that mutates the CollectSpec nodes in the graph.
+type CollectSpecMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	clearedFields map[string]struct{}
+	frames        map[int]struct{}
+	removedframes map[int]struct{}
+	clearedframes bool
+	done          bool
+	oldValue      func(context.Context) (*CollectSpec, error)
+	predicates    []predicate.CollectSpec
+}
+
+var _ ent.Mutation = (*CollectSpecMutation)(nil)
+
+// collectspecOption allows management of the mutation configuration using functional options.
+type collectspecOption func(*CollectSpecMutation)
+
+// newCollectSpecMutation creates new mutation for the CollectSpec entity.
+func newCollectSpecMutation(c config, op Op, opts ...collectspecOption) *CollectSpecMutation {
+	m := &CollectSpecMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeCollectSpec,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withCollectSpecID sets the ID field of the mutation.
+func withCollectSpecID(id int) collectspecOption {
+	return func(m *CollectSpecMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *CollectSpec
+		)
+		m.oldValue = func(ctx context.Context) (*CollectSpec, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().CollectSpec.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withCollectSpec sets the old CollectSpec of the mutation.
+func withCollectSpec(node *CollectSpec) collectspecOption {
+	return func(m *CollectSpecMutation) {
+		m.oldValue = func(context.Context) (*CollectSpec, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m CollectSpecMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m CollectSpecMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *CollectSpecMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *CollectSpecMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().CollectSpec.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// AddFrameIDs adds the "frames" edge to the FrameInfo entity by ids.
+func (m *CollectSpecMutation) AddFrameIDs(ids ...int) {
+	if m.frames == nil {
+		m.frames = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.frames[ids[i]] = struct{}{}
+	}
+}
+
+// ClearFrames clears the "frames" edge to the FrameInfo entity.
+func (m *CollectSpecMutation) ClearFrames() {
+	m.clearedframes = true
+}
+
+// FramesCleared reports if the "frames" edge to the FrameInfo entity was cleared.
+func (m *CollectSpecMutation) FramesCleared() bool {
+	return m.clearedframes
+}
+
+// RemoveFrameIDs removes the "frames" edge to the FrameInfo entity by IDs.
+func (m *CollectSpecMutation) RemoveFrameIDs(ids ...int) {
+	if m.removedframes == nil {
+		m.removedframes = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.frames, ids[i])
+		m.removedframes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedFrames returns the removed IDs of the "frames" edge to the FrameInfo entity.
+func (m *CollectSpecMutation) RemovedFramesIDs() (ids []int) {
+	for id := range m.removedframes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// FramesIDs returns the "frames" edge IDs in the mutation.
+func (m *CollectSpecMutation) FramesIDs() (ids []int) {
+	for id := range m.frames {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetFrames resets all changes to the "frames" edge.
+func (m *CollectSpecMutation) ResetFrames() {
+	m.frames = nil
+	m.clearedframes = false
+	m.removedframes = nil
+}
+
+// Where appends a list predicates to the CollectSpecMutation builder.
+func (m *CollectSpecMutation) Where(ps ...predicate.CollectSpec) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the CollectSpecMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *CollectSpecMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.CollectSpec, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *CollectSpecMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *CollectSpecMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (CollectSpec).
+func (m *CollectSpecMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *CollectSpecMutation) Fields() []string {
+	fields := make([]string, 0, 0)
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *CollectSpecMutation) Field(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *CollectSpecMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	return nil, fmt.Errorf("unknown CollectSpec field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CollectSpecMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown CollectSpec field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *CollectSpecMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *CollectSpecMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CollectSpecMutation) AddField(name string, value ent.Value) error {
+	return fmt.Errorf("unknown CollectSpec numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *CollectSpecMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *CollectSpecMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *CollectSpecMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown CollectSpec nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *CollectSpecMutation) ResetField(name string) error {
+	return fmt.Errorf("unknown CollectSpec field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *CollectSpecMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.frames != nil {
+		edges = append(edges, collectspec.EdgeFrames)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *CollectSpecMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case collectspec.EdgeFrames:
+		ids := make([]ent.Value, 0, len(m.frames))
+		for id := range m.frames {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *CollectSpecMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedframes != nil {
+		edges = append(edges, collectspec.EdgeFrames)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *CollectSpecMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case collectspec.EdgeFrames:
+		ids := make([]ent.Value, 0, len(m.removedframes))
+		for id := range m.removedframes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *CollectSpecMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedframes {
+		edges = append(edges, collectspec.EdgeFrames)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *CollectSpecMutation) EdgeCleared(name string) bool {
+	switch name {
+	case collectspec.EdgeFrames:
+		return m.clearedframes
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *CollectSpecMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown CollectSpec unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *CollectSpecMutation) ResetEdge(name string) error {
+	switch name {
+	case collectspec.EdgeFrames:
+		m.ResetFrames()
+		return nil
+	}
+	return fmt.Errorf("unknown CollectSpec edge %s", name)
+}
 
 // CollectionMutation represents an operation that mutates the Collection nodes in the graph.
 type CollectionMutation struct {
@@ -445,6 +806,402 @@ func (m *CollectionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Collection edge %s", name)
+}
+
+// FrameInfoMutation represents an operation that mutates the FrameInfo nodes in the graph.
+type FrameInfoMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	frame         *string
+	exprs         *[]string
+	appendexprs   []string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*FrameInfo, error)
+	predicates    []predicate.FrameInfo
+}
+
+var _ ent.Mutation = (*FrameInfoMutation)(nil)
+
+// frameinfoOption allows management of the mutation configuration using functional options.
+type frameinfoOption func(*FrameInfoMutation)
+
+// newFrameInfoMutation creates new mutation for the FrameInfo entity.
+func newFrameInfoMutation(c config, op Op, opts ...frameinfoOption) *FrameInfoMutation {
+	m := &FrameInfoMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeFrameInfo,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withFrameInfoID sets the ID field of the mutation.
+func withFrameInfoID(id int) frameinfoOption {
+	return func(m *FrameInfoMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *FrameInfo
+		)
+		m.oldValue = func(ctx context.Context) (*FrameInfo, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().FrameInfo.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withFrameInfo sets the old FrameInfo of the mutation.
+func withFrameInfo(node *FrameInfo) frameinfoOption {
+	return func(m *FrameInfoMutation) {
+		m.oldValue = func(context.Context) (*FrameInfo, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m FrameInfoMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m FrameInfoMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *FrameInfoMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *FrameInfoMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().FrameInfo.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetFrame sets the "frame" field.
+func (m *FrameInfoMutation) SetFrame(s string) {
+	m.frame = &s
+}
+
+// Frame returns the value of the "frame" field in the mutation.
+func (m *FrameInfoMutation) Frame() (r string, exists bool) {
+	v := m.frame
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFrame returns the old "frame" field's value of the FrameInfo entity.
+// If the FrameInfo object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FrameInfoMutation) OldFrame(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFrame is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFrame requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFrame: %w", err)
+	}
+	return oldValue.Frame, nil
+}
+
+// ResetFrame resets all changes to the "frame" field.
+func (m *FrameInfoMutation) ResetFrame() {
+	m.frame = nil
+}
+
+// SetExprs sets the "exprs" field.
+func (m *FrameInfoMutation) SetExprs(s []string) {
+	m.exprs = &s
+	m.appendexprs = nil
+}
+
+// Exprs returns the value of the "exprs" field in the mutation.
+func (m *FrameInfoMutation) Exprs() (r []string, exists bool) {
+	v := m.exprs
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExprs returns the old "exprs" field's value of the FrameInfo entity.
+// If the FrameInfo object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FrameInfoMutation) OldExprs(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExprs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExprs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExprs: %w", err)
+	}
+	return oldValue.Exprs, nil
+}
+
+// AppendExprs adds s to the "exprs" field.
+func (m *FrameInfoMutation) AppendExprs(s []string) {
+	m.appendexprs = append(m.appendexprs, s...)
+}
+
+// AppendedExprs returns the list of values that were appended to the "exprs" field in this mutation.
+func (m *FrameInfoMutation) AppendedExprs() ([]string, bool) {
+	if len(m.appendexprs) == 0 {
+		return nil, false
+	}
+	return m.appendexprs, true
+}
+
+// ResetExprs resets all changes to the "exprs" field.
+func (m *FrameInfoMutation) ResetExprs() {
+	m.exprs = nil
+	m.appendexprs = nil
+}
+
+// Where appends a list predicates to the FrameInfoMutation builder.
+func (m *FrameInfoMutation) Where(ps ...predicate.FrameInfo) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the FrameInfoMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *FrameInfoMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.FrameInfo, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *FrameInfoMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *FrameInfoMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (FrameInfo).
+func (m *FrameInfoMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *FrameInfoMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.frame != nil {
+		fields = append(fields, frameinfo.FieldFrame)
+	}
+	if m.exprs != nil {
+		fields = append(fields, frameinfo.FieldExprs)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *FrameInfoMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case frameinfo.FieldFrame:
+		return m.Frame()
+	case frameinfo.FieldExprs:
+		return m.Exprs()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *FrameInfoMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case frameinfo.FieldFrame:
+		return m.OldFrame(ctx)
+	case frameinfo.FieldExprs:
+		return m.OldExprs(ctx)
+	}
+	return nil, fmt.Errorf("unknown FrameInfo field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FrameInfoMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case frameinfo.FieldFrame:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFrame(v)
+		return nil
+	case frameinfo.FieldExprs:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExprs(v)
+		return nil
+	}
+	return fmt.Errorf("unknown FrameInfo field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *FrameInfoMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *FrameInfoMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FrameInfoMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown FrameInfo numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *FrameInfoMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *FrameInfoMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *FrameInfoMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown FrameInfo nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *FrameInfoMutation) ResetField(name string) error {
+	switch name {
+	case frameinfo.FieldFrame:
+		m.ResetFrame()
+		return nil
+	case frameinfo.FieldExprs:
+		m.ResetExprs()
+		return nil
+	}
+	return fmt.Errorf("unknown FrameInfo field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *FrameInfoMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *FrameInfoMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *FrameInfoMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *FrameInfoMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *FrameInfoMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *FrameInfoMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *FrameInfoMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown FrameInfo unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *FrameInfoMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown FrameInfo edge %s", name)
 }
 
 // ProcessSnapshotMutation represents an operation that mutates the ProcessSnapshot nodes in the graph.

@@ -17,6 +17,7 @@ autobind:
   - stacksviz/ent
   - stacksviz/ent/collection
   - stacksviz/ent/processsnapshot
+  - stacksviz/ent/collectspec
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:

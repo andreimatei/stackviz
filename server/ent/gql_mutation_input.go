@@ -2,6 +2,24 @@
 
 package ent
 
+// CreateCollectSpecInput represents a mutation input for creating collectspecs.
+type CreateCollectSpecInput struct {
+	FrameIDs []int
+}
+
+// Mutate applies the CreateCollectSpecInput on the CollectSpecMutation builder.
+func (i *CreateCollectSpecInput) Mutate(m *CollectSpecMutation) {
+	if v := i.FrameIDs; len(v) > 0 {
+		m.AddFrameIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the CreateCollectSpecInput on the CollectSpecCreate builder.
+func (c *CollectSpecCreate) SetInput(i CreateCollectSpecInput) *CollectSpecCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateCollectionInput represents a mutation input for creating collections.
 type CreateCollectionInput struct {
 	Name               string
@@ -18,6 +36,26 @@ func (i *CreateCollectionInput) Mutate(m *CollectionMutation) {
 
 // SetInput applies the change-set in the CreateCollectionInput on the CollectionCreate builder.
 func (c *CollectionCreate) SetInput(i CreateCollectionInput) *CollectionCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateFrameInfoInput represents a mutation input for creating frameinfos.
+type CreateFrameInfoInput struct {
+	Frame string
+	Exprs []string
+}
+
+// Mutate applies the CreateFrameInfoInput on the FrameInfoMutation builder.
+func (i *CreateFrameInfoInput) Mutate(m *FrameInfoMutation) {
+	m.SetFrame(i.Frame)
+	if v := i.Exprs; v != nil {
+		m.SetExprs(v)
+	}
+}
+
+// SetInput applies the change-set in the CreateFrameInfoInput on the FrameInfoCreate builder.
+func (c *FrameInfoCreate) SetInput(i CreateFrameInfoInput) *FrameInfoCreate {
 	i.Mutate(c.Mutation())
 	return c
 }

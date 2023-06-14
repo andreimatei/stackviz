@@ -11,6 +11,8 @@ import (
 	"stacksviz/ent/migrate"
 
 	"stacksviz/ent/collection"
+	"stacksviz/ent/collectspec"
+	"stacksviz/ent/frameinfo"
 	"stacksviz/ent/processsnapshot"
 
 	"entgo.io/ent"
@@ -24,8 +26,12 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// CollectSpec is the client for interacting with the CollectSpec builders.
+	CollectSpec *CollectSpecClient
 	// Collection is the client for interacting with the Collection builders.
 	Collection *CollectionClient
+	// FrameInfo is the client for interacting with the FrameInfo builders.
+	FrameInfo *FrameInfoClient
 	// ProcessSnapshot is the client for interacting with the ProcessSnapshot builders.
 	ProcessSnapshot *ProcessSnapshotClient
 	// additional fields for node api
@@ -43,7 +49,9 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.CollectSpec = NewCollectSpecClient(c.config)
 	c.Collection = NewCollectionClient(c.config)
+	c.FrameInfo = NewFrameInfoClient(c.config)
 	c.ProcessSnapshot = NewProcessSnapshotClient(c.config)
 }
 
@@ -127,7 +135,9 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:             ctx,
 		config:          cfg,
+		CollectSpec:     NewCollectSpecClient(cfg),
 		Collection:      NewCollectionClient(cfg),
+		FrameInfo:       NewFrameInfoClient(cfg),
 		ProcessSnapshot: NewProcessSnapshotClient(cfg),
 	}, nil
 }
@@ -148,7 +158,9 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:             ctx,
 		config:          cfg,
+		CollectSpec:     NewCollectSpecClient(cfg),
 		Collection:      NewCollectionClient(cfg),
+		FrameInfo:       NewFrameInfoClient(cfg),
 		ProcessSnapshot: NewProcessSnapshotClient(cfg),
 	}, nil
 }
@@ -156,7 +168,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Collection.
+//		CollectSpec.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -178,26 +190,168 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.CollectSpec.Use(hooks...)
 	c.Collection.Use(hooks...)
+	c.FrameInfo.Use(hooks...)
 	c.ProcessSnapshot.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
+	c.CollectSpec.Intercept(interceptors...)
 	c.Collection.Intercept(interceptors...)
+	c.FrameInfo.Intercept(interceptors...)
 	c.ProcessSnapshot.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *CollectSpecMutation:
+		return c.CollectSpec.mutate(ctx, m)
 	case *CollectionMutation:
 		return c.Collection.mutate(ctx, m)
+	case *FrameInfoMutation:
+		return c.FrameInfo.mutate(ctx, m)
 	case *ProcessSnapshotMutation:
 		return c.ProcessSnapshot.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// CollectSpecClient is a client for the CollectSpec schema.
+type CollectSpecClient struct {
+	config
+}
+
+// NewCollectSpecClient returns a client for the CollectSpec from the given config.
+func NewCollectSpecClient(c config) *CollectSpecClient {
+	return &CollectSpecClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `collectspec.Hooks(f(g(h())))`.
+func (c *CollectSpecClient) Use(hooks ...Hook) {
+	c.hooks.CollectSpec = append(c.hooks.CollectSpec, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `collectspec.Intercept(f(g(h())))`.
+func (c *CollectSpecClient) Intercept(interceptors ...Interceptor) {
+	c.inters.CollectSpec = append(c.inters.CollectSpec, interceptors...)
+}
+
+// Create returns a builder for creating a CollectSpec entity.
+func (c *CollectSpecClient) Create() *CollectSpecCreate {
+	mutation := newCollectSpecMutation(c.config, OpCreate)
+	return &CollectSpecCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of CollectSpec entities.
+func (c *CollectSpecClient) CreateBulk(builders ...*CollectSpecCreate) *CollectSpecCreateBulk {
+	return &CollectSpecCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for CollectSpec.
+func (c *CollectSpecClient) Update() *CollectSpecUpdate {
+	mutation := newCollectSpecMutation(c.config, OpUpdate)
+	return &CollectSpecUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *CollectSpecClient) UpdateOne(cs *CollectSpec) *CollectSpecUpdateOne {
+	mutation := newCollectSpecMutation(c.config, OpUpdateOne, withCollectSpec(cs))
+	return &CollectSpecUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *CollectSpecClient) UpdateOneID(id int) *CollectSpecUpdateOne {
+	mutation := newCollectSpecMutation(c.config, OpUpdateOne, withCollectSpecID(id))
+	return &CollectSpecUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for CollectSpec.
+func (c *CollectSpecClient) Delete() *CollectSpecDelete {
+	mutation := newCollectSpecMutation(c.config, OpDelete)
+	return &CollectSpecDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *CollectSpecClient) DeleteOne(cs *CollectSpec) *CollectSpecDeleteOne {
+	return c.DeleteOneID(cs.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *CollectSpecClient) DeleteOneID(id int) *CollectSpecDeleteOne {
+	builder := c.Delete().Where(collectspec.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &CollectSpecDeleteOne{builder}
+}
+
+// Query returns a query builder for CollectSpec.
+func (c *CollectSpecClient) Query() *CollectSpecQuery {
+	return &CollectSpecQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeCollectSpec},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a CollectSpec entity by its id.
+func (c *CollectSpecClient) Get(ctx context.Context, id int) (*CollectSpec, error) {
+	return c.Query().Where(collectspec.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *CollectSpecClient) GetX(ctx context.Context, id int) *CollectSpec {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryFrames queries the frames edge of a CollectSpec.
+func (c *CollectSpecClient) QueryFrames(cs *CollectSpec) *FrameInfoQuery {
+	query := (&FrameInfoClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := cs.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(collectspec.Table, collectspec.FieldID, id),
+			sqlgraph.To(frameinfo.Table, frameinfo.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, collectspec.FramesTable, collectspec.FramesColumn),
+		)
+		fromV = sqlgraph.Neighbors(cs.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *CollectSpecClient) Hooks() []Hook {
+	return c.hooks.CollectSpec
+}
+
+// Interceptors returns the client interceptors.
+func (c *CollectSpecClient) Interceptors() []Interceptor {
+	return c.inters.CollectSpec
+}
+
+func (c *CollectSpecClient) mutate(ctx context.Context, m *CollectSpecMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&CollectSpecCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&CollectSpecUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&CollectSpecUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&CollectSpecDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown CollectSpec mutation op: %q", m.Op())
 	}
 }
 
@@ -335,6 +489,124 @@ func (c *CollectionClient) mutate(ctx context.Context, m *CollectionMutation) (V
 	}
 }
 
+// FrameInfoClient is a client for the FrameInfo schema.
+type FrameInfoClient struct {
+	config
+}
+
+// NewFrameInfoClient returns a client for the FrameInfo from the given config.
+func NewFrameInfoClient(c config) *FrameInfoClient {
+	return &FrameInfoClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `frameinfo.Hooks(f(g(h())))`.
+func (c *FrameInfoClient) Use(hooks ...Hook) {
+	c.hooks.FrameInfo = append(c.hooks.FrameInfo, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `frameinfo.Intercept(f(g(h())))`.
+func (c *FrameInfoClient) Intercept(interceptors ...Interceptor) {
+	c.inters.FrameInfo = append(c.inters.FrameInfo, interceptors...)
+}
+
+// Create returns a builder for creating a FrameInfo entity.
+func (c *FrameInfoClient) Create() *FrameInfoCreate {
+	mutation := newFrameInfoMutation(c.config, OpCreate)
+	return &FrameInfoCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of FrameInfo entities.
+func (c *FrameInfoClient) CreateBulk(builders ...*FrameInfoCreate) *FrameInfoCreateBulk {
+	return &FrameInfoCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for FrameInfo.
+func (c *FrameInfoClient) Update() *FrameInfoUpdate {
+	mutation := newFrameInfoMutation(c.config, OpUpdate)
+	return &FrameInfoUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FrameInfoClient) UpdateOne(fi *FrameInfo) *FrameInfoUpdateOne {
+	mutation := newFrameInfoMutation(c.config, OpUpdateOne, withFrameInfo(fi))
+	return &FrameInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *FrameInfoClient) UpdateOneID(id int) *FrameInfoUpdateOne {
+	mutation := newFrameInfoMutation(c.config, OpUpdateOne, withFrameInfoID(id))
+	return &FrameInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for FrameInfo.
+func (c *FrameInfoClient) Delete() *FrameInfoDelete {
+	mutation := newFrameInfoMutation(c.config, OpDelete)
+	return &FrameInfoDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FrameInfoClient) DeleteOne(fi *FrameInfo) *FrameInfoDeleteOne {
+	return c.DeleteOneID(fi.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *FrameInfoClient) DeleteOneID(id int) *FrameInfoDeleteOne {
+	builder := c.Delete().Where(frameinfo.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &FrameInfoDeleteOne{builder}
+}
+
+// Query returns a query builder for FrameInfo.
+func (c *FrameInfoClient) Query() *FrameInfoQuery {
+	return &FrameInfoQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFrameInfo},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a FrameInfo entity by its id.
+func (c *FrameInfoClient) Get(ctx context.Context, id int) (*FrameInfo, error) {
+	return c.Query().Where(frameinfo.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FrameInfoClient) GetX(ctx context.Context, id int) *FrameInfo {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *FrameInfoClient) Hooks() []Hook {
+	return c.hooks.FrameInfo
+}
+
+// Interceptors returns the client interceptors.
+func (c *FrameInfoClient) Interceptors() []Interceptor {
+	return c.inters.FrameInfo
+}
+
+func (c *FrameInfoClient) mutate(ctx context.Context, m *FrameInfoMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FrameInfoCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FrameInfoUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FrameInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FrameInfoDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown FrameInfo mutation op: %q", m.Op())
+	}
+}
+
 // ProcessSnapshotClient is a client for the ProcessSnapshot schema.
 type ProcessSnapshotClient struct {
 	config
@@ -456,9 +728,9 @@ func (c *ProcessSnapshotClient) mutate(ctx context.Context, m *ProcessSnapshotMu
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Collection, ProcessSnapshot []ent.Hook
+		CollectSpec, Collection, FrameInfo, ProcessSnapshot []ent.Hook
 	}
 	inters struct {
-		Collection, ProcessSnapshot []ent.Interceptor
+		CollectSpec, Collection, FrameInfo, ProcessSnapshot []ent.Interceptor
 	}
 )
