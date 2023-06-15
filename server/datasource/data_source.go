@@ -44,6 +44,8 @@ const (
 	goroutineIDKey           = "g_id"
 	varsKey                  = "vars"
 	pcOffsetKey              = "pc_off"
+	fileKey                  = "file"
+	lineKey                  = "line"
 )
 
 // DataSource implements the querydispatcher.dataSource that deals with
@@ -337,8 +339,14 @@ func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSp
 		weightedtree.Path(t),
 		tvutil.StringProperty(fullNameKey, t.function.Complete),
 		tvutil.IntegerProperty(pcOffsetKey, t.pcOffset),
+		tvutil.IntegerProperty(lineKey, int64(t.line)),
+		tvutil.StringProperty(fileKey, t.file),
 		tvutil.StringsProperty(varsKey, varsProp...),
-		tvutil.StringProperty(detailsFormatKey, fmt.Sprintf("$(%s) - $(%s) +$(%s)", fullNameKey, varsKey, pcOffsetKey)),
+		tvutil.StringProperty(
+			detailsFormatKey,
+			fmt.Sprintf("$(%s) - $(%s) $(%s):$(%s)",
+				fullNameKey, varsKey, fileKey, lineKey,
+			)),
 		colorSpace.PrimaryColor(functionNameToColor(t.function.Complete)),
 		label.Format(fmt.Sprintf("$(%s)", nameKey)))
 	for _, c := range node.Children {

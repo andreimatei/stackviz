@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import {
-  AddExprToCollectSpecGQL,
+  AddExprToCollectSpecGQL, FrameInfo,
   GetAvailableVariablesGQL,
   GetAvailableVariablesQuery,
   GetCollectionGQL,
@@ -22,6 +22,10 @@ interface TreeNode {
   type: string;
   children: TreeNode[];
   checked: boolean;
+}
+
+class Frame {
+  constructor(public name: string, public file: string, public line: number){};
 }
 
 @Component({
@@ -50,7 +54,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   treeControl = new NestedTreeControl<TreeNode>(node => node.children);
 
 
-  protected selectedFrame?: string;
+  protected selectedFrame?: Frame;
   // Data about the selected node. Each element is a string containing all the
   // captured variables from one frame (where all frames correspond to the
   // selected node).
@@ -96,9 +100,9 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     }
 
     const funcName = localState.expectString('full_name');
-    this.selectedFrame = funcName
+    this.selectedFrame = new Frame(funcName, localState.expectString('file'), localState.expectNumber('line'))
     const pcOffset = localState.expectNumber('pc_off');
-    console.log("!!! issuing available vars query: ", funcName, pcOffset);
+    console.log("querying for available vars for func: %s off: %d", funcName, pcOffset);
     this.varsQuery.fetch({func: funcName, pcOff: pcOffset})
       .subscribe(
         results => {
@@ -165,11 +169,11 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   varChange(ev: MatCheckboxChange, node: TreeNode) {
     console.log(`clicked on ${node.name} in func ${this.selectedFrame}`);
     if (ev.checked) {
-      this.addExpr.mutate({frame: this.selectedFrame!, expr: node.expr}).subscribe({
+      this.addExpr.mutate({frame: this.selectedFrame!.name, expr: node.expr}).subscribe({
         next: value => console.log(value.data?.addExprToCollectSpec.frames![0].exprs)
       })
     } else {
-      this.removeExpr.mutate({frame: this.selectedFrame!, expr: node.expr}).subscribe({
+      this.removeExpr.mutate({frame: this.selectedFrame!.name, expr: node.expr}).subscribe({
         next: value => console.log(value.data?.removeExprFromCollectSpec.frames![0].exprs)
       })
     }

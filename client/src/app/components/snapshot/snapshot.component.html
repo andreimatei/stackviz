@@ -8,8 +8,9 @@
         </button>
       </div>
       <h4>
-        {{selectedFrame}}
+        {{selectedFrame?.name}}
       </h4>
+      <pre>{{selectedFrame?.file}}:{{selectedFrame?.line}}</pre>
 
 
       <mat-expansion-panel expanded>
