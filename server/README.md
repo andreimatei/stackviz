@@ -16,3 +16,23 @@ think that tells `ent` to generate `ent.graphql`, which then `gqlgen` uses.
 
 GraphQL queries and mutations defined in the `.graphql` files get a generated
 "resolver", which we need to implement, in `collection.resolvers.go`.
+
+---
+
+# Running everything:
+
+```shell
+./cockroach start-single-node --insecure --logtostderr
+./workload workload run kv --read-percent=100 --concurrency=10
+./dlv attach --accept-multiclient `pidof cockroach` --listen=127.0.0.1:45689 --headless --log
+
+[/home/andrei/src/github.com/andreimatei/delve-agent]
+go run ./cmd/agent.go
+
+[/home/andrei/src/github.com/andreimatei/stackviz/server]
+go build -o stacky cmd/main.go
+./stacky --resource_root ../client/dist/client --stacks_dir ./datasource
+
+[/home/andrei/src/github.com/andreimatei/stackviz/client]
+ng serve
+```
