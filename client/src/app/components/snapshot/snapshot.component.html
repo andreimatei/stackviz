@@ -1,12 +1,15 @@
 <div class="app">
   <mat-sidenav-container class="example-container" autosize>
     <mat-sidenav #functionDrawer mode="side" position="end" class="func-details-drawer">
-    <div style="display: flex; flex-flow: row; justify-content: space-between">
-      <h3>Function details</h3>
-      <button mat-icon-button mat-dialog-close (click)="closeSidebar()">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
+      <div style="display: flex; flex-flow: row; justify-content: space-between">
+        <h3>Function details</h3>
+        <button mat-icon-button mat-dialog-close (click)="closeSidebar()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <h4>
+        {{selectedFrame}}
+      </h4>
 
 
       <mat-expansion-panel expanded>
@@ -19,40 +22,39 @@
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        <mat-tree [dataSource]="dataSource" [treeControl]="treeControl" class="example-tree">
+        <mat-tree [dataSource]="dataSource" [treeControl]="treeControl" class="tree">
           <!-- This is the tree node template for leaf nodes -->
-          <!-- There is inline padding applied to this node using styles.
-            This padding value depends on the mat-icon-button width. -->
           <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle>
             <mat-checkbox (change)="varChange($event, node)" checked={{node.checked}}>
-              {{node.name}}:{{node.type}} : {{node.checked}}
             </mat-checkbox>
+            <!-- The padding compensates for the absence of the expansion button. -->
+            <div style="padding-left: 58px">
+              {{node.name}}:{{node.type}}
+            </div>
           </mat-tree-node>
+
           <!-- This is the tree node template for expandable nodes -->
           <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild">
             <div class="mat-tree-node">
-              <button mat-icon-button matTreeNodeToggle
-                      [attr.aria-label]="'Toggle ' + node.name">
-                <mat-icon class="mat-icon-rtl-mirror">
-                  {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
-                </mat-icon>
-              </button>
               <mat-checkbox (change)="varChange($event, node)" checked={{node.checked}}>
-                {{node.name}}:{{node.type}}
+                <div style="white-space: nowrap">
+                  <button mat-icon-button matTreeNodeToggle>
+                    <mat-icon class="mat-icon-rtl-mirror">
+                      {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
+                    </mat-icon>
+                  </button>
+                  {{node.name}}:{{node.type}}
+                </div>
               </mat-checkbox>
             </div>
             <!-- There is inline padding applied to this div using styles.
                 This padding value depends on the mat-icon-button width.  -->
-            <div [class.example-tree-invisible]="!treeControl.isExpanded(node)"
-                 role="group">
+            <div [class.tree-invisible]="!treeControl.isExpanded(node)" role="group">
               <ng-container matTreeNodeOutlet></ng-container>
             </div>
           </mat-nested-tree-node>
         </mat-tree>
-
-
       </mat-expansion-panel>
-
 
       <mat-expansion-panel expanded>
         <mat-expansion-panel-header>
@@ -74,16 +76,10 @@
             {{v}}
           </mat-expansion-panel>
         </mat-accordion>
-
-
       </mat-expansion-panel>
     </mat-sidenav>
+
     <mat-sidenav-content>
-
-      <!--
-    <p><button mat-button (click)="sidenav.toggle()">sidenav.toggle()</button></p>
-    -->
-
       <app-core>
         <!--
           Define the global key-value mapping, with it initial values.  This global state provides
