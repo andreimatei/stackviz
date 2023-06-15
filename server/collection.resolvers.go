@@ -106,7 +106,7 @@ func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr s
 	ci := r.getOrCreateCollectSpec(ctx)
 	fi, err := ci.QueryFrames().Where(frameinfo.Frame(frame)).Only(ctx)
 	nfe := &ent.NotFoundError{}
-	if errors.As(err, nfe) {
+	if errors.As(err, &nfe) {
 		return ci, nil
 	}
 	foundIndex := -1

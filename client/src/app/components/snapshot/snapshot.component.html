@@ -1,19 +1,37 @@
 <div class="app">
   <mat-sidenav-container class="example-container" autosize>
-    <mat-sidenav #functionDrawer mode="side" position="end" class="func-details-drawer">
-      <div style="display: flex; flex-flow: row; justify-content: space-between">
-        <h3>Function details</h3>
-        <button mat-icon-button mat-dialog-close (click)="closeSidebar()">
-          <mat-icon>close</mat-icon>
-        </button>
+    <mat-sidenav #functionDrawer mode="side" position="end"
+                 class="func-details-drawer"
+                 mode="side"
+                 mwlResizable
+                 [enableGhostResize]="true"
+                 [ngStyle]="style"
+                 [validateResize]="validateResize"
+                 (resizeEnd)="onResizeEnd($event)"
+    >
+      <div
+        class="resize-handle-left"
+        mwlResizeHandle
+        [resizeEdges]="{ left: true }"
+      >
       </div>
-      <h4>
-        {{selectedFrame?.name}}
-      </h4>
-      <pre>{{selectedFrame?.file}}:{{selectedFrame?.line}}</pre>
 
 
-      <mat-expansion-panel expanded>
+      <div style="padding-left: 5px;">
+        <div style="display: flex; flex-flow: row; justify-content: space-between;">
+          <h2>Function details</h2>
+          <button mat-icon-button mat-dialog-close (click)="closeSidebar()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <b>
+          {{selectedFrame?.name}}
+        </b>
+        <pre>{{selectedFrame?.file}}:{{selectedFrame?.line}}</pre>
+      </div>
+
+
+      <mat-expansion-panel expanded style="margin-left: 5px">
         <mat-expansion-panel-header>
           <mat-panel-title>
             Available variables
@@ -57,7 +75,7 @@
         </mat-tree>
       </mat-expansion-panel>
 
-      <mat-expansion-panel expanded>
+      <mat-expansion-panel expanded style="margin-left: 5px">
         <mat-expansion-panel-header>
           <mat-panel-title>
             Captured variables

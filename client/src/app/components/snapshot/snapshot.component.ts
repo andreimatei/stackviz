@@ -15,6 +15,8 @@ import { MatDrawer } from "@angular/material/sidenav";
 import { MatTreeNestedDataSource } from "@angular/material/tree";
 import { NestedTreeControl } from "@angular/cdk/tree";
 import { MatCheckboxChange } from "@angular/material/checkbox";
+import { ResizeEvent } from 'angular-resizable-element';
+
 
 interface TreeNode {
   name: string;
@@ -177,6 +179,27 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
         next: value => console.log(value.data?.removeExprFromCollectSpec.frames![0].exprs)
       })
     }
+  }
+
+  public style: object = {
+    "width": '500px',
+    "text-color": 'red',
+  };
+  onResizeEnd(event: ResizeEvent): void {
+    console.log("!!! width: %d", event.rectangle.width)
+    this.style = {
+      // position: 'fixed',
+      // left: `${event.rectangle.left}px`,
+      // top: `${event.rectangle.top}px`,
+      // width: `${event.rectangle.width}px`,
+      // height: `${event.rectangle.height}px`,
+      width: `${event.rectangle.width}px`,
+    };
+
+  }
+
+  validateResize(event: ResizeEvent): boolean {
+    return true;
   }
 }
 

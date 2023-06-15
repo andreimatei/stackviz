@@ -18,6 +18,7 @@ import {MatCheckboxModule} from '@angular/material/checkbox';
 import { MatTreeModule } from "@angular/material/tree";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
+import { ResizableModule } from 'angular-resizable-element';
 
 
 @NgModule({
@@ -42,9 +43,10 @@ import { MatButtonModule } from "@angular/material/button";
     MatInputModule,
     MatSidenavModule,
     MatTreeModule,
-    TextFieldModule,
-    StacksComponent,
+    ResizableModule,
     RouterModule,
+    StacksComponent,
+    TextFieldModule,
     WeightedTreeModule,
   ],
   providers: [],
