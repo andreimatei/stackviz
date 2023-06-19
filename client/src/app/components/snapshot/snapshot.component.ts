@@ -1,16 +1,17 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import {
-  AddExprToCollectSpecGQL, FrameInfo,
+  AddExprToCollectSpecGQL,
   GetAvailableVariablesGQL,
   GetAvailableVariablesQuery,
   GetCollectionGQL,
   ProcessSnapshot,
   RemoveExprFromCollectSpecGQL,
-  TypeInfo
+  TypeInfo,
+  VarInfo
 } from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute } from "@angular/router";
 import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
-import { Action, IntegerValue, Tree, Update, ValueMap, } from "traceviz-client-core";
+import { Action, IntegerValue, Update, ValueMap, } from "traceviz-client-core";
 import { MatDrawer } from "@angular/material/sidenav";
 import { MatTreeNestedDataSource } from "@angular/material/tree";
 import { NestedTreeControl } from "@angular/cdk/tree";
@@ -18,16 +19,34 @@ import { MatCheckboxChange } from "@angular/material/checkbox";
 import { ResizeEvent } from 'angular-resizable-element';
 
 
-interface TreeNode {
-  name: string;
-  expr: string;
-  type: string;
+class TreeNode {
   children: TreeNode[];
-  checked: boolean;
+  color: string;
+  fontWeight: string;
+
+  constructor(readonly name: string, readonly expr: string, readonly type: string, children: TreeNode[] | null, readonly checked: boolean, color?: string, fontWeight?: string) {
+    if (children == null) {
+      this.children = [];
+    } else {
+      this.children = children;
+    }
+    if (typeof color !== 'undefined') {
+      this.color = color;
+    } else {
+      this.color = "black";
+    }
+    if (typeof fontWeight !== 'undefined') {
+      this.fontWeight = fontWeight;
+    } else {
+      this.fontWeight = "normal";
+    }
+  }
+
 }
 
 class Frame {
-  constructor(public name: string, public file: string, public line: number){};
+  constructor(public name: string, public file: string, public line: number) {
+  };
 }
 
 @Component({
@@ -94,10 +113,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   }
 
   onNodeCtrlClick(localState: ValueMap): void {
-    console.log(localState);
-    console.log(this.frameDetailsSidebar!);
     if (localState.has('vars')) {
-      console.log("!!! vars: ", localState.get('vars').toString());
       this.funcInfo = localState.expectStringList('vars');
     }
 
@@ -122,7 +138,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
             for (var f of ti.Fields!) {
               if (!f) continue;
               let expr = path + "." + f.Name
-              const n: TreeNode = {name: f.Name, type: f.Type, expr: expr, children: [], checked: exprs.includes(expr)};
+              const n: TreeNode = new TreeNode(f.Name, f.Type, expr, null, exprs.includes(expr));
               const ti = types.find(t => t.Name == f!.Type);
               if (ti) {
                 n.children = structToTree(ti, types, expr, level + 1, exprs)
@@ -132,13 +148,12 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
             return res;
           }
 
-          function convertToTree(vars: Array<{
-            Name: string;
-            Type: string;
-            VarType: number;
-          }>, types: TypeInfo[], exprs: string[]): Array<TreeNode> {
+          function convertToTree(vars: VarInfo[], types: TypeInfo[], exprs: string[]): Array<TreeNode> {
             return vars.map<TreeNode>(v => {
-              const n: TreeNode = {name: v.Name, type: v.Type, expr: v.Name, children: Array<TreeNode>(), checked: exprs.includes(v.Name)}
+              const n: TreeNode = new TreeNode( v.Name, v.Type, v.Name, null, exprs.includes(v.Name),
+                v.LoclistAvailable ? 'black' : 'gray',
+                v.FormalParameter ? 'bold' : 'normal',
+              );
               const ti = types.find(t => t.Name == v.Type);
               if (ti) {
                 n.children = structToTree(ti, types, v.Name, 0, exprs)
@@ -185,6 +200,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     "width": '500px',
     "text-color": 'red',
   };
+
   onResizeEnd(event: ResizeEvent): void {
     console.log("!!! width: %d", event.rectangle.width)
     this.style = {

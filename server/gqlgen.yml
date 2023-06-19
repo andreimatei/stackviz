@@ -25,6 +25,7 @@ models:
   ID:
     model:
       - github.com/99designs/gqlgen/graphql.IntID
+      - github.com/99designs/gqlgen/graphql.Boolean
   Node:
     model:
       - stacksviz/ent.Noder

@@ -20,7 +20,8 @@ type VarsAndTypes {
 type VarInfo {
   Name: String!
   Type: String!
-  VarType: Int!
+  FormalParameter: Boolean!
+  LoclistAvailable: Boolean!
 }
 
 type TypeInfo {

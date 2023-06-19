@@ -47,7 +47,7 @@
             <mat-checkbox (change)="varChange($event, node)" checked={{node.checked}}>
             </mat-checkbox>
             <!-- The padding compensates for the absence of the expansion button. -->
-            <div style="padding-left: 58px">
+            <div style="padding-left: 58px" [style.color]="node.color" [style.fontWeight]="node.fontWeight">
               {{node.name}}:{{node.type}}
             </div>
           </mat-tree-node>
@@ -62,7 +62,9 @@
                       {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
                     </mat-icon>
                   </button>
-                  {{node.name}}:{{node.type}}
+                  <span [style.color]="node.color" [style.fontWeight]="node.fontWeight">
+                    {{node.name}}:{{node.type}}
+                  </span>
                 </div>
               </mat-checkbox>
             </div>

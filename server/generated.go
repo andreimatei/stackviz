@@ -107,9 +107,10 @@ type ComplexityRoot struct {
 	}
 
 	VarInfo struct {
-		Name    func(childComplexity int) int
-		Type    func(childComplexity int) int
-		VarType func(childComplexity int) int
+		FormalParameter  func(childComplexity int) int
+		LoclistAvailable func(childComplexity int) int
+		Name             func(childComplexity int) int
+		Type             func(childComplexity int) int
 	}
 
 	VarsAndTypes struct {
@@ -422,6 +423,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TypeInfo.Name(childComplexity), true
 
+	case "VarInfo.FormalParameter":
+		if e.complexity.VarInfo.FormalParameter == nil {
+			break
+		}
+
+		return e.complexity.VarInfo.FormalParameter(childComplexity), true
+
+	case "VarInfo.LoclistAvailable":
+		if e.complexity.VarInfo.LoclistAvailable == nil {
+			break
+		}
+
+		return e.complexity.VarInfo.LoclistAvailable(childComplexity), true
+
 	case "VarInfo.Name":
 		if e.complexity.VarInfo.Name == nil {
 			break
@@ -435,13 +450,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.VarInfo.Type(childComplexity), true
-
-	case "VarInfo.VarType":
-		if e.complexity.VarInfo.VarType == nil {
-			break
-		}
-
-		return e.complexity.VarInfo.VarType(childComplexity), true
 
 	case "VarsAndTypes.Types":
 		if e.complexity.VarsAndTypes.Types == nil {
@@ -2579,8 +2587,8 @@ func (ec *executionContext) fieldContext_VarInfo_Type(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _VarInfo_VarType(ctx context.Context, field graphql.CollectedField, obj *VarInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_VarInfo_VarType(ctx, field)
+func (ec *executionContext) _VarInfo_FormalParameter(ctx context.Context, field graphql.CollectedField, obj *VarInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_VarInfo_FormalParameter(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2593,7 +2601,7 @@ func (ec *executionContext) _VarInfo_VarType(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.VarType, nil
+		return obj.FormalParameter, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2605,19 +2613,63 @@ func (ec *executionContext) _VarInfo_VarType(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_VarInfo_VarType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_VarInfo_FormalParameter(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "VarInfo",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VarInfo_LoclistAvailable(ctx context.Context, field graphql.CollectedField, obj *VarInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_VarInfo_LoclistAvailable(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LoclistAvailable, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_VarInfo_LoclistAvailable(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VarInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2666,8 +2718,10 @@ func (ec *executionContext) fieldContext_VarsAndTypes_Vars(ctx context.Context, 
 				return ec.fieldContext_VarInfo_Name(ctx, field)
 			case "Type":
 				return ec.fieldContext_VarInfo_Type(ctx, field)
-			case "VarType":
-				return ec.fieldContext_VarInfo_VarType(ctx, field)
+			case "FormalParameter":
+				return ec.fieldContext_VarInfo_FormalParameter(ctx, field)
+			case "LoclistAvailable":
+				return ec.fieldContext_VarInfo_LoclistAvailable(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VarInfo", field.Name)
 		},
@@ -5306,9 +5360,16 @@ func (ec *executionContext) _VarInfo(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "VarType":
+		case "FormalParameter":
 
-			out.Values[i] = ec._VarInfo_VarType(ctx, field, obj)
+			out.Values[i] = ec._VarInfo_FormalParameter(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "LoclistAvailable":
+
+			out.Values[i] = ec._VarInfo_LoclistAvailable(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

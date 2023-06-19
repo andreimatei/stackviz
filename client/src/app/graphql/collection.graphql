@@ -45,7 +45,8 @@ query GetAvailableVariables($func: String!, $pcOff: Int!) {
     Vars {
       Name
       Type
-      VarType
+      FormalParameter
+      LoclistAvailable
     }
     Types {
       Name

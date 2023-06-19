@@ -27,11 +27,11 @@ func main() {
 	ctx := context.Background()
 	flag.Parse()
 
-	execPath, err := os.Executable()
+	cwd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
-	conf, err := util.ReadConfig(path.Join(path.Dir(execPath), "config.yaml"))
+	conf, err := util.ReadConfig(path.Join(cwd, "config.yaml"))
 	if err != nil {
 		log.Fatalf("failed to read config file: %s", err)
 	}

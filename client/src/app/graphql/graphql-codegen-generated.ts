@@ -197,9 +197,10 @@ export type TypeInfo = {
 
 export type VarInfo = {
   __typename?: 'VarInfo';
+  FormalParameter: Scalars['Boolean'];
+  LoclistAvailable: Scalars['Boolean'];
   Name: Scalars['String'];
   Type: Scalars['String'];
-  VarType: Scalars['Int'];
 };
 
 export type VarsAndTypes = {
@@ -247,7 +248,7 @@ export type GetAvailableVariablesQueryVariables = Exact<{
 }>;
 
 
-export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars: Array<{ __typename?: 'VarInfo', Name: string, Type: string, VarType: number }>, Types: Array<{ __typename?: 'TypeInfo', Name: string, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string } | null> | null }> }, frameInfo?: { __typename?: 'FrameInfo', exprs: Array<string> } | null };
+export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars: Array<{ __typename?: 'VarInfo', Name: string, Type: string, FormalParameter: boolean, LoclistAvailable: boolean }>, Types: Array<{ __typename?: 'TypeInfo', Name: string, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string } | null> | null }> }, frameInfo?: { __typename?: 'FrameInfo', exprs: Array<string> } | null };
 
 export const AllCollectionsDocument = gql`
     query AllCollections {
@@ -357,7 +358,8 @@ export const GetAvailableVariablesDocument = gql`
     Vars {
       Name
       Type
-      VarType
+      FormalParameter
+      LoclistAvailable
     }
     Types {
       Name

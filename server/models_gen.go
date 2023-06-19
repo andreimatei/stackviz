@@ -13,9 +13,10 @@ type TypeInfo struct {
 }
 
 type VarInfo struct {
-	Name    string `json:"Name"`
-	Type    string `json:"Type"`
-	VarType int    `json:"VarType"`
+	Name             string `json:"Name"`
+	Type             string `json:"Type"`
+	FormalParameter  bool   `json:"FormalParameter"`
+	LoclistAvailable bool   `json:"LoclistAvailable"`
 }
 
 type VarsAndTypes struct {

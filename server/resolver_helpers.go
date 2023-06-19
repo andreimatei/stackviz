@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/go-delve/delve/service/debugger"
 	"io"
 	"log"
 	"net/http"
@@ -65,7 +65,7 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(ctx context.Context, agentA
 	return res.Snapshot, nil
 }
 
-func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn string, pcOff int64) ([]proc.VarInfo, []proc.TypeInfo, error) {
+func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn string, pcOff int64) ([]debugger.VarInfo, []debugger.TypeInfo, error) {
 	log.Printf("!!! getting available vars for %s:0x%x", fn, pcOff)
 	client, err := rpc.DialHTTP("tcp", agentAddr)
 	if err != nil {
