@@ -42,6 +42,13 @@ class TreeNode {
     }
   }
 
+  Size(): number {
+    let n: number = 1;
+    for (var c of this.children) {
+      n += c.Size();
+    }
+    return n;
+  }
 }
 
 class Frame {
@@ -68,7 +75,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshotID!: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
-  protected availableVars?: GetAvailableVariablesQuery['availableVars']['Vars'];
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   dataSource = new MatTreeNestedDataSource<TreeNode>();
@@ -80,6 +86,8 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   // captured variables from one frame (where all frames correspond to the
   // selected node).
   protected funcInfo?: string[];
+
+  protected loadingAvailableVars: boolean = false;
 
   constructor(
     private readonly appCoreService: AppCoreService,
@@ -121,54 +129,29 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.selectedFrame = new Frame(funcName, localState.expectString('file'), localState.expectNumber('line'))
     const pcOffset = localState.expectNumber('pc_off');
     console.log("querying for available vars for func: %s off: %d", funcName, pcOffset);
+    this.loadingAvailableVars = true;
+    this.dataSource.data = [];
     this.varsQuery.fetch({func: funcName, pcOff: pcOffset})
       .subscribe(
         results => {
+          console.log("got results");
+          this.loadingAvailableVars = false;
           if (results.error) {
             console.log("!!! err: ", results.error)
             return
           }
-          this.availableVars = results.data.availableVars.Vars;
-
-          function structToTree(ti: TypeInfo, types: TypeInfo[], path: string, level: number, exprs: string[]): TreeNode[] {
-            if (level == 3) {
-              return [];
-            }
-            const res: TreeNode[] = [];
-            for (var f of ti.Fields!) {
-              if (!f) continue;
-              let expr = path + "." + f.Name
-              const n: TreeNode = new TreeNode(f.Name, f.Type, expr, null, exprs.includes(expr));
-              const ti = types.find(t => t.Name == f!.Type);
-              if (ti) {
-                n.children = structToTree(ti, types, expr, level + 1, exprs)
-              }
-              res.push(n);
-            }
-            return res;
-          }
-
-          function convertToTree(vars: VarInfo[], types: TypeInfo[], exprs: string[]): Array<TreeNode> {
-            return vars.map<TreeNode>(v => {
-              const n: TreeNode = new TreeNode( v.Name, v.Type, v.Name, null, exprs.includes(v.Name),
-                v.LoclistAvailable ? 'black' : 'gray',
-                v.FormalParameter ? 'bold' : 'normal',
-              );
-              const ti = types.find(t => t.Name == v.Type);
-              if (ti) {
-                n.children = structToTree(ti, types, v.Name, 0, exprs)
-              }
-              return n
-            })
-          }
-
           let exprs: string[] = results.data.frameInfo ? results.data.frameInfo.exprs : [];
           this.dataSource.data = convertToTree(
             results.data.availableVars.Vars,
             results.data.availableVars.Types,
             exprs);
+          let numNodes: number = 0;
+          for (var n of this.dataSource.data) {
+            numNodes += n.Size()
+          }
+          console.log("tree size: %d", numNodes)
         })
-
+    console.log("opening sidebar")
     this.frameDetailsSidebar.open();
   }
 
@@ -232,4 +215,36 @@ class Call extends Update {
   get autoDocument(): string {
     throw new Error('Method not implemented.');
   }
+}
+
+function structToTree(ti: TypeInfo, types: TypeInfo[], path: string, level: number, exprs: string[]): TreeNode[] {
+  if (level == 2) {
+    return [];
+  }
+  const res: TreeNode[] = [];
+  for (var f of ti.Fields!) {
+    if (!f) continue;
+    let expr = path + "." + f.Name
+    const n: TreeNode = new TreeNode(f.Name, f.Type, expr, null, exprs.includes(expr));
+    const ti = types.find(t => t.Name == f!.Type);
+    if (ti) {
+      n.children = structToTree(ti, types, expr, level + 1, exprs)
+    }
+    res.push(n);
+  }
+  return res;
+}
+
+function convertToTree(vars: VarInfo[], types: TypeInfo[], exprs: string[]): Array<TreeNode> {
+  return vars.map<TreeNode>(v => {
+    const n: TreeNode = new TreeNode( v.Name, v.Type, v.Name, null, exprs.includes(v.Name),
+      v.LoclistAvailable ? 'black' : 'gray',
+      v.FormalParameter ? 'bold' : 'normal',
+    );
+    const ti = types.find(t => t.Name == v.Type);
+    if (ti) {
+      n.children = structToTree(ti, types, v.Name, 0, exprs)
+    }
+    return n
+  })
 }

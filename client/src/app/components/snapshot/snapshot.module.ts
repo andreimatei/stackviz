@@ -19,6 +19,7 @@ import { MatTreeModule } from "@angular/material/tree";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { ResizableModule } from 'angular-resizable-element';
+import {MatProgressBarModule} from '@angular/material/progress-bar';
 
 
 @NgModule({
@@ -39,6 +40,7 @@ import { ResizableModule } from 'angular-resizable-element';
     MatExpansionModule,
     MatIconModule,
     MatPaginatorModule,
+    MatProgressBarModule,
     MatSelectModule,
     MatInputModule,
     MatSidenavModule,
