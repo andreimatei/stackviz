@@ -101,20 +101,14 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
           console.log("got results");
           this.loadingAvailableVars = false;
           if (results.error) {
-            console.log("!!! err: ", results.error)
+            console.log("err: ", results.error)
             return
           }
-          let exprs: string[] = results.data.frameInfo ? results.data.frameInfo.exprs : [];
-          this.typeInfo!.dataSource.data = convertToTree(
+          this.typeInfo!.dataSource.initData(
             results.data.availableVars.Vars,
             results.data.availableVars.Types,
-            exprs);
-          this.typeInfo!.exprs = exprs;
-          let numNodes: number = 0;
-          for (var n of this.typeInfo!.dataSource.data) {
-            numNodes += n.Size()
-          }
-          console.log("tree size: %d", numNodes)
+            results.data.frameInfo ? results.data.frameInfo.exprs : [],
+          )
         })
     console.log("opening sidebar")
     this.frameDetailsSidebar.open();
@@ -173,47 +167,3 @@ class Call extends Update {
     throw new Error('Method not implemented.');
   }
 }
-
-function structToTree(ti: TypeInfo, types: TypeInfo[], path: string, level: number, exprs: string[]): TreeNode[] {
-  // !!! protect against infinite recursion. I should do this based on a path.
-  if (level == 2) {
-    return [];
-  }
-  const res: TreeNode[] = [];
-  for (var f of ti.Fields!) {
-    if (!f) continue;
-    let expr = path + "." + f.Name
-    const n: TreeNode = new TreeNode(f.Name, expr, f.Type, null, exprs.includes(expr));
-    const ti = types.find(t => t.Name == f!.Type);
-    if (ti) {
-      if (ti.FieldsNotLoaded) {
-        n.childrenNotLoaded = true
-      } else {
-        n.children = structToTree(ti, types, expr, level + 1, exprs)
-      }
-    }
-    res.push(n);
-  }
-  return res;
-}
-
-function convertToTree(vars: VarInfo[], types: TypeInfo[], exprs: string[]): Array<TreeNode> {
-  return vars.map<TreeNode>(v => {
-    const n: TreeNode = new TreeNode(v.Name, v.Name, v.Type, null,
-      exprs.includes(v.Name), // checked
-      v.LoclistAvailable ? 'black' : 'gray',
-      v.FormalParameter ? 'bold' : 'normal',
-    );
-    const ti = types.find(t => t.Name == v.Type);
-    if (ti) {
-      if (ti.FieldsNotLoaded) {
-        n.childrenNotLoaded = true
-      } else {
-        n.children = structToTree(ti, types, v.Name, 0, exprs)
-      }
-    }
-    return n
-  })
-}
-
-

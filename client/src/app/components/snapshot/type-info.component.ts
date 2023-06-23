@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Output } from "@angular/core";
 import { NestedTreeControl } from "@angular/cdk/tree";
-import { GetTypeInfoGQL, TypeInfo } from "../../graphql/graphql-codegen-generated";
+import { GetTypeInfoGQL, TypeInfo, VarInfo } from "../../graphql/graphql-codegen-generated";
 import { CollectionViewer, DataSource, SelectionChange } from "@angular/cdk/collections";
 import { BehaviorSubject, map, merge, Observable } from "rxjs";
 import { MatCheckboxChange } from "@angular/material/checkbox";
@@ -19,6 +19,7 @@ export class TypeInfoComponent {
   get exprs(): string[] {
     return this._exprs;
   }
+
   set exprs(val) {
     this.dataSource.exprs = val;
     this._exprs = val;
@@ -34,7 +35,7 @@ export class TypeInfoComponent {
     this.dataSource = new TypesDataSource(this.treeControl, typeQuery);
   }
 
-  hasChild = (_: number, node: TreeNode) => node.childrenNotLoaded || node.children.length > 0;
+  hasChild = (_: number, node: TreeNode) => node.expandable;
 
   onCheckedChange(ev: MatCheckboxChange, node: TreeNode) {
     const cev = new CheckedEventArg(node.expr, ev.checked);
@@ -49,24 +50,19 @@ export class CheckedEventArg {
 
 export class TreeNode {
   children: TreeNode[];
-  childrenNotLoaded: boolean = false;
   color: string;
   fontWeight: string;
-  isLoading: boolean = false; // !!! needed?
+  isLoading: boolean = false;
 
   constructor(
     readonly name: string,
     readonly expr: string,
     readonly type: string,
-    children: TreeNode[] | null,
+    public expandable: boolean,
     readonly checked: boolean,
     color?: string, fontWeight?: string,
   ) {
-    if (children == null) {
-      this.children = [];
-    } else {
-      this.children = children;
-    }
+    this.children = [];
     if (typeof color !== 'undefined') {
       this.color = color;
     } else {
@@ -78,20 +74,14 @@ export class TreeNode {
       this.fontWeight = "normal";
     }
   }
-
-  Size(): number {
-    let n: number = 1;
-    for (var c of this.children) {
-      n += c.Size();
-    }
-    return n;
-  }
 }
 
 export class TypesDataSource implements DataSource<TreeNode> {
   // dataChange will be notified whenever there is a change that causes the tree
   // to be reloaded.
   dataChange = new BehaviorSubject<TreeNode[]>([]);
+  vars: VarInfo[] = [];
+  types: Map<string, TypeInfo> = new Map();
   exprs: string[] = [];
 
   constructor(
@@ -115,6 +105,28 @@ export class TypesDataSource implements DataSource<TreeNode> {
     this.data = data;
   }
 
+  initData(vars: VarInfo[], types: TypeInfo[], exprs: string[]) {
+    this.vars = vars;
+    for (const t of types) {
+      this.types.set(t.Name, t);
+    }
+    this.exprs = exprs;
+    const data = vars.map<TreeNode>(v => {
+      const ti = types.find(t => t.Name == v.Type);
+      const expandable = !ti || (!ti.FieldsNotLoaded && ti.Fields!.length > 0);
+      const checked = exprs.includes(v.Name);
+      const n: TreeNode = new TreeNode(
+        v.Name, v.Name /* expr */, v.Type,
+        expandable,
+        checked,
+        v.LoclistAvailable ? 'black' : 'gray',
+        v.FormalParameter ? 'bold' : 'normal',
+      );
+      return n
+    })
+    this.updateData(data);
+  }
+
   connect(collectionViewer: CollectionViewer): Observable<TreeNode[]> {
     this._treeControl.expansionModel.changed.subscribe(change => {
       if (
@@ -135,9 +147,20 @@ export class TypesDataSource implements DataSource<TreeNode> {
   handleTreeControl(change: SelectionChange<TreeNode>) {
     if (change.added) {
       change.added.forEach(node => {
-        if (node.childrenNotLoaded) {
-          console.log("loading children for %s...", node.type);
+        if (node.children.length > 0) {
+          // children already populated; nothing more to do.
+          return
+        }
 
+        const ti = this.types.get(node.type);
+        if (!ti) {
+          // We failed to find the type. Make the node a leaf so that we don't
+          // attempt to load it again.
+          node.expandable = false;
+          return;
+        }
+        if (ti.FieldsNotLoaded) {
+          console.log("loading children for %s...", node.type);
           node.isLoading = true;
           this._database.fetch({name: node.type}).pipe(
             map(res => {
@@ -146,11 +169,12 @@ export class TypesDataSource implements DataSource<TreeNode> {
                 console.log(res.error)
                 return;
               }
+              this.types.set(node.type, res.data.typeInfo);
               if (!res.data.typeInfo.Fields) {
                 return;
               }
               node.children = this.typeInfoToTreeNodes(res.data.typeInfo, node.expr, this.exprs);
-              node.childrenNotLoaded = false;
+              node.expandable = node.children.length > 0;
               console.log("new children: ", node.children)
             })
           ).subscribe(_ => {
@@ -158,6 +182,11 @@ export class TypesDataSource implements DataSource<TreeNode> {
             this.updateData(this.data);
             node.isLoading = false;
           })
+        } else {
+          node.children = this.typeInfoToTreeNodes(ti, node.expr, this.exprs);
+          node.expandable = node.children.length > 0;
+          // notify the change
+          this.updateData(this.data);
         }
       });
     }
@@ -169,11 +198,13 @@ export class TypesDataSource implements DataSource<TreeNode> {
       return []
     }
     const res: TreeNode[] = [];
-    for (var f of ti.Fields!) {
+    for (const f of ti.Fields!) {
       if (!f) continue;
       let expr = path + "." + f.Name;
-      const n: TreeNode = new TreeNode(f.Name, expr, f.Type, null, exprs.includes(expr));
-      n.childrenNotLoaded = true;
+      const cti = this.types.get(f.Type)
+      const expandable = !cti || (cti.FieldsNotLoaded || cti.Fields!.length > 0);
+      const checked = exprs.includes(expr);
+      const n: TreeNode = new TreeNode(f.Name, expr, f.Type, expandable, checked);
       res.push(n);
     }
     return res;
