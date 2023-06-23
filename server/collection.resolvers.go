@@ -157,15 +157,18 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 		}
 	}
 	resTypes := make([]*TypeInfo, len(types))
-	for i, v := range types {
+	for i, t := range types {
+		log.Printf("!!! got type: %s loaded: %t", t.Name, !t.FieldsNotLoaded)
 		resTypes[i] = &TypeInfo{
-			Name: v.Name,
+			Name:            t.Name,
+			FieldsNotLoaded: t.FieldsNotLoaded,
 		}
-		resTypes[i].Fields = make([]*FieldInfo, len(v.Fields))
-		for j, f := range v.Fields {
+		resTypes[i].Fields = make([]*FieldInfo, len(t.Fields))
+		for j, f := range t.Fields {
 			resTypes[i].Fields[j] = &FieldInfo{
-				Name: f.Name,
-				Type: f.TypeName,
+				Name:     f.Name,
+				Type:     f.TypeName,
+				Embedded: f.Embedded,
 			}
 		}
 	}
@@ -190,25 +193,33 @@ func (r *queryResolver) FrameInfo(ctx context.Context, funcArg string) (*ent.Fra
 	return fi, nil
 }
 
+// TypeInfo is the resolver for the typeInfo field.
+func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*TypeInfo, error) {
+	log.Printf("!!! TypeInfo query: %s", name)
+	var svcName string
+	for serviceName, _ := range r.conf.Targets {
+		// TODO(andrei): deal with multiple services
+		svcName = serviceName
+	}
+
+	var agentURL string
+	for _, url := range r.conf.Targets[svcName] {
+		agentURL = url
+		break
+	}
+
+	fields, err := r.getTypeInfoFromDelveAgent(agentURL, name)
+	if err != nil {
+		return nil, err
+	}
+	return &TypeInfo{
+		Name:            name,
+		Fields:          fields,
+		FieldsNotLoaded: false,
+	}, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//     it when you're done.
-//   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *mutationResolver) getOrCreateCollectSpec(ctx context.Context) *ent.CollectSpec {
-	cis := r.dbClient.CollectSpec.Query().AllX(ctx)
-	if len(cis) > 1 {
-		log.Fatalf("expected at most one CollectSpec, got: %d", len(cis))
-	}
-	// If there isn't a CollectSpec already, create one.
-	if len(cis) == 0 {
-		return r.dbClient.CollectSpec.Create().SaveX(ctx)
-	}
-	return cis[0]
-}

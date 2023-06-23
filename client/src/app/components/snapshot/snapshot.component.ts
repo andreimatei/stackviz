@@ -2,8 +2,8 @@ import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import {
   AddExprToCollectSpecGQL,
   GetAvailableVariablesGQL,
-  GetAvailableVariablesQuery,
   GetCollectionGQL,
+  GetTypeInfoGQL,
   ProcessSnapshot,
   RemoveExprFromCollectSpecGQL,
   TypeInfo,
@@ -11,20 +11,30 @@ import {
 } from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute } from "@angular/router";
 import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
-import { Action, IntegerValue, Update, ValueMap, } from "traceviz-client-core";
+import { Action, IntegerValue, Tree, Update, ValueMap, } from "traceviz-client-core";
 import { MatDrawer } from "@angular/material/sidenav";
-import { MatTreeNestedDataSource } from "@angular/material/tree";
 import { NestedTreeControl } from "@angular/cdk/tree";
 import { MatCheckboxChange } from "@angular/material/checkbox";
 import { ResizeEvent } from 'angular-resizable-element';
+import { BehaviorSubject, map, merge, Observable } from "rxjs";
+import { CollectionViewer, DataSource, SelectionChange } from "@angular/cdk/collections";
 
 
 class TreeNode {
   children: TreeNode[];
+  childrenNotLoaded: boolean = false;
   color: string;
   fontWeight: string;
+  isLoading: boolean = false; // !!! needed?
 
-  constructor(readonly name: string, readonly expr: string, readonly type: string, children: TreeNode[] | null, readonly checked: boolean, color?: string, fontWeight?: string) {
+  constructor(
+    readonly name: string,
+    readonly expr: string,
+    readonly type: string,
+    children: TreeNode[] | null,
+    readonly checked: boolean,
+    color?: string, fontWeight?: string,
+  ) {
     if (children == null) {
       this.children = [];
     } else {
@@ -77,9 +87,26 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshots?: ProcessSnapshot[];
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
-  dataSource = new MatTreeNestedDataSource<TreeNode>();
-  treeControl = new NestedTreeControl<TreeNode>(node => node.children);
+  dataSource: TypesDataSource;
+  // !!! dataSource = new MatTreeNestedDataSource<TreeNode>();
+  treeControl: NestedTreeControl<TreeNode>;
 
+  // !!! unused?
+  fetchTypeChildren(node: TreeNode): Observable<TreeNode[]> {
+    this.treeControl.expansionModel.changed.subscribe()
+    return this.typeQuery.fetch({name: node.name}).pipe(
+      map(res => {
+        if (res.error) {
+          console.log(res.error)
+          return [] as TreeNode[];
+        }
+        if (!res.data.typeInfo.Fields) {
+          return [] as TreeNode[];
+        }
+        return typeInfoToTreeNodes(res.data.typeInfo, "" /* path */, [] /* exprs */);
+      })
+    )
+  }
 
   protected selectedFrame?: Frame;
   // Data about the selected node. Each element is a string containing all the
@@ -93,9 +120,29 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly appCoreService: AppCoreService,
     private readonly getCollectionQuery: GetCollectionGQL,
     private readonly varsQuery: GetAvailableVariablesGQL,
+    private readonly typeQuery: GetTypeInfoGQL,
     private readonly addExpr: AddExprToCollectSpecGQL,
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
-    private readonly route: ActivatedRoute) {
+    private readonly route: ActivatedRoute,
+  ) {
+    this.treeControl = new NestedTreeControl<TreeNode>(node => node.children);
+    this.dataSource = new TypesDataSource(this.treeControl, typeQuery);
+
+    // !!!
+    const sumObserver = {
+      sum: 0,
+      next(value: any) {
+        console.log('Next');
+      },
+      error() {
+        console.log('error');
+      },
+      complete() {
+        console.log('completed');
+      }
+    };
+    this.typeQuery.fetch({name: "time.Time"}).subscribe(sumObserver)
+
   }
 
   ngOnInit(): void {
@@ -164,7 +211,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(newSnapshotID), false /* toggle */);
   }
 
-  hasChild = (_: number, node: TreeNode) => node.children.length > 0;
+  hasChild = (_: number, node: TreeNode) => node.childrenNotLoaded || node.children.length > 0;
 
   varChange(ev: MatCheckboxChange, node: TreeNode) {
     console.log(`clicked on ${node.name} in func ${this.selectedFrame}`);
@@ -218,6 +265,7 @@ class Call extends Update {
 }
 
 function structToTree(ti: TypeInfo, types: TypeInfo[], path: string, level: number, exprs: string[]): TreeNode[] {
+  // !!! protect against infinite recursion. I should do this based on a path.
   if (level == 2) {
     return [];
   }
@@ -225,10 +273,15 @@ function structToTree(ti: TypeInfo, types: TypeInfo[], path: string, level: numb
   for (var f of ti.Fields!) {
     if (!f) continue;
     let expr = path + "." + f.Name
-    const n: TreeNode = new TreeNode(f.Name, f.Type, expr, null, exprs.includes(expr));
+    const n: TreeNode = new TreeNode(f.Name, expr, f.Type, null, exprs.includes(expr));
     const ti = types.find(t => t.Name == f!.Type);
     if (ti) {
-      n.children = structToTree(ti, types, expr, level + 1, exprs)
+      if (ti.FieldsNotLoaded) {
+        console.log("!!! childrenNotLoaded on %s", f.Name)
+        n.childrenNotLoaded = true
+      } else {
+        n.children = structToTree(ti, types, expr, level + 1, exprs)
+      }
     }
     res.push(n);
   }
@@ -237,14 +290,108 @@ function structToTree(ti: TypeInfo, types: TypeInfo[], path: string, level: numb
 
 function convertToTree(vars: VarInfo[], types: TypeInfo[], exprs: string[]): Array<TreeNode> {
   return vars.map<TreeNode>(v => {
-    const n: TreeNode = new TreeNode( v.Name, v.Type, v.Name, null, exprs.includes(v.Name),
+    const n: TreeNode = new TreeNode(v.Name, v.Type, v.Name, null, exprs.includes(v.Name),
       v.LoclistAvailable ? 'black' : 'gray',
       v.FormalParameter ? 'bold' : 'normal',
     );
     const ti = types.find(t => t.Name == v.Type);
     if (ti) {
-      n.children = structToTree(ti, types, v.Name, 0, exprs)
+      if (ti.FieldsNotLoaded) {
+        console.log("!!! childrenNotLoaded on var %s", v.Name)
+        n.childrenNotLoaded = true
+      } else {
+        n.children = structToTree(ti, types, v.Name, 0, exprs)
+      }
     }
     return n
   })
+}
+
+function typeInfoToTreeNodes(ti: TypeInfo, path: string, exprs: string[]): TreeNode[] {
+  if (ti.FieldsNotLoaded) {
+    console.log("unexpected fields not loaded")
+    return []
+  }
+  const res: TreeNode[] = [];
+  for (var f of ti.Fields!) {
+    if (!f) continue;
+    let expr = path + "." + f.Name;
+    const n: TreeNode = new TreeNode(f.Name, f.Type, expr, null, exprs.includes(expr));
+    n.childrenNotLoaded = true;
+    res.push(n);
+  }
+  return res;
+}
+
+export class TypesDataSource implements DataSource<TreeNode> {
+  // dataChange will be notified whenever there is a change that causes the tree
+  // to be reloaded.
+  dataChange = new BehaviorSubject<TreeNode[]>([]);
+
+  get data(): TreeNode[] {
+    return this.dataChange.value;
+  }
+
+  set data(val: TreeNode[]) {
+    this.dataChange.next(val);
+  }
+
+  updateData(data: TreeNode[]) {
+    this.data = [];
+    this.data = data;
+  }
+
+  constructor(
+    private _treeControl: NestedTreeControl<TreeNode>,
+    private _database: GetTypeInfoGQL,
+  ) {
+  }
+
+  connect(collectionViewer: CollectionViewer): Observable<TreeNode[]> {
+    this._treeControl.expansionModel.changed.subscribe(change => {
+      if (
+        (change as SelectionChange<TreeNode>).added ||
+        (change as SelectionChange<TreeNode>).removed
+      ) {
+        this.handleTreeControl(change as SelectionChange<TreeNode>);
+      }
+    });
+
+    return merge(collectionViewer.viewChange, this.dataChange).pipe(map(() => this.data));
+  }
+
+  disconnect(collectionViewer: CollectionViewer): void {
+  }
+
+  /** Handle expand/collapse behaviors */
+  handleTreeControl(change: SelectionChange<TreeNode>) {
+    if (change.added) {
+      change.added.forEach(node => {
+        if (node.childrenNotLoaded) {
+          console.log("loading children for %s...", node.type);
+
+          node.isLoading = true;
+          this._database.fetch({name: node.type}).pipe(
+            map(res => {
+              console.log("loading children... done", res)
+              if (res.error) {
+                console.log(res.error)
+                return;
+              }
+              if (!res.data.typeInfo.Fields) {
+                return;
+              }
+              node.children = typeInfoToTreeNodes(res.data.typeInfo, "" /* path */, [] /* exprs */);
+              node.childrenNotLoaded = false;
+              console.log("new children: ", node.children)
+            })
+          ).subscribe(_ => {
+            // notify the change
+            this.updateData(this.data);
+            node.isLoading = false;
+          })
+        }
+      });
+    }
+  }
 }

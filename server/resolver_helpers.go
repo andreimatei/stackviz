@@ -89,3 +89,40 @@ func snapToString(s agentrpc.Snapshot) string {
 	}
 	return sb.String()
 }
+
+func (r *mutationResolver) getOrCreateCollectSpec(ctx context.Context) *ent.CollectSpec {
+	cis := r.dbClient.CollectSpec.Query().AllX(ctx)
+	if len(cis) > 1 {
+		log.Fatalf("expected at most one CollectSpec, got: %d", len(cis))
+	}
+	// If there isn't a CollectSpec already, create one.
+	if len(cis) == 0 {
+		return r.dbClient.CollectSpec.Create().SaveX(ctx)
+	}
+	return cis[0]
+}
+
+func (r *queryResolver) getTypeInfoFromDelveAgent(agentAddr string, typeName string) ([]*FieldInfo, error) {
+	log.Printf("!!! getting type info for %s", typeName)
+	client, err := rpc.DialHTTP("tcp", agentAddr)
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+
+	args := &agentrpc.GetTypeInfoIn{Name: typeName}
+	var res = &agentrpc.GetTypeInfoOut{}
+	err = client.Call("Agent.GetTypeInfo", args, &res)
+	if err != nil {
+		log.Fatal("call to agent failed: ", err)
+	}
+
+	fields := make([]*FieldInfo, len(res.Fields))
+	for i, f := range res.Fields {
+		fields[i] = &FieldInfo{
+			Name:     f.Name,
+			Type:     f.TypeName,
+			Embedded: f.Embedded,
+		}
+	}
+	return fields, nil
+}

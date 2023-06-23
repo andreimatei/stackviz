@@ -10,6 +10,7 @@ extend type Query {
   collectionByID(id: ID!): Collection
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
   frameInfo(func: String!): FrameInfo
+  typeInfo(name: String!): TypeInfo!
 }
 
 type VarsAndTypes {
@@ -27,9 +28,11 @@ type VarInfo {
 type TypeInfo {
   Name: String!
   Fields: [FieldInfo]
+  FieldsNotLoaded: Boolean!
 }
 
 type FieldInfo {
   Name: String!
   Type: String!
+  Embedded: Boolean!
 }

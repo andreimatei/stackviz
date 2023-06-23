@@ -58,8 +58,9 @@ type ComplexityRoot struct {
 	}
 
 	FieldInfo struct {
-		Name func(childComplexity int) int
-		Type func(childComplexity int) int
+		Embedded func(childComplexity int) int
+		Name     func(childComplexity int) int
+		Type     func(childComplexity int) int
 	}
 
 	FrameInfo struct {
@@ -99,11 +100,13 @@ type ComplexityRoot struct {
 		Node             func(childComplexity int, id int) int
 		Nodes            func(childComplexity int, ids []int) int
 		ProcessSnapshots func(childComplexity int) int
+		TypeInfo         func(childComplexity int, name string) int
 	}
 
 	TypeInfo struct {
-		Fields func(childComplexity int) int
-		Name   func(childComplexity int) int
+		Fields          func(childComplexity int) int
+		FieldsNotLoaded func(childComplexity int) int
+		Name            func(childComplexity int) int
 	}
 
 	VarInfo struct {
@@ -135,6 +138,7 @@ type QueryResolver interface {
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
 	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameInfo, error)
+	TypeInfo(ctx context.Context, name string) (*TypeInfo, error)
 }
 
 type executableSchema struct {
@@ -186,6 +190,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Collection.ProcessSnapshots(childComplexity), true
+
+	case "FieldInfo.Embedded":
+		if e.complexity.FieldInfo.Embedded == nil {
+			break
+		}
+
+		return e.complexity.FieldInfo.Embedded(childComplexity), true
 
 	case "FieldInfo.Name":
 		if e.complexity.FieldInfo.Name == nil {
@@ -409,12 +420,31 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.ProcessSnapshots(childComplexity), true
 
+	case "Query.typeInfo":
+		if e.complexity.Query.TypeInfo == nil {
+			break
+		}
+
+		args, err := ec.field_Query_typeInfo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TypeInfo(childComplexity, args["name"].(string)), true
+
 	case "TypeInfo.Fields":
 		if e.complexity.TypeInfo.Fields == nil {
 			break
 		}
 
 		return e.complexity.TypeInfo.Fields(childComplexity), true
+
+	case "TypeInfo.FieldsNotLoaded":
+		if e.complexity.TypeInfo.FieldsNotLoaded == nil {
+			break
+		}
+
+		return e.complexity.TypeInfo.FieldsNotLoaded(childComplexity), true
 
 	case "TypeInfo.Name":
 		if e.complexity.TypeInfo.Name == nil {
@@ -716,6 +746,21 @@ func (ec *executionContext) field_Query_nodes_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["ids"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_typeInfo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["name"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["name"] = arg0
 	return args, nil
 }
 
@@ -1072,6 +1117,50 @@ func (ec *executionContext) fieldContext_FieldInfo_Type(ctx context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FieldInfo_Embedded(ctx context.Context, field graphql.CollectedField, obj *FieldInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FieldInfo_Embedded(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Embedded, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FieldInfo_Embedded(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FieldInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2279,6 +2368,69 @@ func (ec *executionContext) fieldContext_Query_frameInfo(ctx context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_typeInfo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_typeInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().TypeInfo(rctx, fc.Args["name"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*TypeInfo)
+	fc.Result = res
+	return ec.marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_typeInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Name":
+				return ec.fieldContext_TypeInfo_Name(ctx, field)
+			case "Fields":
+				return ec.fieldContext_TypeInfo_Fields(ctx, field)
+			case "FieldsNotLoaded":
+				return ec.fieldContext_TypeInfo_FieldsNotLoaded(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TypeInfo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_typeInfo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query___type(ctx, field)
 	if err != nil {
@@ -2492,8 +2644,54 @@ func (ec *executionContext) fieldContext_TypeInfo_Fields(ctx context.Context, fi
 				return ec.fieldContext_FieldInfo_Name(ctx, field)
 			case "Type":
 				return ec.fieldContext_FieldInfo_Type(ctx, field)
+			case "Embedded":
+				return ec.fieldContext_FieldInfo_Embedded(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type FieldInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TypeInfo_FieldsNotLoaded(ctx context.Context, field graphql.CollectedField, obj *TypeInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TypeInfo_FieldsNotLoaded(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FieldsNotLoaded, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TypeInfo_FieldsNotLoaded(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TypeInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2772,6 +2970,8 @@ func (ec *executionContext) fieldContext_VarsAndTypes_Types(ctx context.Context,
 				return ec.fieldContext_TypeInfo_Name(ctx, field)
 			case "Fields":
 				return ec.fieldContext_TypeInfo_Fields(ctx, field)
+			case "FieldsNotLoaded":
+				return ec.fieldContext_TypeInfo_FieldsNotLoaded(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TypeInfo", field.Name)
 		},
@@ -4862,6 +5062,13 @@ func (ec *executionContext) _FieldInfo(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "Embedded":
+
+			out.Values[i] = ec._FieldInfo_Embedded(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5281,6 +5488,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
+		case "typeInfo":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_typeInfo(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "__type":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -5325,6 +5555,13 @@ func (ec *executionContext) _TypeInfo(ctx context.Context, sel ast.SelectionSet,
 
 			out.Values[i] = ec._TypeInfo_Fields(ctx, field, obj)
 
+		case "FieldsNotLoaded":
+
+			out.Values[i] = ec._TypeInfo_FieldsNotLoaded(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6118,6 +6355,10 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNTypeInfo2stacksvizᚐTypeInfo(ctx context.Context, sel ast.SelectionSet, v TypeInfo) graphql.Marshaler {
+	return ec._TypeInfo(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*TypeInfo) graphql.Marshaler {

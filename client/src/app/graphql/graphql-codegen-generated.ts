@@ -71,6 +71,7 @@ export type CreateProcessSnapshotInput = {
 
 export type FieldInfo = {
   __typename?: 'FieldInfo';
+  Embedded: Scalars['Boolean'];
   Name: Scalars['String'];
   Type: Scalars['String'];
 };
@@ -161,6 +162,7 @@ export type Query = {
   /** Lookup nodes by a list of IDs. */
   nodes: Array<Maybe<Node>>;
   processSnapshots: Array<ProcessSnapshot>;
+  typeInfo: TypeInfo;
 };
 
 
@@ -189,9 +191,15 @@ export type QueryNodesArgs = {
   ids: Array<Scalars['ID']>;
 };
 
+
+export type QueryTypeInfoArgs = {
+  name: Scalars['String'];
+};
+
 export type TypeInfo = {
   __typename?: 'TypeInfo';
   Fields?: Maybe<Array<Maybe<FieldInfo>>>;
+  FieldsNotLoaded: Scalars['Boolean'];
   Name: Scalars['String'];
 };
 
@@ -248,7 +256,14 @@ export type GetAvailableVariablesQueryVariables = Exact<{
 }>;
 
 
-export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars: Array<{ __typename?: 'VarInfo', Name: string, Type: string, FormalParameter: boolean, LoclistAvailable: boolean }>, Types: Array<{ __typename?: 'TypeInfo', Name: string, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string } | null> | null }> }, frameInfo?: { __typename?: 'FrameInfo', exprs: Array<string> } | null };
+export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars: Array<{ __typename?: 'VarInfo', Name: string, Type: string, FormalParameter: boolean, LoclistAvailable: boolean }>, Types: Array<{ __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean } | null> | null }> }, frameInfo?: { __typename?: 'FrameInfo', exprs: Array<string> } | null };
+
+export type GetTypeInfoQueryVariables = Exact<{
+  name: Scalars['String'];
+}>;
+
+
+export type GetTypeInfoQuery = { __typename?: 'Query', typeInfo: { __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean } | null> | null } };
 
 export const AllCollectionsDocument = gql`
     query AllCollections {
@@ -366,7 +381,9 @@ export const GetAvailableVariablesDocument = gql`
       Fields {
         Name
         Type
+        Embedded
       }
+      FieldsNotLoaded
     }
   }
   frameInfo(func: $func) {
@@ -380,6 +397,30 @@ export const GetAvailableVariablesDocument = gql`
   })
   export class GetAvailableVariablesGQL extends Apollo.Query<GetAvailableVariablesQuery, GetAvailableVariablesQueryVariables> {
     override document = GetAvailableVariablesDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const GetTypeInfoDocument = gql`
+    query GetTypeInfo($name: String!) {
+  typeInfo(name: $name) {
+    Name
+    FieldsNotLoaded
+    Fields {
+      Name
+      Type
+      Embedded
+    }
+  }
+}
+    `;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class GetTypeInfoGQL extends Apollo.Query<GetTypeInfoQuery, GetTypeInfoQueryVariables> {
+    override document = GetTypeInfoDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);

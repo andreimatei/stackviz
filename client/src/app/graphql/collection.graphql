@@ -53,10 +53,24 @@ query GetAvailableVariables($func: String!, $pcOff: Int!) {
       Fields {
         Name
         Type
+        Embedded
       }
+      FieldsNotLoaded
     }
   }
   frameInfo(func: $func) {
     exprs
+  }
+}
+
+query GetTypeInfo($name: String!) {
+  typeInfo(name: $name) {
+    Name
+    FieldsNotLoaded
+    Fields {
+      Name
+      Type
+      Embedded
+    }
   }
 }

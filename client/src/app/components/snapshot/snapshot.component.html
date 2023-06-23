@@ -42,12 +42,10 @@
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        <div *ngIf="loadingAvailableVars">
-          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-        </div>
+        <mat-progress-bar mode="indeterminate" *ngIf="loadingAvailableVars"></mat-progress-bar>
         <mat-tree [dataSource]="dataSource" [treeControl]="treeControl" class="tree">
           <!-- This is the tree node template for leaf nodes -->
-          <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle>
+          <mat-tree-node *matTreeNodeDef="let node">
             <mat-checkbox (change)="varChange($event, node)" checked={{node.checked}}>
             </mat-checkbox>
             <!-- The padding compensates for the absence of the expansion button. -->
