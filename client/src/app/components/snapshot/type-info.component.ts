@@ -113,7 +113,7 @@ export class TypesDataSource implements DataSource<TreeNode> {
     this.exprs = exprs;
     const data = vars.map<TreeNode>(v => {
       const ti = types.find(t => t.Name == v.Type);
-      const expandable = !ti || (!ti.FieldsNotLoaded && ti.Fields!.length > 0);
+      const expandable = !ti || (ti.FieldsNotLoaded || ti.Fields!.length > 0);
       const checked = exprs.includes(v.Name);
       const n: TreeNode = new TreeNode(
         v.Name, v.Name /* expr */, v.Type,
@@ -153,20 +153,21 @@ export class TypesDataSource implements DataSource<TreeNode> {
         }
 
         const ti = this.types.get(node.type);
-        if (!ti) {
-          // We failed to find the type. Make the node a leaf so that we don't
-          // attempt to load it again.
-          node.expandable = false;
-          return;
-        }
-        if (ti.FieldsNotLoaded) {
+        console.log("expanding: ti:", node.type, ti)
+        // if (!ti) {
+        //   // We failed to find the type. Make the node a leaf so that we don't
+        //   // attempt to load it again.
+        //   node.expandable = false;
+        //   return;
+        // }
+        if (!ti || ti.FieldsNotLoaded) {
           console.log("loading children for %s...", node.type);
           node.isLoading = true;
           this._database.fetch({name: node.type}).pipe(
             map(res => {
               console.log("loading children... done", res)
               if (res.error) {
-                console.log(res.error)
+                console.log(res.error);
                 return;
               }
               this.types.set(node.type, res.data.typeInfo);
@@ -191,6 +192,14 @@ export class TypesDataSource implements DataSource<TreeNode> {
       });
     }
   }
+
+  // !!!
+  // getType(typename: string): TypeInfo {
+  //   const ti = this.types.get(node.type);
+  //   if (ti) {
+  //     return ti;
+  //   }
+  // }
 
   typeInfoToTreeNodes(ti: TypeInfo, path: string, exprs: string[]): TreeNode[] {
     if (ti.FieldsNotLoaded) {
