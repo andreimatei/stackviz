@@ -1,14 +1,12 @@
 package service
 
 import (
+	"github.com/google/traceviz/server/go/handlers"
+	querydispatcher "github.com/google/traceviz/server/go/query_dispatcher"
 	"log"
 	"net/http"
 	"path"
 	"stacksviz/datasource"
-	"stacksviz/ent"
-
-	"github.com/google/traceviz/server/go/handlers"
-	querydispatcher "github.com/google/traceviz/server/go/query_dispatcher"
 )
 
 type Service struct {
@@ -16,9 +14,8 @@ type Service struct {
 	assetHandler *handlers.AssetHandler
 }
 
-func New(assetRoot string, client *ent.Client) (*Service, error) {
-	cf := datasource.NewStacksFetcher(client)
-	ds := datasource.New(cf)
+func New(assetRoot string, stacksFetcher datasource.StacksFetcher) (*Service, error) {
+	ds := datasource.New(stacksFetcher)
 	qd, err := querydispatcher.New(ds)
 	if err != nil {
 		return nil, err

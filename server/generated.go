@@ -51,6 +51,11 @@ type ComplexityRoot struct {
 		ID     func(childComplexity int) int
 	}
 
+	CollectedVar struct {
+		Links func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
 	Collection struct {
 		ID               func(childComplexity int) int
 		Name             func(childComplexity int) int
@@ -67,6 +72,18 @@ type ComplexityRoot struct {
 		Exprs func(childComplexity int) int
 		Frame func(childComplexity int) int
 		ID    func(childComplexity int) int
+	}
+
+	GoroutineInfo struct {
+		Frames func(childComplexity int) int
+		ID     func(childComplexity int) int
+		Vars   func(childComplexity int) int
+	}
+
+	Link struct {
+		FrameIdx    func(childComplexity int) int
+		GoroutineID func(childComplexity int) int
+		SnapshotID  func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -97,6 +114,7 @@ type ComplexityRoot struct {
 		Collections      func(childComplexity int) int
 		FrameInfo        func(childComplexity int, funcArg string) int
 		FrameInfos       func(childComplexity int) int
+		Goroutines       func(childComplexity int, colID int, snapID int) int
 		Node             func(childComplexity int, id int) int
 		Nodes            func(childComplexity int, ids []int) int
 		ProcessSnapshots func(childComplexity int) int
@@ -136,6 +154,7 @@ type QueryResolver interface {
 	FrameInfos(ctx context.Context) ([]*ent.FrameInfo, error)
 	ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
+	Goroutines(ctx context.Context, colID int, snapID int) ([]*GoroutineInfo, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
 	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameInfo, error)
 	TypeInfo(ctx context.Context, name string) (*TypeInfo, error)
@@ -169,6 +188,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CollectSpec.ID(childComplexity), true
+
+	case "CollectedVar.Links":
+		if e.complexity.CollectedVar.Links == nil {
+			break
+		}
+
+		return e.complexity.CollectedVar.Links(childComplexity), true
+
+	case "CollectedVar.Value":
+		if e.complexity.CollectedVar.Value == nil {
+			break
+		}
+
+		return e.complexity.CollectedVar.Value(childComplexity), true
 
 	case "Collection.id":
 		if e.complexity.Collection.ID == nil {
@@ -232,6 +265,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FrameInfo.ID(childComplexity), true
+
+	case "GoroutineInfo.Frames":
+		if e.complexity.GoroutineInfo.Frames == nil {
+			break
+		}
+
+		return e.complexity.GoroutineInfo.Frames(childComplexity), true
+
+	case "GoroutineInfo.ID":
+		if e.complexity.GoroutineInfo.ID == nil {
+			break
+		}
+
+		return e.complexity.GoroutineInfo.ID(childComplexity), true
+
+	case "GoroutineInfo.Vars":
+		if e.complexity.GoroutineInfo.Vars == nil {
+			break
+		}
+
+		return e.complexity.GoroutineInfo.Vars(childComplexity), true
+
+	case "Link.FrameIdx":
+		if e.complexity.Link.FrameIdx == nil {
+			break
+		}
+
+		return e.complexity.Link.FrameIdx(childComplexity), true
+
+	case "Link.GoroutineID":
+		if e.complexity.Link.GoroutineID == nil {
+			break
+		}
+
+		return e.complexity.Link.GoroutineID(childComplexity), true
+
+	case "Link.SnapshotID":
+		if e.complexity.Link.SnapshotID == nil {
+			break
+		}
+
+		return e.complexity.Link.SnapshotID(childComplexity), true
 
 	case "Mutation.addExprToCollectSpec":
 		if e.complexity.Mutation.AddExprToCollectSpec == nil {
@@ -388,6 +463,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.FrameInfos(childComplexity), true
+
+	case "Query.goroutines":
+		if e.complexity.Query.Goroutines == nil {
+			break
+		}
+
+		args, err := ec.field_Query_goroutines_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Goroutines(childComplexity, args["colID"].(int), args["snapID"].(int)), true
 
 	case "Query.node":
 		if e.complexity.Query.Node == nil {
@@ -719,6 +806,30 @@ func (ec *executionContext) field_Query_frameInfo_args(ctx context.Context, rawA
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_goroutines_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["colID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("colID"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["colID"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["snapID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapID"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["snapID"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -890,6 +1001,102 @@ func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context,
 				return ec.fieldContext_FrameInfo_exprs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CollectedVar_Value(ctx context.Context, field graphql.CollectedField, obj *CollectedVar) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CollectedVar_Value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CollectedVar_Value(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CollectedVar",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CollectedVar_Links(ctx context.Context, field graphql.CollectedField, obj *CollectedVar) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CollectedVar_Links(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Links, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*Link)
+	fc.Result = res
+	return ec.marshalNLink2ᚕᚖstacksvizᚐLinkᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CollectedVar_Links(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CollectedVar",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "SnapshotID":
+				return ec.fieldContext_Link_SnapshotID(ctx, field)
+			case "GoroutineID":
+				return ec.fieldContext_Link_GoroutineID(ctx, field)
+			case "FrameIdx":
+				return ec.fieldContext_Link_FrameIdx(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Link", field.Name)
 		},
 	}
 	return fc, nil
@@ -1293,6 +1500,276 @@ func (ec *executionContext) fieldContext_FrameInfo_exprs(ctx context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GoroutineInfo_ID(ctx context.Context, field graphql.CollectedField, obj *GoroutineInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutineInfo_ID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GoroutineInfo_ID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GoroutineInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GoroutineInfo_Frames(ctx context.Context, field graphql.CollectedField, obj *GoroutineInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutineInfo_Frames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Frames, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GoroutineInfo_Frames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GoroutineInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GoroutineInfo_Vars(ctx context.Context, field graphql.CollectedField, obj *GoroutineInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutineInfo_Vars(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Vars, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*CollectedVar)
+	fc.Result = res
+	return ec.marshalNCollectedVar2ᚕᚖstacksvizᚐCollectedVarᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GoroutineInfo_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GoroutineInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Value":
+				return ec.fieldContext_CollectedVar_Value(ctx, field)
+			case "Links":
+				return ec.fieldContext_CollectedVar_Links(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectedVar", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Link_SnapshotID(ctx context.Context, field graphql.CollectedField, obj *Link) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Link_SnapshotID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SnapshotID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Link_SnapshotID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Link",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Link_GoroutineID(ctx context.Context, field graphql.CollectedField, obj *Link) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Link_GoroutineID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GoroutineID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Link_GoroutineID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Link",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Link_FrameIdx(ctx context.Context, field graphql.CollectedField, obj *Link) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Link_FrameIdx(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FrameIdx, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Link_FrameIdx(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Link",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2241,6 +2718,69 @@ func (ec *executionContext) fieldContext_Query_collectionByID(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_collectionByID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_goroutines(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_goroutines(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Goroutines(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*GoroutineInfo)
+	fc.Result = res
+	return ec.marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_goroutines(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ID":
+				return ec.fieldContext_GoroutineInfo_ID(ctx, field)
+			case "Frames":
+				return ec.fieldContext_GoroutineInfo_Frames(ctx, field)
+			case "Vars":
+				return ec.fieldContext_GoroutineInfo_Vars(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GoroutineInfo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_goroutines_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -4986,6 +5526,41 @@ func (ec *executionContext) _CollectSpec(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var collectedVarImplementors = []string{"CollectedVar"}
+
+func (ec *executionContext) _CollectedVar(ctx context.Context, sel ast.SelectionSet, obj *CollectedVar) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, collectedVarImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CollectedVar")
+		case "Value":
+
+			out.Values[i] = ec._CollectedVar_Value(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Links":
+
+			out.Values[i] = ec._CollectedVar_Links(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var collectionImplementors = []string{"Collection", "Node"}
 
 func (ec *executionContext) _Collection(ctx context.Context, sel ast.SelectionSet, obj *ent.Collection) graphql.Marshaler {
@@ -5107,6 +5682,90 @@ func (ec *executionContext) _FrameInfo(ctx context.Context, sel ast.SelectionSet
 		case "exprs":
 
 			out.Values[i] = ec._FrameInfo_exprs(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var goroutineInfoImplementors = []string{"GoroutineInfo"}
+
+func (ec *executionContext) _GoroutineInfo(ctx context.Context, sel ast.SelectionSet, obj *GoroutineInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, goroutineInfoImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GoroutineInfo")
+		case "ID":
+
+			out.Values[i] = ec._GoroutineInfo_ID(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Frames":
+
+			out.Values[i] = ec._GoroutineInfo_Frames(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Vars":
+
+			out.Values[i] = ec._GoroutineInfo_Vars(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var linkImplementors = []string{"Link"}
+
+func (ec *executionContext) _Link(ctx context.Context, sel ast.SelectionSet, obj *Link) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, linkImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Link")
+		case "SnapshotID":
+
+			out.Values[i] = ec._Link_SnapshotID(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "GoroutineID":
+
+			out.Values[i] = ec._Link_GoroutineID(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "FrameIdx":
+
+			out.Values[i] = ec._Link_FrameIdx(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -5435,6 +6094,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_collectionByID(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "goroutines":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_goroutines(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -6048,6 +6730,60 @@ func (ec *executionContext) marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec
 	return ec._CollectSpec(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNCollectedVar2ᚕᚖstacksvizᚐCollectedVarᚄ(ctx context.Context, sel ast.SelectionSet, v []*CollectedVar) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCollectedVar2ᚖstacksvizᚐCollectedVar(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCollectedVar2ᚖstacksvizᚐCollectedVar(ctx context.Context, sel ast.SelectionSet, v *CollectedVar) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CollectedVar(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNCollection2ᚕᚖstacksvizᚋentᚐCollectionᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Collection) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -6156,6 +6892,60 @@ func (ec *executionContext) marshalNFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx
 	return ec._FrameInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*GoroutineInfo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGoroutineInfo2ᚖstacksvizᚐGoroutineInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNGoroutineInfo2ᚖstacksvizᚐGoroutineInfo(ctx context.Context, sel ast.SelectionSet, v *GoroutineInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GoroutineInfo(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNID2int(ctx context.Context, v interface{}) (int, error) {
 	res, err := graphql.UnmarshalIntID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -6216,6 +7006,60 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNLink2ᚕᚖstacksvizᚐLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []*Link) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNLink2ᚖstacksvizᚐLink(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNLink2ᚖstacksvizᚐLink(ctx context.Context, sel ast.SelectionSet, v *Link) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Link(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNode2ᚕstacksvizᚋentᚐNoder(ctx context.Context, sel ast.SelectionSet, v []ent.Noder) graphql.Marshaler {

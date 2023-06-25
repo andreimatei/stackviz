@@ -75,6 +75,9 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
         )
       })
     this.appCoreService.appCore.globalState.set(
+      "collection_id", new IntegerValue(this.collectionID));
+    console.log("collection id: ", this.collectionID)
+    this.appCoreService.appCore.globalState.set(
       "snapshot_id", new IntegerValue(this.snapshotID));
   }
 

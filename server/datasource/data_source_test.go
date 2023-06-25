@@ -14,7 +14,7 @@ import (
 
 func TestDataSource(t *testing.T) {
 	ctx := context.Background()
-	lru, err := lru.New[string, processSnapshot](100)
+	lru, err := lru.New[string, ProcessSnapshot](100)
 	require.NoError(t, err)
 	_, filename, _, _ := runtime.Caller(0)
 	src := DataSource{fetcher: &stacksFetcherImpl{
@@ -28,7 +28,7 @@ func TestDataSource(t *testing.T) {
 
 func TestBuildTree(t *testing.T) {
 	ctx := context.Background()
-	lru, err := lru.New[string, processSnapshot](100)
+	lru, err := lru.New[string, ProcessSnapshot](100)
 	require.NoError(t, err)
 	_, filename, _, _ := runtime.Caller(0)
 	src := DataSource{fetcher: &stacksFetcherImpl{
@@ -37,8 +37,8 @@ func TestBuildTree(t *testing.T) {
 	}}
 	col, err := src.fetcher.Fetch(ctx, "example.txt")
 	require.NoError(t, err)
-	require.NotNil(t, col.snapshot)
-	tree := src.buildTree(col.snapshot)
+	require.NotNil(t, col.Snapshot)
+	tree := src.buildTree(col.Snapshot)
 	require.NotNil(t, tree)
 	fmt.Printf("!!! tree:\n")
 	tree.prettyPrint()

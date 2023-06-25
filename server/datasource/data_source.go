@@ -30,6 +30,7 @@ const (
 	stacksTreeQuery = "stacks.tree"
 	stacksRawQuery  = "stacks.raw"
 
+	collectionIDKey          = "collection_id"
 	snapshotIDKey            = "snapshot_id"
 	pathPrefixKey            = "path_prefix"
 	nameKey                  = "name"
@@ -59,15 +60,33 @@ func New(fetcher StacksFetcher) *DataSource {
 	return &DataSource{fetcher: fetcher}
 }
 
+// goroutineID to frame index to list of variables
 type FramesOfInterest map[int]map[int][]string
+type ProcessedFOI struct {
+	Vars []VarInfo
+}
 
-// processSnapshot represents a single fetched log trace, along with any metadata it
+type VarInfo struct {
+	Val   string
+	Links []Link
+}
+
+// goroutineID to frame index to list of variables
+type FOIS map[int]map[int]ProcessedFOI
+
+type Link struct {
+	SnapshotID  int
+	GoroutineID int
+	FrameIdx    int
+}
+
+// ProcessSnapshot represents a single fetched log trace, along with any metadata it
 // requires.
-type processSnapshot struct {
+type ProcessSnapshot struct {
 	processID        string
-	snapshot         *pp.Snapshot
+	Snapshot         *pp.Snapshot
 	agg              *pp.Aggregated
-	framesOfInterest FramesOfInterest
+	FramesOfInterest FOIS
 }
 
 // StacksFetcher describes types capable of fetching stack traces by collection
@@ -75,13 +94,13 @@ type processSnapshot struct {
 type StacksFetcher interface {
 	// Fetch fetches the stacks specified by collectionName, returning a
 	// LogTrace or an error if a failure is encountered.
-	Fetch(ctx context.Context, snapshotID int) (processSnapshot, error)
+	Fetch(ctx context.Context, collectionID int, snapshotID int) (ProcessSnapshot, error)
 }
 
 type stacksFetcherImpl struct {
 	client *ent.Client
-	// lru is a cache mapping from processSnapshot ID to previously-loaded processSnapshot.
-	lru simplelru.LRUCache[int, processSnapshot]
+	// lru is a cache mapping from ProcessSnapshot ID to previously-loaded ProcessSnapshot.
+	lru simplelru.LRUCache[int, ProcessSnapshot]
 }
 
 var _ StacksFetcher = &stacksFetcherImpl{}
@@ -89,7 +108,7 @@ var _ StacksFetcher = &stacksFetcherImpl{}
 // NewStacksFetcher creates a new StacksFetcher that will read collections from
 // the specified directory.
 func NewStacksFetcher(client *ent.Client) StacksFetcher {
-	lru, err := lru.New[int, processSnapshot](100)
+	lru, err := lru.New[int, ProcessSnapshot](100)
 	if err != nil {
 		panic(err)
 	}
@@ -111,7 +130,16 @@ func getSnapshot(ctx context.Context, id int, client *ent.Client) (*ent.ProcessS
 	return c, nil
 }
 
-func (f *stacksFetcherImpl) Fetch(ctx context.Context, snapshotID int) (processSnapshot, error) {
+func getSnapshotsForCollection(ctx context.Context, collectionID int, client *ent.Client) ([]*ent.ProcessSnapshot, error) {
+	log.Printf("!!! getSnapshotsByCollection: id: %d", collectionID)
+	c, err := client.Collection.Get(ctx, collectionID)
+	if err != nil {
+		return nil, err
+	}
+	return c.ProcessSnapshots(ctx)
+}
+
+func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapshotID int) (ProcessSnapshot, error) {
 	// Check the cache first.
 	{
 		snap, ok := f.lru.Get(snapshotID)
@@ -122,17 +150,17 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, snapshotID int) (processS
 
 	snapRec, err := getSnapshot(ctx, snapshotID, f.client)
 	if err != nil {
-		return processSnapshot{}, err
+		return ProcessSnapshot{}, err
 	}
 
 	opts := pp.DefaultOpts()
 	opts.ParsePC = true
 	snap, _, err := pp.ScanSnapshot(strings.NewReader(snapRec.Snapshot), io.Discard, opts)
 	if err != nil && err != io.EOF {
-		return processSnapshot{}, err
+		return ProcessSnapshot{}, err
 	}
 	if snap == nil {
-		return processSnapshot{}, fmt.Errorf("failed to parse any stacks")
+		return ProcessSnapshot{}, fmt.Errorf("failed to parse any stacks")
 	}
 
 	agg := snap.Aggregate(pp.AnyValue)
@@ -141,8 +169,31 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, snapshotID int) (processS
 	if snapRec.FramesOfInterest != "" {
 		if err = json.Unmarshal([]byte(snapRec.FramesOfInterest), &fois); err != nil {
 			log.Printf("!!! json: %s", snapRec.FramesOfInterest)
-			return processSnapshot{}, fmt.Errorf("failed to unmarshal frames of interest: %w", err)
+			return ProcessSnapshot{}, fmt.Errorf("failed to unmarshal frames of interest: %w", err)
 		}
+	}
+
+	// Find links to other captured variables.
+	allSnaps, err := getSnapshotsForCollection(ctx, collectionID, f.client)
+	if err != nil {
+		return ProcessSnapshot{}, err
+	}
+	processed := make(FOIS)
+	for gid, m := range fois {
+		prm := make(map[int]ProcessedFOI)
+		for idx, vars := range m {
+			var pf ProcessedFOI
+			pf.Vars = make([]VarInfo, len(vars))
+			for i, v := range vars {
+				links := findLinks(v, allSnaps)
+				pf.Vars[i] = VarInfo{
+					Val:   v,
+					Links: links,
+				}
+			}
+			prm[idx] = pf
+		}
+		processed[gid] = prm
 	}
 
 	// !!!
@@ -152,14 +203,42 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, snapshotID int) (processS
 	//	}
 	//}
 
-	res := processSnapshot{
-		snapshot:         snap,
+	res := ProcessSnapshot{
+		Snapshot:         snap,
 		agg:              agg,
-		framesOfInterest: fois,
+		FramesOfInterest: processed,
 	}
 
 	f.lru.Add(snapshotID, res)
 	return res, nil
+}
+
+func findLinks(v string, snaps []*ent.ProcessSnapshot) []Link {
+	var res []Link
+	for _, s := range snaps {
+		if s.FramesOfInterest == "" {
+			continue
+		}
+		var fois FramesOfInterest
+		if err := json.Unmarshal([]byte(s.FramesOfInterest), &fois); err != nil {
+			panic(err)
+		}
+		for gid, m := range fois {
+			for frameIdx, vars := range m {
+				for _, vv := range vars {
+					if vv == v {
+						res = append(res, Link{
+							SnapshotID:  s.ID,
+							GoroutineID: gid,
+							FrameIdx:    frameIdx,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return res
 }
 
 // treeNode is a node in a trie of stack traces. Each node represents a
@@ -170,7 +249,7 @@ type treeNode struct {
 	file     string
 	line     int
 	pcOffset int64
-	vars     [][]string
+	vars     [][]VarInfo
 	// path is the path from the root to this node, represented by hashes of
 	// each ancestor's function.
 	path     []weightedtree.ScopeID
@@ -293,7 +372,7 @@ func (t *treeNode) createPath(stack []frame) {
 		path:              append(t.path, computeScopeID(call)),
 		children:          nil,
 		numLeafGoroutines: 0,
-		vars:              [][]string{stack[0].vars},
+		vars:              [][]VarInfo{stack[0].vars},
 	})
 	t.children[len(t.children)-1].createPath(stack[1:])
 }
@@ -328,7 +407,7 @@ func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSp
 	for _, frame := range t.vars {
 		sb.Reset()
 		for _, v := range frame {
-			sb.WriteString(v)
+			sb.WriteString(v.Val)
 			sb.WriteRune('\n')
 		}
 		varsProp = append(varsProp, sb.String())
@@ -379,11 +458,11 @@ func functionNameToColor(functionName string) float64 {
 
 type frame struct {
 	call pp.Call
-	vars []string
+	vars []VarInfo
 }
 
 // buildTree builds a trie out of the stack traces in snap.
-func (ds *DataSource) buildTree(snap *pp.Snapshot, fois FramesOfInterest) *treeNode {
+func (ds *DataSource) buildTree(snap *pp.Snapshot, fois FOIS) *treeNode {
 	root := &treeNode{
 		function: pp.Func{
 			Complete: "root",
@@ -402,7 +481,7 @@ func (ds *DataSource) buildTree(snap *pp.Snapshot, fois FramesOfInterest) *treeN
 		for i := range s.Signature.Stack.Calls {
 			stack[l-i-1] = frame{
 				call: s.Signature.Stack.Calls[i],
-				vars: myFois[i],
+				vars: myFois[i].Vars,
 			}
 		}
 		root.addStack(stack)
@@ -425,6 +504,7 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	drb *tvutil.DataResponseBuilder,
 	reqs []*tvutil.DataSeriesRequest,
 ) error {
+	log.Printf("!!! global filters: %v", globalFilters)
 	snapshotIDVal, ok := globalFilters[snapshotIDKey]
 	if !ok {
 		return fmt.Errorf("missing required filter option '%s'", snapshotIDKey)
@@ -433,8 +513,16 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	if err != nil {
 		return fmt.Errorf("required filter option '%s' must be an int", snapshotIDKey)
 	}
+	collectionIDVal, ok := globalFilters[collectionIDKey]
+	if !ok {
+		return fmt.Errorf("missing required filter option '%s'", collectionIDKey)
+	}
+	collectionID, err := tvutil.ExpectIntegerValue(collectionIDVal)
+	if err != nil {
+		return fmt.Errorf("required filter option '%s' must be an int", collectionIDKey)
+	}
 
-	processSnapshot, err := ds.fetchCollection(ctx, int(snapshotID))
+	processSnapshot, err := ds.fetchCollection(ctx, int(collectionID), int(snapshotID))
 	if err != nil {
 		log.Printf("Failed to fetch collection: %s", err)
 		return err
@@ -460,7 +548,7 @@ func (ds *DataSource) HandleDataSeriesRequests(
 	log.Printf("!!! query (%d requests) filter: %s, path prefix: %s\n",
 		len(reqs), filter, pathPrefix)
 
-	snap := ds.filterStacks(processSnapshot.snapshot, filter)
+	snap := ds.filterStacks(processSnapshot.Snapshot, filter)
 	path := make([]weightedtree.ScopeID, len(pathPrefix))
 	for i, p := range pathPrefix {
 		sid, err := strconv.ParseUint(p, 10, 64)
@@ -476,11 +564,11 @@ func (ds *DataSource) HandleDataSeriesRequests(
 		builder := drb.DataSeries(req)
 		switch req.QueryName {
 		case stacksTreeQuery:
-			if err := ds.handleStacksTreeQuery(snap, processSnapshot.framesOfInterest, path, builder); err != nil {
+			if err := ds.handleStacksTreeQuery(snap, processSnapshot.FramesOfInterest, path, builder); err != nil {
 				return err
 			}
 		case stacksRawQuery:
-			ds.handleStacksRawQuery(snap, len(processSnapshot.snapshot.Goroutines), processSnapshot.framesOfInterest, builder)
+			ds.handleStacksRawQuery(snap, len(processSnapshot.Snapshot.Goroutines), processSnapshot.FramesOfInterest, builder)
 		default:
 			return fmt.Errorf("unsupported data query: %s", req.QueryName)
 		}
@@ -530,7 +618,7 @@ func (ds *DataSource) filterStacksByPrefix(snap *pp.Snapshot, prefix []weightedt
 // as such.
 func (ds *DataSource) handleStacksTreeQuery(
 	snap *pp.Snapshot,
-	fois FramesOfInterest,
+	fois FOIS,
 	path []weightedtree.ScopeID,
 	builder tvutil.DataBuilder,
 ) error {
@@ -569,7 +657,7 @@ var funcCol = table.Column(category.New("function", "Function", "The name of the
 var pcOffsetCol = table.Column(category.New("pcoff", "PC offset", "instruction offset from function entry"))
 
 func (ds *DataSource) handleStacksRawQuery(
-	snap *pp.Snapshot, numTotalGoroutines int, fois FramesOfInterest, builder tvutil.DataBuilder,
+	snap *pp.Snapshot, numTotalGoroutines int, fois FOIS, builder tvutil.DataBuilder,
 ) {
 	renderSettings := &table.RenderSettings{
 		RowHeightPx: 20,
@@ -598,9 +686,21 @@ func (ds *DataSource) handleStacksRawQuery(
 	for _, g := range snap.Goroutines {
 		tab := table.New(rawBuilder.Child(), renderSettings, stackCol).With(tvutil.IntegerProperty(goroutineIDKey, int64(g.ID)))
 		// Render all the frames of interest for the goroutine, across all the frames.
+		// !!!
 		for _, foisByFrame := range fois[g.ID] {
-			for _, foi := range foisByFrame {
-				tab.Row(table.Cell(stackCol, tvutil.String(foi)))
+			for _, v := range foisByFrame.Vars {
+				var sb strings.Builder
+				for i, l := range v.Links {
+					if l.GoroutineID == g.ID {
+						// This is the current goroutine; don't render a link to itself.
+						continue
+					}
+					if i > 0 {
+						sb.WriteString(", ")
+					}
+					sb.WriteString(fmt.Sprintf("[snap: %d, goroutine: %d (frame: %d)]", l.SnapshotID, l.GoroutineID, l.FrameIdx))
+				}
+				tab.Row(table.Cell(stackCol, tvutil.String(fmt.Sprintf("var: %s links: %s", v.Val, sb.String()))))
 			}
 		}
 
@@ -611,13 +711,13 @@ func (ds *DataSource) handleStacksRawQuery(
 	}
 }
 
-// fetchCollection returns the specified processSnapshot from the LRU if it's
+// fetchCollection returns the specified ProcessSnapshot from the LRU if it's
 // present there.  If it isn't already in the LRU, it is fetched and added to
 // the LRU before being returned.
-func (ds *DataSource) fetchCollection(ctx context.Context, snapshotID int) (processSnapshot, error) {
-	col, err := ds.fetcher.Fetch(ctx, snapshotID)
+func (ds *DataSource) fetchCollection(ctx context.Context, collectionID int, snapshotID int) (ProcessSnapshot, error) {
+	col, err := ds.fetcher.Fetch(ctx, collectionID, snapshotID)
 	if err != nil {
-		return processSnapshot{}, err
+		return ProcessSnapshot{}, err
 	}
 	return col, nil
 }

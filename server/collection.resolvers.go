@@ -14,6 +14,8 @@ import (
 	"stacksviz/ent/collection"
 	"stacksviz/ent/frameinfo"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // CreateCollection is the resolver for the createCollection field.
@@ -37,37 +39,47 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 		svcName = serviceName
 	}
 
+	var g errgroup.Group
+	spec := r.getOrCreateCollectSpec(ctx)
 	for processName, url := range r.conf.Targets[svcName] {
 		i++
-		log.Printf("collecting snapshot from process %d: %s-%s - %s", i, svcName, processName, url)
-		// !!! snap, err := r.getSnapshotFromPprof(url)
-		spec := r.getOrCreateCollectSpec(ctx)
-		snap, err := r.getSnapshotFromDelveAgent(ctx, url, spec)
-		if err != nil {
-			return nil, err
-		}
-		var framesOfInterest string
-		if len(snap.Frames_of_interest) > 0 {
-			b, err := json.Marshal(snap.Frames_of_interest)
+		processName := processName
+		url := url
+		g.Go(func() error {
+			log.Printf("collecting snapshot from process %d: %s-%s - %s", i, svcName, processName, url)
+			// !!! snap, err := r.getSnapshotFromPprof(url)
+			snap, err := r.getSnapshotFromDelveAgent(ctx, url, spec)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			framesOfInterest = string(b)
-		}
+			log.Printf("!!! delve agent returned")
+			var framesOfInterest string
+			if len(snap.Frames_of_interest) > 0 {
+				b, err := json.Marshal(snap.Frames_of_interest)
+				if err != nil {
+					return err
+				}
+				framesOfInterest = string(b)
+			}
 
-		log.Printf("!!! creating snapshot with frames of interest: %s", framesOfInterest)
-		input := ent.CreateProcessSnapshotInput{
-			ProcessID: processName,
-			Snapshot:  snapToString(snap),
-		}
-		if framesOfInterest != "" {
-			input.FramesOfInterest = &framesOfInterest
-		}
-		ps, err := r.dbClient.ProcessSnapshot.Create().SetInput(input).Save(ctx)
-		if err != nil {
-			return nil, err
-		}
-		psIDs = append(psIDs, ps.ID)
+			log.Printf("!!! creating snapshot with frames of interest: %s", framesOfInterest)
+			input := ent.CreateProcessSnapshotInput{
+				ProcessID: processName,
+				Snapshot:  snapToString(snap),
+			}
+			if framesOfInterest != "" {
+				input.FramesOfInterest = &framesOfInterest
+			}
+			ps, err := r.dbClient.ProcessSnapshot.Create().SetInput(input).Save(ctx)
+			if err != nil {
+				return err
+			}
+			psIDs = append(psIDs, ps.ID)
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
 	const timeFormat = "Monday, 02-Jan-06 15:04:05 MST"
@@ -126,6 +138,53 @@ func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr s
 func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collection, error) {
 	log.Printf("!!! querying collection by ID: %d", id)
 	return r.dbClient.Debug().Collection.Query().Where(collection.ID(id)).Only(ctx)
+}
+
+// Goroutines is the resolver for the goroutines field.
+func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int) ([]*GoroutineInfo, error) {
+	snap, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*GoroutineInfo, len(snap.Snapshot.Goroutines))
+	for i, g := range snap.Snapshot.Goroutines {
+		frames := make([]string, len(g.Stack.Calls))
+		for j, c := range g.Stack.Calls {
+			frames[j] = c.Func.Complete
+		}
+
+		// Render all the frames of interest for the goroutine, across all the frames.
+		// !!! preprocess an index from variable value to list of links.
+		var vs []*CollectedVar
+		for _, frames := range snap.FramesOfInterest[g.ID] {
+			for _, v := range frames.Vars {
+				links := make([]*Link, 0, len(v.Links))
+				for _, l := range v.Links {
+					if l.GoroutineID == g.ID {
+						// Don't link to ourselves.
+						continue
+					}
+					links = append(links,
+						&Link{
+							SnapshotID:  l.SnapshotID,
+							GoroutineID: l.GoroutineID,
+							FrameIdx:    l.FrameIdx,
+						})
+				}
+				vs = append(vs, &CollectedVar{
+					Value: v.Val,
+					Links: links,
+				})
+			}
+		}
+
+		res[i] = &GoroutineInfo{
+			ID:     g.ID,
+			Frames: frames,
+			Vars:   vs,
+		}
+	}
+	return res, nil
 }
 
 // AvailableVars is the resolver for the availableVars field.

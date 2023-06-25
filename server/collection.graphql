@@ -8,6 +8,7 @@ type Mutation {
 
 extend type Query {
   collectionByID(id: ID!): Collection
+  goroutines(colID: Int!, snapID: Int!): [GoroutineInfo!]!
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
   frameInfo(func: String!): FrameInfo
   typeInfo(name: String!): TypeInfo!
@@ -35,4 +36,21 @@ type FieldInfo {
   Name: String!
   Type: String!
   Embedded: Boolean!
+}
+
+type GoroutineInfo {
+  ID: Int!
+  Frames: [String!]!
+  Vars: [CollectedVar!]!
+}
+
+type CollectedVar {
+  Value: String!
+  Links: [Link!]!
+}
+
+type Link {
+  SnapshotID: Int!
+  GoroutineID: Int!
+  FrameIdx: Int!
 }

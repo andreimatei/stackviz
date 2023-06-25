@@ -2,10 +2,27 @@
 
 package server
 
+type CollectedVar struct {
+	Value string  `json:"Value"`
+	Links []*Link `json:"Links"`
+}
+
 type FieldInfo struct {
 	Name     string `json:"Name"`
 	Type     string `json:"Type"`
 	Embedded bool   `json:"Embedded"`
+}
+
+type GoroutineInfo struct {
+	ID     int             `json:"ID"`
+	Frames []string        `json:"Frames"`
+	Vars   []*CollectedVar `json:"Vars"`
+}
+
+type Link struct {
+	SnapshotID  int `json:"SnapshotID"`
+	GoroutineID int `json:"GoroutineID"`
+	FrameIdx    int `json:"FrameIdx"`
 }
 
 type TypeInfo struct {

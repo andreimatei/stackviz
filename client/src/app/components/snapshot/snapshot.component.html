@@ -98,6 +98,9 @@
             Note that backend data series providers may ignore some global filters.
           -->
           <value-map>
+            <value key="collection_id">
+              <global-ref key="collection_id"></global-ref>
+            </value>
             <value key="snapshot_id">
               <global-ref key="snapshot_id"></global-ref>
             </value>
@@ -179,7 +182,7 @@
 
       </weighted-tree>
 
-      <app-stacks>
+      <app-stacks [colID]="collectionID" [snapID]="snapshotID">
         <data-series>
           <query>
             <string>stacks.raw</string>

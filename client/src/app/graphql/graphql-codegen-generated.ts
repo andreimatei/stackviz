@@ -26,6 +26,12 @@ export type CollectSpec = Node & {
   id: Scalars['ID'];
 };
 
+export type CollectedVar = {
+  __typename?: 'CollectedVar';
+  Links: Array<Link>;
+  Value: Scalars['String'];
+};
+
 export type Collection = Node & {
   __typename?: 'Collection';
   id: Scalars['ID'];
@@ -81,6 +87,20 @@ export type FrameInfo = Node & {
   exprs: Array<Scalars['String']>;
   frame: Scalars['String'];
   id: Scalars['ID'];
+};
+
+export type GoroutineInfo = {
+  __typename?: 'GoroutineInfo';
+  Frames: Array<Scalars['String']>;
+  ID: Scalars['Int'];
+  Vars: Array<CollectedVar>;
+};
+
+export type Link = {
+  __typename?: 'Link';
+  FrameIdx: Scalars['Int'];
+  GoroutineID: Scalars['Int'];
+  SnapshotID: Scalars['Int'];
 };
 
 export type Mutation = {
@@ -157,6 +177,7 @@ export type Query = {
   collections: Array<Collection>;
   frameInfo?: Maybe<FrameInfo>;
   frameInfos: Array<FrameInfo>;
+  goroutines: Array<GoroutineInfo>;
   /** Fetches an object given its ID. */
   node?: Maybe<Node>;
   /** Lookup nodes by a list of IDs. */
@@ -179,6 +200,12 @@ export type QueryCollectionByIdArgs = {
 
 export type QueryFrameInfoArgs = {
   func: Scalars['String'];
+};
+
+
+export type QueryGoroutinesArgs = {
+  colID: Scalars['Int'];
+  snapID: Scalars['Int'];
 };
 
 
@@ -264,6 +291,14 @@ export type GetTypeInfoQueryVariables = Exact<{
 
 
 export type GetTypeInfoQuery = { __typename?: 'Query', typeInfo: { __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean } | null> | null } };
+
+export type GetGoroutinesQueryVariables = Exact<{
+  colID: Scalars['Int'];
+  snapID: Scalars['Int'];
+}>;
+
+
+export type GetGoroutinesQuery = { __typename?: 'Query', goroutines: Array<{ __typename?: 'GoroutineInfo', ID: number, Frames: Array<string>, Vars: Array<{ __typename?: 'CollectedVar', Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }> };
 
 export const AllCollectionsDocument = gql`
     query AllCollections {
@@ -421,6 +456,33 @@ export const GetTypeInfoDocument = gql`
   })
   export class GetTypeInfoGQL extends Apollo.Query<GetTypeInfoQuery, GetTypeInfoQueryVariables> {
     override document = GetTypeInfoDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const GetGoroutinesDocument = gql`
+    query GetGoroutines($colID: Int!, $snapID: Int!) {
+  goroutines(colID: $colID, snapID: $snapID) {
+    ID
+    Frames
+    Vars {
+      Value
+      Links {
+        SnapshotID
+        GoroutineID
+        FrameIdx
+      }
+    }
+  }
+}
+    `;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class GetGoroutinesGQL extends Apollo.Query<GetGoroutinesQuery, GetGoroutinesQueryVariables> {
+    override document = GetGoroutinesDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);

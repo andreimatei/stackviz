@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/andreimatei/delve-agent/agentrpc"
-	"github.com/kr/pretty"
 )
 
 func (r *mutationResolver) getSnapshotFromPprof(targetURL string) (string, error) {
@@ -53,7 +52,7 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(ctx context.Context, agentA
 	if err != nil {
 		log.Fatal("call to agent failed: ", err)
 	}
-	pretty.Print(res) // !!!
+	//pretty.Print(res) // !!!
 
 	//var sb strings.Builder
 	//for _, stack := range res.Snapshot.Stacks {

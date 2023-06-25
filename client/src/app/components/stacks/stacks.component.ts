@@ -1,4 +1,4 @@
-import { Component, ContentChild, ViewEncapsulation } from '@angular/core';
+import { Component, ContentChild, Input, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   AppCoreService,
@@ -10,6 +10,11 @@ import { MatTabsModule, } from '@angular/material/tabs'
 import { AppCore, ConfigurationError, ResponseNode, Severity } from 'traceviz-client-core';
 import { Subject } from "rxjs";
 import { takeUntil } from 'rxjs/operators';
+import {
+  GetGoroutinesGQL,
+  GetGoroutinesQuery,
+  GetGoroutinesQueryVariables, GoroutineInfo
+} from "../../graphql/graphql-codegen-generated";
 
 const SOURCE = 'data-table';
 
@@ -43,6 +48,13 @@ const SOURCE = 'data-table';
             </ul>
           </ng-template>
          </mat-tab>
+        <mat-tab label="Raw 2">
+          <ul>
+            <li *ngFor="let g of goroutines">
+              Goroutine {{ g.ID }}
+            </li>
+          </ul>
+        </mat-tab>
       </mat-tab-group>
 
     </div>
@@ -63,6 +75,10 @@ export class StacksComponent {
   @ContentChild(DataSeriesQueryDirective) dataSeriesQueryDir?: DataSeriesQueryDirective;
   @ContentChild(InteractionsDirective) interactionsDir?: InteractionsDirective;
 
+  // TODO(andrei): mark these as required.
+  @Input() colID!: number
+  @Input() snapID!: number
+
   private unsubscribe = new Subject<void>();
   protected rawStacks?: ResponseNode[];
   protected aggStacks?: ResponseNode[];
@@ -71,8 +87,11 @@ export class StacksComponent {
   protected numFilteredGoroutines?: number;
   protected numTotalGoroutines?: number;
 
+  protected goroutines!: GoroutineInfo[];
+
   constructor(
     private readonly appCoreService: AppCoreService,
+    private readonly getGoroutinesQuery: GetGoroutinesGQL,
   ) {
   }
 
@@ -98,6 +117,13 @@ export class StacksComponent {
           this.numStacks = this.rawStacks.length;
         })
     });
+
+    this.getGoroutinesQuery
+      .fetch({colID: this.colID, snapID: this.snapID})
+      .subscribe(res => {
+        this.goroutines = res.data.goroutines;
+        console.log("got goroutines:", this.goroutines.length)
+      })
   }
 
   ngOnDestroy(): void {
