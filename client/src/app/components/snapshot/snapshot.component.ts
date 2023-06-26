@@ -30,7 +30,7 @@ class Frame {
   // state from escaping this component. In turn, this means that every time
   // that a user navigates to the snapshot page, she gets an empty state (i.e.
   // any filtering they might have previously done on the page is gone; this is
-  // considered a good thing.
+  // considered a good thing).
   providers: [AppCoreService]
 })
 export class SnapshotComponent implements OnInit, AfterViewInit {
