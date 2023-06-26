@@ -6,14 +6,13 @@ import {
   ProcessSnapshot,
   RemoveExprFromCollectSpecGQL
 } from "../../graphql/graphql-codegen-generated";
-import { ActivatedRoute, Router } from "@angular/router";
+import { Router } from "@angular/router";
 import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
 import { Action, IntegerValue, Update, ValueMap, } from "traceviz-client-core";
 import { MatDrawer } from "@angular/material/sidenav";
 import { ResizeEvent } from 'angular-resizable-element';
 import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
 import { MatSelect } from "@angular/material/select";
-
 
 class Frame {
   constructor(public name: string, public file: string, public line: number) {
@@ -35,15 +34,31 @@ class Frame {
   providers: [AppCoreService]
 })
 export class SnapshotComponent implements OnInit, AfterViewInit {
+  // collectionID and snapshotID input properties are set by the router.
+  @Input('colID') collectionID!: number;
+  private _snapshotID!: number;
+  @Input('snapID') set snapshotID(val: number) {
+    this._snapshotID = val;
+    // When setting the snapshot ID, we update it in the global state too.
+    try {
+      this.appCoreService.appCore.globalState.get("snapshot_id");
+    } catch (error) {
+      this.appCoreService.appCore.globalState.set("snapshot_id", new IntegerValue(0));
+    }
+    this.appCoreService.appCore.globalState.get(
+      "snapshot_id").fold(new IntegerValue(val), false, true);
+  }
+
+  get snapshotID(): number {
+    return this._snapshotID;
+  }
+
   protected collectionName?: string;
-  protected snapshots?: ProcessSnapshot[];
+  protected snapshots?: Partial<ProcessSnapshot>[];
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   @ViewChild(TypeInfoComponent) typeInfo?: TypeInfoComponent;
   @ViewChild('snapshotsSelect') snapSelect!: MatSelect;
-
-  @Input('colID') collectionID!: number;
-  @Input('snapID') snapshotID!: number;
 
   protected selectedFrame?: Frame;
   // Data about the selected node. Each element is a string containing all the
@@ -61,24 +76,19 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
     private readonly router: Router,
   ) {
+    console.log('ctor');
   }
 
   ngOnInit(): void {
-    // Get the collection ID and snapshot ID from the URL. The names of the URL
-    // params are defined in the Routes collection.
-    // this.collectionID = Number(this.route.snapshot.paramMap.get('colID'));
-    // this.snapshotID = Number(this.route.snapshot.paramMap.get('snapID'));
+    console.log('ngOnInit');
     this.getCollectionQuery.fetch({colID: this.collectionID})
       .subscribe(results => {
         this.collectionName = results.data.collectionByID?.name;
-        this.snapshots = results.data.collectionByID?.processSnapshots?.map(
-          value => ({...value, snapshot: "",})
-        )
+        this.snapshots = results.data.collectionByID?.processSnapshots!;
       })
+
     this.appCoreService.appCore.globalState.set(
       "collection_id", new IntegerValue(this.collectionID));
-    this.appCoreService.appCore.globalState.set(
-      "snapshot_id", new IntegerValue(this.snapshotID));
   }
 
   ngAfterViewInit() {
@@ -123,10 +133,10 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   onSelectedSnapshotChange(newValue: string) {
     let newSnapshotID = Number(newValue);
-    // !!! this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(newSnapshotID), false /* toggle */);
-    console.log('navigating to', `collections/${this.collectionID}/snap/${newSnapshotID}`);
-    this.router.navigateByUrl(`collections/${this.collectionID}/snap/${newSnapshotID}`)
-      .then(value => window.location.reload());
+    // Navigate to the updated route. This will cause the snapshotID input
+    // property to be updated by the router, which in turn causes everything to
+    // be reloaded and re-rendered.
+    this.router.navigateByUrl(`collections/${this.collectionID}/snap/${newSnapshotID}`);
   }
 
 
