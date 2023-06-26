@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
 import {
   AddExprToCollectSpecGQL,
   GetAvailableVariablesGQL,
@@ -35,14 +35,15 @@ class Frame {
   providers: [AppCoreService]
 })
 export class SnapshotComponent implements OnInit, AfterViewInit {
-  protected collectionID!: number;
-  protected snapshotID!: number;
   protected collectionName?: string;
   protected snapshots?: ProcessSnapshot[];
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   @ViewChild(TypeInfoComponent) typeInfo?: TypeInfoComponent;
   @ViewChild('snapshotsSelect') snapSelect!: MatSelect;
+
+  @Input('colID') collectionID!: number;
+  @Input('snapID') snapshotID!: number;
 
   protected selectedFrame?: Frame;
   // Data about the selected node. Each element is a string containing all the
@@ -58,7 +59,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly varsQuery: GetAvailableVariablesGQL,
     private readonly addExpr: AddExprToCollectSpecGQL,
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
-    private readonly route: ActivatedRoute,
     private readonly router: Router,
   ) {
   }
@@ -66,9 +66,8 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     // Get the collection ID and snapshot ID from the URL. The names of the URL
     // params are defined in the Routes collection.
-    this.collectionID = Number(this.route.snapshot.paramMap.get('colID'));
-    this.snapshotID = Number(this.route.snapshot.paramMap.get('snapID'));
-    console.log(`got snapshot ID ${this.snapshotID} from URL`)
+    // this.collectionID = Number(this.route.snapshot.paramMap.get('colID'));
+    // this.snapshotID = Number(this.route.snapshot.paramMap.get('snapID'));
     this.getCollectionQuery.fetch({colID: this.collectionID})
       .subscribe(results => {
         this.collectionName = results.data.collectionByID?.name;
@@ -78,7 +77,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       })
     this.appCoreService.appCore.globalState.set(
       "collection_id", new IntegerValue(this.collectionID));
-    console.log("collection id: ", this.collectionID)
     this.appCoreService.appCore.globalState.set(
       "snapshot_id", new IntegerValue(this.snapshotID));
   }

@@ -4,7 +4,12 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MatCardModule } from '@angular/material/card';
 import { MatPaginatorModule } from '@angular/material/paginator';
-import { CoreModule, DataTableModule, WeightedTreeModule, TextFieldModule } from 'traceviz/dist/ngx-traceviz-lib';
+import {
+  CoreModule,
+  DataTableModule,
+  TextFieldModule,
+  WeightedTreeModule
+} from 'traceviz/dist/ngx-traceviz-lib';
 import { AppComponent } from './app.component';
 import { ComponentsModule } from "./components/components.module";
 import { StacksComponent } from "./components/stacks/stacks.component";
@@ -24,7 +29,7 @@ import { map } from "rxjs";
 
 const routeToFirstSnapshot = (route: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
   const colID = Number(route.params['colID']);
-  const query =  inject(GetCollectionGQL);
+  const query = inject(GetCollectionGQL);
   const router = inject(Router);
 
   return query.fetch({colID: colID}).pipe(map(res => {
@@ -33,19 +38,19 @@ const routeToFirstSnapshot = (route: ActivatedRouteSnapshot, state: RouterStateS
       console.log("error: failed to get collection or first snapshot");
       return false
     }
-    return router.createUrlTree(['collections/'+ colID + '/snap/' + snap?.id]);
+    return router.createUrlTree(['collections/' + colID + '/snap/' + snap?.id]);
   }))
 };
 
 const routes: Routes = [
-  { path: 'collections', component: CollectionsListComponent },
+  {path: 'collections', component: CollectionsListComponent},
   {
     path: 'collections/:colID',
     canActivate: [routeToFirstSnapshot],
     component: CollectionsListComponent,
   },
-  { path: 'collections/:colID/snap/:snapID', component: SnapshotComponent},
-  { path: '', redirectTo: '/collections', pathMatch: 'full'},
+  {path: 'collections/:colID/snap/:snapID', component: SnapshotComponent},
+  {path: '', redirectTo: '/collections', pathMatch: 'full'},
 ];
 
 @NgModule({
@@ -62,7 +67,12 @@ const routes: Routes = [
     HttpClientModule,
     MatCardModule,
     MatPaginatorModule,
-    RouterModule.forRoot(routes, { enableTracing: false }),
+    RouterModule.forRoot(routes,
+      {
+        bindToComponentInputs: true,
+        enableTracing: false
+      }
+    ),
     StacksComponent,
     SnapshotModule,
     TextFieldModule,
@@ -71,4 +81,5 @@ const routes: Routes = [
   providers: [],
   bootstrap: [AppComponent]
 })
-export class AppModule { }
+export class AppModule {
+}
