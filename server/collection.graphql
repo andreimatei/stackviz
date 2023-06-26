@@ -12,6 +12,7 @@ extend type Query {
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
   frameInfo(func: String!): FrameInfo
   typeInfo(name: String!): TypeInfo!
+  getTree(colID: Int!, snapID: Int!): String!
 }
 
 type VarsAndTypes {

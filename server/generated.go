@@ -114,6 +114,7 @@ type ComplexityRoot struct {
 		Collections      func(childComplexity int) int
 		FrameInfo        func(childComplexity int, funcArg string) int
 		FrameInfos       func(childComplexity int) int
+		GetTree          func(childComplexity int, colID int, snapID int) int
 		Goroutines       func(childComplexity int, colID int, snapID int, gID *int) int
 		Node             func(childComplexity int, id int) int
 		Nodes            func(childComplexity int, ids []int) int
@@ -158,6 +159,7 @@ type QueryResolver interface {
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
 	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameInfo, error)
 	TypeInfo(ctx context.Context, name string) (*TypeInfo, error)
+	GetTree(ctx context.Context, colID int, snapID int) (string, error)
 }
 
 type executableSchema struct {
@@ -463,6 +465,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.FrameInfos(childComplexity), true
+
+	case "Query.getTree":
+		if e.complexity.Query.GetTree == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getTree_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetTree(childComplexity, args["colID"].(int), args["snapID"].(int)), true
 
 	case "Query.goroutines":
 		if e.complexity.Query.Goroutines == nil {
@@ -803,6 +817,30 @@ func (ec *executionContext) field_Query_frameInfo_args(ctx context.Context, rawA
 		}
 	}
 	args["func"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_getTree_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["colID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("colID"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["colID"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["snapID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapID"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["snapID"] = arg1
 	return args, nil
 }
 
@@ -2974,6 +3012,61 @@ func (ec *executionContext) fieldContext_Query_typeInfo(ctx context.Context, fie
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_typeInfo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getTree(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_getTree(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetTree(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_getTree(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getTree_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -6189,6 +6282,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_typeInfo(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "getTree":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getTree(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

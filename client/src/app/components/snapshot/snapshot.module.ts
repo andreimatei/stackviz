@@ -26,6 +26,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { ResizableModule } from 'angular-resizable-element';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TypeInfoComponent } from "./type-info.component";
+import { FlamegraphComponent } from "../flamegraph/flamegraph.component";
 
 
 @NgModule({
@@ -55,6 +56,7 @@ import { TypeInfoComponent } from "./type-info.component";
     ResizableModule,
     RouterModule,
     StacksComponent,
+    FlamegraphComponent,
     TextFieldModule,
     WeightedTreeModule,
   ],

@@ -177,6 +177,7 @@ export type Query = {
   collections: Array<Collection>;
   frameInfo?: Maybe<FrameInfo>;
   frameInfos: Array<FrameInfo>;
+  getTree: Scalars['String'];
   goroutines: Array<GoroutineInfo>;
   /** Fetches an object given its ID. */
   node?: Maybe<Node>;
@@ -200,6 +201,12 @@ export type QueryCollectionByIdArgs = {
 
 export type QueryFrameInfoArgs = {
   func: Scalars['String'];
+};
+
+
+export type QueryGetTreeArgs = {
+  colID: Scalars['Int'];
+  snapID: Scalars['Int'];
 };
 
 
@@ -301,6 +308,14 @@ export type GetGoroutinesQueryVariables = Exact<{
 
 
 export type GetGoroutinesQuery = { __typename?: 'Query', goroutines: Array<{ __typename?: 'GoroutineInfo', ID: number, Frames: Array<string>, Vars: Array<{ __typename?: 'CollectedVar', Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }> };
+
+export type GetTreeQueryVariables = Exact<{
+  colID: Scalars['Int'];
+  snapID: Scalars['Int'];
+}>;
+
+
+export type GetTreeQuery = { __typename?: 'Query', getTree: string };
 
 export const AllCollectionsDocument = gql`
     query AllCollections {
@@ -485,6 +500,22 @@ export const GetGoroutinesDocument = gql`
   })
   export class GetGoroutinesGQL extends Apollo.Query<GetGoroutinesQuery, GetGoroutinesQueryVariables> {
     override document = GetGoroutinesDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const GetTreeDocument = gql`
+    query GetTree($colID: Int!, $snapID: Int!) {
+  getTree(colID: $colID, snapID: $snapID)
+}
+    `;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class GetTreeGQL extends Apollo.Query<GetTreeQuery, GetTreeQueryVariables> {
+    override document = GetTreeDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);

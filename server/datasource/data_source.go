@@ -15,13 +15,13 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/hashicorp/golang-lru/v2/simplelru"
 	pp "github.com/maruel/panicparse/v2/stack"
-	"hash/fnv"
 	"io"
 	"log"
 	"math"
 	"regexp"
 	"stacksviz/ent"
 	"stacksviz/ent/processsnapshot"
+	"stacksviz/stacks"
 	"strconv"
 	"strings"
 )
@@ -60,33 +60,13 @@ func New(fetcher StacksFetcher) *DataSource {
 	return &DataSource{fetcher: fetcher}
 }
 
-// goroutineID to frame index to list of variables
-type FramesOfInterest map[int]map[int][]string
-type ProcessedFOI struct {
-	Vars []VarInfo
-}
-
-type VarInfo struct {
-	Val   string
-	Links []Link
-}
-
-// goroutineID to frame index to list of variables
-type FOIS map[int]map[int]ProcessedFOI
-
-type Link struct {
-	SnapshotID  int
-	GoroutineID int
-	FrameIdx    int
-}
-
 // ProcessSnapshot represents a single fetched log trace, along with any metadata it
 // requires.
 type ProcessSnapshot struct {
 	processID        string
 	Snapshot         *pp.Snapshot
 	agg              *pp.Aggregated
-	FramesOfInterest FOIS
+	FramesOfInterest stacks.FOIS
 }
 
 // StacksFetcher describes types capable of fetching stack traces by collection
@@ -165,7 +145,7 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 
 	agg := snap.Aggregate(pp.AnyValue)
 
-	var fois FramesOfInterest
+	var fois stacks.FramesOfInterest
 	if snapRec.FramesOfInterest != "" {
 		if err = json.Unmarshal([]byte(snapRec.FramesOfInterest), &fois); err != nil {
 			log.Printf("!!! json: %s", snapRec.FramesOfInterest)
@@ -178,15 +158,15 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 	if err != nil {
 		return ProcessSnapshot{}, err
 	}
-	processed := make(FOIS)
+	processed := make(stacks.FOIS)
 	for gid, m := range fois {
-		prm := make(map[int]ProcessedFOI)
+		prm := make(map[int]stacks.ProcessedFOI)
 		for idx, vars := range m {
-			var pf ProcessedFOI
-			pf.Vars = make([]VarInfo, len(vars))
+			var pf stacks.ProcessedFOI
+			pf.Vars = make([]stacks.VarInfo, len(vars))
 			for i, v := range vars {
-				links := findLinks(v, allSnaps)
-				pf.Vars[i] = VarInfo{
+				links := stacks.FindLinks(v, allSnaps)
+				pf.Vars[i] = stacks.VarInfo{
 					Val:   v,
 					Links: links,
 				}
@@ -213,184 +193,6 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 	return res, nil
 }
 
-func findLinks(v string, snaps []*ent.ProcessSnapshot) []Link {
-	var res []Link
-	for _, s := range snaps {
-		if s.FramesOfInterest == "" {
-			continue
-		}
-		var fois FramesOfInterest
-		if err := json.Unmarshal([]byte(s.FramesOfInterest), &fois); err != nil {
-			panic(err)
-		}
-		for gid, m := range fois {
-			for frameIdx, vars := range m {
-				for _, vv := range vars {
-					if vv == v {
-						res = append(res, Link{
-							SnapshotID:  s.ID,
-							GoroutineID: gid,
-							FrameIdx:    frameIdx,
-						})
-					}
-				}
-			}
-		}
-	}
-
-	return res
-}
-
-// treeNode is a node in a trie of stack traces. Each node represents a
-// function; its children are other functions called by the node's function in
-// one or more stacks.
-type treeNode struct {
-	function pp.Func
-	file     string
-	line     int
-	pcOffset int64
-	vars     [][]VarInfo
-	// path is the path from the root to this node, represented by hashes of
-	// each ancestor's function.
-	path     []weightedtree.ScopeID
-	children []treeNode
-	// numLeafGoroutines counts how many goroutines have this node as their leaf
-	// function. This results in the "self magnitude" of the node when rendered
-	// as a flame graph - i.e. how much weight it needs to have in addition to
-	// the sum of the children's weights.
-	numLeafGoroutines int
-	numGoroutines     int
-}
-
-// scopeID returns the identifier for this node.
-func (t *treeNode) scopeID() weightedtree.ScopeID {
-	if len(t.path) > 0 {
-		return t.path[len(t.path)-1]
-	}
-	return 0
-}
-
-var _ weightedtree.TreeNode = &treeNode{}
-
-// Path is part of the weightedtree.TreeNode interface.
-func (t *treeNode) Path() []weightedtree.ScopeID {
-	return t.path
-}
-
-func (t *treeNode) pathAsStrings() []string {
-	path := make([]string, len(t.Path()))
-	for i, p := range t.Path() {
-		path[i] = strconv.FormatUint(uint64(p), 10)
-	}
-	return path
-}
-
-// Children is part of the weightedtree.TreeNode interface.
-func (t *treeNode) Children(ids ...weightedtree.ScopeID) ([]weightedtree.TreeNode, error) {
-	res := make([]weightedtree.TreeNode, 0, len(ids))
-	for i := range t.children {
-		c := &t.children[i]
-		add := false
-		if len(ids) > 0 {
-			for _, id := range ids {
-				if c.scopeID() == id {
-					add = true
-				}
-			}
-		} else {
-			add = true
-		}
-		if add {
-			res = append(res, c)
-		}
-	}
-	return res, nil
-}
-
-func (t *treeNode) prettyPrint() {
-	t.prettyPrintInner(0)
-}
-
-func (t *treeNode) prettyPrintInner(indent int) {
-	var sb strings.Builder
-	for i := 0; i < indent; i++ {
-		sb.WriteRune('\t')
-	}
-	fmt.Printf("%s(%d) %s (%s:%d) (%v)\n", sb.String(), t.numLeafGoroutines, t.function.Complete, t.file, t.line, t.path)
-	for i := range t.children {
-		t.children[i].prettyPrintInner(indent + 1)
-	}
-}
-
-// findChild finds the child of t for a call at file:line. If such a child
-// doesn't exist, returns nil.
-func (t *treeNode) findChild(file string, line int) *treeNode {
-	for i := range t.children {
-		c := &t.children[i]
-		if c.file == file && c.line == line {
-			return c
-		}
-	}
-	return nil
-}
-
-// addStack adds the stack to the tree rooted at t, creating new nodes for calls
-// that don't yet exist.
-func (t *treeNode) addStack(stack []frame) {
-	t.numGoroutines++
-	if len(stack) == 0 {
-		// t is a leaf for the stack that we just finished processing.
-		t.numLeafGoroutines++
-		return
-	}
-	child := t.findChild(stack[0].call.RemoteSrcPath, stack[0].call.Line)
-	if child != nil {
-		if len(stack[0].vars) > 0 {
-			child.vars = append(child.vars, stack[0].vars)
-		}
-		child.addStack(stack[1:])
-	} else {
-		t.createPath(stack)
-	}
-}
-
-// createPath adds children to t recursively such that the tree gets the path
-// t -> stack[0] -> stack[1] -> ...
-func (t *treeNode) createPath(stack []frame) {
-	t.numGoroutines++
-	if len(stack) == 0 {
-		// The stack had t as a leaf function.
-		t.numLeafGoroutines++
-		return
-	}
-	call := &stack[0].call
-	t.children = append(t.children, treeNode{
-		function:          call.Func,
-		file:              call.RemoteSrcPath,
-		line:              call.Line,
-		pcOffset:          call.PCOffset,
-		path:              append(t.path, computeScopeID(call)),
-		children:          nil,
-		numLeafGoroutines: 0,
-		vars:              [][]VarInfo{stack[0].vars},
-	})
-	t.children[len(t.children)-1].createPath(stack[1:])
-}
-
-func computeScopeID(call *pp.Call) weightedtree.ScopeID {
-	return computeScopeIDInner(call.Func.Complete, call.RemoteSrcPath, uint32(call.Line))
-}
-
-func computeScopeIDInner(funcName string, file string, line uint32) weightedtree.ScopeID {
-	hash := fnv.New64()
-	hash.Write([]byte(funcName))
-	hash.Write([]byte(file))
-	bs := make([]byte, 4)
-	binary.LittleEndian.PutUint32(bs, line)
-	hash.Write(bs)
-	return weightedtree.ScopeID(hash.Sum64())
-}
-
 // nodeBuilder abstracts the differences between a weightedtree.Tree and a
 // weightedtree.Node, allowing either to be used to construct a tree.
 type nodeBuilder interface {
@@ -400,11 +202,11 @@ type nodeBuilder interface {
 // toWeightedTree uses the provided builder to transforms a SubtreeNode (and
 // its children, recursively) into a weighted tree.
 func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSpace *color.Space) {
-	t := node.TreeNode.(*treeNode)
+	t := node.TreeNode.(*stacks.TreeNode)
 
 	var varsProp []string
 	var sb strings.Builder
-	for _, frame := range t.vars {
+	for _, frame := range t.Vars {
 		sb.Reset()
 		for _, v := range frame {
 			sb.WriteString(v.Val)
@@ -413,20 +215,20 @@ func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSp
 		varsProp = append(varsProp, sb.String())
 	}
 
-	n := builder.Node(float64(t.numLeafGoroutines),
-		tvutil.StringProperty(nameKey, t.function.DirName+"."+t.function.Name),
+	n := builder.Node(float64(t.NumLeafGoroutines),
+		tvutil.StringProperty(nameKey, t.Function.DirName+"."+t.Function.Name),
 		weightedtree.Path(t),
-		tvutil.StringProperty(fullNameKey, t.function.Complete),
-		tvutil.IntegerProperty(pcOffsetKey, t.pcOffset),
-		tvutil.IntegerProperty(lineKey, int64(t.line)),
-		tvutil.StringProperty(fileKey, t.file),
+		tvutil.StringProperty(fullNameKey, t.Function.Complete),
+		tvutil.IntegerProperty(pcOffsetKey, t.PcOffset),
+		tvutil.IntegerProperty(lineKey, int64(t.Line)),
+		tvutil.StringProperty(fileKey, t.File),
 		tvutil.StringsProperty(varsKey, varsProp...),
 		tvutil.StringProperty(
 			detailsFormatKey,
 			fmt.Sprintf("$(%s) - $(%s) $(%s):$(%s)",
 				fullNameKey, varsKey, fileKey, lineKey,
 			)),
-		colorSpace.PrimaryColor(functionNameToColor(t.function.Complete)),
+		colorSpace.PrimaryColor(functionNameToColor(t.Function.Complete)),
 		label.Format(fmt.Sprintf("$(%s)", nameKey)))
 	for _, c := range node.Children {
 		toWeightedTree(c, n, colorSpace)
@@ -454,39 +256,6 @@ func functionNameToColor(functionName string) float64 {
 	h := sha256.Sum256([]byte(pkg))
 	hash := binary.LittleEndian.Uint32(h[:])
 	return float64(hash) / math.MaxUint32
-}
-
-type frame struct {
-	call pp.Call
-	vars []VarInfo
-}
-
-// buildTree builds a trie out of the stack traces in snap.
-func (ds *DataSource) buildTree(snap *pp.Snapshot, fois FOIS) *treeNode {
-	root := &treeNode{
-		function: pp.Func{
-			Complete: "root",
-			Name:     "root",
-		},
-		// The root doesn't have a path, as per weightedtree.TreeNode
-		// convention.
-		path: nil,
-	}
-	for _, s := range snap.Goroutines {
-		// Join the stack trace with the variable data. Also invert the stack; we
-		// want it ordered from top-level function to leaf function.
-		l := len(s.Signature.Stack.Calls)
-		myFois := fois[s.ID]
-		stack := make([]frame, l)
-		for i := range s.Signature.Stack.Calls {
-			stack[l-i-1] = frame{
-				call: s.Signature.Stack.Calls[i],
-				vars: myFois[i].Vars,
-			}
-		}
-		root.addStack(stack)
-	}
-	return root
 }
 
 // SupportedDataSeriesQueries implements the traceviz datasource interface. It
@@ -618,11 +387,11 @@ func (ds *DataSource) filterStacksByPrefix(snap *pp.Snapshot, prefix []weightedt
 // as such.
 func (ds *DataSource) handleStacksTreeQuery(
 	snap *pp.Snapshot,
-	fois FOIS,
+	fois stacks.FOIS,
 	path []weightedtree.ScopeID,
 	builder tvutil.DataBuilder,
 ) error {
-	tree := ds.buildTree(snap, fois)
+	tree := stacks.BuildTree(snap, fois)
 	filtered, err := weightedtree.Walk(
 		tree,
 		compareByFunctionName, // within a level, sort alphabetically
@@ -657,7 +426,7 @@ var funcCol = table.Column(category.New("function", "Function", "The name of the
 var pcOffsetCol = table.Column(category.New("pcoff", "PC offset", "instruction offset from function entry"))
 
 func (ds *DataSource) handleStacksRawQuery(
-	snap *pp.Snapshot, numTotalGoroutines int, fois FOIS, builder tvutil.DataBuilder,
+	snap *pp.Snapshot, numTotalGoroutines int, fois stacks.FOIS, builder tvutil.DataBuilder,
 ) {
 	renderSettings := &table.RenderSettings{
 		RowHeightPx: 20,
@@ -737,7 +506,7 @@ func (ds *DataSource) stackMatchesPrefix(g *pp.Goroutine, prefix []weightedtree.
 	}
 	for i := range prefix {
 		c := &g.Stack.Calls[len(g.Stack.Calls)-i-1]
-		if computeScopeID(c) != prefix[i] {
+		if stacks.ComputeScopeID(c) != prefix[i] {
 			return false
 		}
 	}
@@ -750,8 +519,8 @@ func (ds *DataSource) stackMatchesPrefix(g *pp.Goroutine, prefix []weightedtree.
 // weightedtree.Walk(), which explores "higher" nodes first so, in order to get
 // alphabetic sorting, we invert the regular comparison.
 func compareByFunctionName(a, b weightedtree.TreeNode) (int, error) {
-	aa := a.(*treeNode)
-	bb := b.(*treeNode)
-	res := -strings.Compare(aa.function.Complete, bb.function.Complete)
+	aa := a.(*stacks.TreeNode)
+	bb := b.(*stacks.TreeNode)
+	res := -strings.Compare(aa.Function.Complete, bb.Function.Complete)
 	return res, nil
 }

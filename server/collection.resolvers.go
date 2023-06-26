@@ -13,6 +13,7 @@ import (
 	"stacksviz/ent"
 	"stacksviz/ent/collection"
 	"stacksviz/ent/frameinfo"
+	"stacksviz/stacks"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -294,6 +295,16 @@ func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*TypeInfo, e
 		Fields:          fields,
 		FieldsNotLoaded: false,
 	}, nil
+}
+
+// GetTree is the resolver for the getTree field.
+func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int) (string, error) {
+	snap, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
+	if err != nil {
+		return "", err
+	}
+	tree := stacks.BuildTree(snap.Snapshot, nil)
+	return tree.ToJSON(), nil
 }
 
 // Mutation returns MutationResolver implementation.

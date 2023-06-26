@@ -13,6 +13,7 @@ import { MatDrawer } from "@angular/material/sidenav";
 import { ResizeEvent } from 'angular-resizable-element';
 import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
 import { MatSelect } from "@angular/material/select";
+import { FlamegraphComponent } from "../flamegraph/flamegraph.component";
 
 class Frame {
   constructor(public name: string, public file: string, public line: number) {
@@ -59,6 +60,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   @ViewChild(TypeInfoComponent) typeInfo?: TypeInfoComponent;
   @ViewChild('snapshotsSelect') snapSelect!: MatSelect;
+  @ViewChild(FlamegraphComponent) flamegraph!: FlamegraphComponent;
 
   protected selectedFrame?: Frame;
   // Data about the selected node. Each element is a string containing all the
@@ -95,6 +97,11 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.weightedTree!.interactionsDir?.get().withAction(
       new Action(WeightedTreeComponent.NODE, WeightedTreeComponent.CTRL_CLICK,
         new Call(this.onNodeCtrlClick.bind(this))));
+
+    // !!!
+    // this.flamegraph.colID = this.collectionID;
+    // this.flamegraph.snapID = this.snapshotID;
+    // this.flamegraph.redraw();
   }
 
   onNodeCtrlClick(localState: ValueMap): void {

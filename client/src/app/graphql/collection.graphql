@@ -89,3 +89,7 @@ query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int) {
     }
   }
 }
+
+query GetTree($colID: Int!, $snapID: Int!) {
+  getTree(colID: $colID, snapID: $snapID)
+}

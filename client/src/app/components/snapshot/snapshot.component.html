@@ -129,6 +129,9 @@
         </mat-select>
       </mat-form-field>
 
+      <app-flamegraph [colID]="collectionID" [snapID]="snapshotID"> </app-flamegraph>
+<!--      <app-flamegraph [colId]="collectionID" [snapID]="snapshotID"> </app-flamegraph>-->
+
       <text-field label="Filter" placeholder="filter by package or function name"
                   updateOnEnter=false>
         <interactions>
