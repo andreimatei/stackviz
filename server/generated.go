@@ -114,7 +114,7 @@ type ComplexityRoot struct {
 		Collections      func(childComplexity int) int
 		FrameInfo        func(childComplexity int, funcArg string) int
 		FrameInfos       func(childComplexity int) int
-		Goroutines       func(childComplexity int, colID int, snapID int) int
+		Goroutines       func(childComplexity int, colID int, snapID int, gID *int) int
 		Node             func(childComplexity int, id int) int
 		Nodes            func(childComplexity int, ids []int) int
 		ProcessSnapshots func(childComplexity int) int
@@ -154,7 +154,7 @@ type QueryResolver interface {
 	FrameInfos(ctx context.Context) ([]*ent.FrameInfo, error)
 	ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
-	Goroutines(ctx context.Context, colID int, snapID int) ([]*GoroutineInfo, error)
+	Goroutines(ctx context.Context, colID int, snapID int, gID *int) ([]*GoroutineInfo, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
 	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameInfo, error)
 	TypeInfo(ctx context.Context, name string) (*TypeInfo, error)
@@ -474,7 +474,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Goroutines(childComplexity, args["colID"].(int), args["snapID"].(int)), true
+		return e.complexity.Query.Goroutines(childComplexity, args["colID"].(int), args["snapID"].(int), args["gID"].(*int)), true
 
 	case "Query.node":
 		if e.complexity.Query.Node == nil {
@@ -827,6 +827,15 @@ func (ec *executionContext) field_Query_goroutines_args(ctx context.Context, raw
 		}
 	}
 	args["snapID"] = arg1
+	var arg2 *int
+	if tmp, ok := rawArgs["gID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gID"))
+		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["gID"] = arg2
 	return args, nil
 }
 
@@ -2738,7 +2747,7 @@ func (ec *executionContext) _Query_goroutines(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Goroutines(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int))
+		return ec.resolvers.Query().Goroutines(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int), fc.Args["gID"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7775,6 +7784,22 @@ func (ec *executionContext) marshalOID2ᚕintᚄ(ctx context.Context, sel ast.Se
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalInt(*v)
+	return res
 }
 
 func (ec *executionContext) marshalONode2stacksvizᚋentᚐNoder(ctx context.Context, sel ast.SelectionSet, v ent.Noder) graphql.Marshaler {

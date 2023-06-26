@@ -4,7 +4,7 @@ import { RouterModule } from "@angular/router";
 import {
   AllCollectionsGQL,
   CollectCollectionGQL,
-  Collection
+  Collection, Query
 } from "src/app/graphql/graphql-codegen-generated";
 import { MatButtonModule } from "@angular/material/button";
 import { QueryRef } from "apollo-angular";
@@ -21,7 +21,7 @@ export class CollectionsListComponent implements OnInit {
   protected loading: boolean;
   protected collections?: Collection[];
   private collectionsQueryInstance?: QueryRef<any, any>;
-  protected querySubscription?: Observable<Array<{ id: string, name: string }>>;
+  protected querySubscription?: Observable<Query['collections']>;
 
   constructor(
     private readonly collectionsQuery: AllCollectionsGQL,

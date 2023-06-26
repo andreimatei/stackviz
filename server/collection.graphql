@@ -8,7 +8,7 @@ type Mutation {
 
 extend type Query {
   collectionByID(id: ID!): Collection
-  goroutines(colID: Int!, snapID: Int!): [GoroutineInfo!]!
+  goroutines(colID: Int!, snapID: Int!, gID: Int): [GoroutineInfo!]!
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
   frameInfo(func: String!): FrameInfo
   typeInfo(name: String!): TypeInfo!

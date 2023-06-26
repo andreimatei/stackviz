@@ -120,9 +120,12 @@
 
       <mat-form-field>
         <mat-label>Snapshots</mat-label>
-        <select matNativeControl #snapshot (change)="onSelectedSnapshotChange(snapshot.value)">
-          <option *ngFor="let snap of snapshots" [value]="snap.id">{{ snap.processID }}</option>
-        </select>
+        <mat-select #snapshotsSelect
+                    (selectionChange)="onSelectedSnapshotChange(snapshotsSelect.value)"
+                    [value]="snapshotID.toString()"
+        >
+          <mat-option *ngFor="let snap of snapshots" [value]="snap.id">{{ snap.processID }}</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <text-field label="Filter" placeholder="filter by package or function name"
@@ -138,6 +141,7 @@
       </text-field>
 
       <weighted-tree>
+
         <data-series>
           <query>
             <string>stacks.tree</string>
@@ -160,7 +164,6 @@
           </interactions>
         </data-series>
 
-
         <interactions>
           <action target="node" type="click">
             <set>
@@ -170,16 +173,7 @@
           </action>
           <action target="node" type="ctrl-click">
           </action>
-          <!-- example reaction
-          <reaction target="node" type="highlight">
-            <includes>
-              <local-ref key="name"></local-ref>
-              <string>sync.runtime_notifyListWait</string>
-            </includes>
-          </reaction>
-          -->
         </interactions>
-
       </weighted-tree>
 
       <app-stacks [colID]="collectionID" [snapID]="snapshotID">

@@ -141,7 +141,7 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 }
 
 // Goroutines is the resolver for the goroutines field.
-func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int) ([]*GoroutineInfo, error) {
+func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int) ([]*GoroutineInfo, error) {
 	snap, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return nil, err
@@ -184,6 +184,24 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int) (
 			Vars:   vs,
 		}
 	}
+
+	if gID != nil {
+		log.Printf("!!! filtering for goroutine: %d", *gID)
+		idx := -1
+		for i, g := range res {
+			if g.ID == *gID {
+				idx = i
+				break
+			}
+		}
+		if idx == -1 {
+			return nil, nil
+		}
+		return []*GoroutineInfo{res[idx]}, nil
+	} else {
+		log.Printf("!!! not filtering for a specific goroutine")
+	}
+
 	return res, nil
 }
 

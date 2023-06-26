@@ -27,6 +27,7 @@ import { ResizableModule } from 'angular-resizable-element';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TypeInfoComponent } from "./type-info.component";
 
+
 @NgModule({
   declarations: [
     SnapshotComponent,

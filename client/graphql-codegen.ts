@@ -8,7 +8,11 @@ const config: CodegenConfig = {
     "src/app/graphql/graphql-codegen-generated.ts": {
       plugins: ["typescript", "typescript-operations", "typescript-apollo-angular"],
       config: {
-        addExplicitOverride: true
+        // https://the-guild.dev/graphql/codegen/plugins/typescript/typescript-apollo-angular#addexplicitoverride
+        addExplicitOverride: true,
+        scalars: {
+          ID: 'number',
+        }
       }
     },
   },

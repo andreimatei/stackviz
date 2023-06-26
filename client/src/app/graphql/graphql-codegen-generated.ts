@@ -8,7 +8,7 @@ export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: 
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
-  ID: string;
+  ID: number;
   String: string;
   Boolean: boolean;
   Int: number;
@@ -205,6 +205,7 @@ export type QueryFrameInfoArgs = {
 
 export type QueryGoroutinesArgs = {
   colID: Scalars['Int'];
+  gID?: InputMaybe<Scalars['Int']>;
   snapID: Scalars['Int'];
 };
 
@@ -247,19 +248,19 @@ export type VarsAndTypes = {
 export type AllCollectionsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type AllCollectionsQuery = { __typename?: 'Query', collections: Array<{ __typename?: 'Collection', id: string, name: string }> };
+export type AllCollectionsQuery = { __typename?: 'Query', collections: Array<{ __typename?: 'Collection', id: number, name: string }> };
 
 export type GetCollectionQueryVariables = Exact<{
   colID: Scalars['ID'];
 }>;
 
 
-export type GetCollectionQuery = { __typename?: 'Query', collectionByID?: { __typename?: 'Collection', id: string, name: string, processSnapshots?: Array<{ __typename?: 'ProcessSnapshot', id: string, processID: string }> | null } | null };
+export type GetCollectionQuery = { __typename?: 'Query', collectionByID?: { __typename?: 'Collection', id: number, name: string, processSnapshots?: Array<{ __typename?: 'ProcessSnapshot', id: number, processID: string }> | null } | null };
 
 export type CollectCollectionMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type CollectCollectionMutation = { __typename?: 'Mutation', collectCollection?: { __typename?: 'Collection', id: string } | null };
+export type CollectCollectionMutation = { __typename?: 'Mutation', collectCollection?: { __typename?: 'Collection', id: number } | null };
 
 export type AddExprToCollectSpecMutationVariables = Exact<{
   frame: Scalars['String'];
@@ -295,6 +296,7 @@ export type GetTypeInfoQuery = { __typename?: 'Query', typeInfo: { __typename?: 
 export type GetGoroutinesQueryVariables = Exact<{
   colID: Scalars['Int'];
   snapID: Scalars['Int'];
+  gID?: InputMaybe<Scalars['Int']>;
 }>;
 
 
@@ -462,8 +464,8 @@ export const GetTypeInfoDocument = gql`
     }
   }
 export const GetGoroutinesDocument = gql`
-    query GetGoroutines($colID: Int!, $snapID: Int!) {
-  goroutines(colID: $colID, snapID: $snapID) {
+    query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int) {
+  goroutines(colID: $colID, snapID: $snapID, gID: $gID) {
     ID
     Frames
     Vars {

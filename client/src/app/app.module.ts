@@ -27,7 +27,7 @@ const routeToFirstSnapshot = (route: ActivatedRouteSnapshot, state: RouterStateS
   const query =  inject(GetCollectionGQL);
   const router = inject(Router);
 
-  return query.fetch({colID: colID.toString()}).pipe(map(res => {
+  return query.fetch({colID: colID}).pipe(map(res => {
     const snap = res.data.collectionByID?.processSnapshots?.[0];
     if (!snap) {
       console.log("error: failed to get collection or first snapshot");

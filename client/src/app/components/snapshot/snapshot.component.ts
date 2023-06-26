@@ -1,19 +1,18 @@
-import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import {
   AddExprToCollectSpecGQL,
   GetAvailableVariablesGQL,
   GetCollectionGQL,
   ProcessSnapshot,
-  RemoveExprFromCollectSpecGQL,
-  TypeInfo,
-  VarInfo
+  RemoveExprFromCollectSpecGQL
 } from "../../graphql/graphql-codegen-generated";
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { AppCoreService, WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
 import { Action, IntegerValue, Update, ValueMap, } from "traceviz-client-core";
 import { MatDrawer } from "@angular/material/sidenav";
 import { ResizeEvent } from 'angular-resizable-element';
-import { CheckedEventArg, TreeNode, TypeInfoComponent } from "./type-info.component";
+import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
+import { MatSelect } from "@angular/material/select";
 
 
 class Frame {
@@ -43,6 +42,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   @ViewChild(TypeInfoComponent) typeInfo?: TypeInfoComponent;
+  @ViewChild('snapshotsSelect') snapSelect!: MatSelect;
 
   protected selectedFrame?: Frame;
   // Data about the selected node. Each element is a string containing all the
@@ -59,6 +59,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly addExpr: AddExprToCollectSpecGQL,
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
     private readonly route: ActivatedRoute,
+    private readonly router: Router,
   ) {
   }
 
@@ -67,7 +68,8 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     // params are defined in the Routes collection.
     this.collectionID = Number(this.route.snapshot.paramMap.get('colID'));
     this.snapshotID = Number(this.route.snapshot.paramMap.get('snapID'));
-    this.getCollectionQuery.fetch({colID: this.collectionID.toString()})
+    console.log(`got snapshot ID ${this.snapshotID} from URL`)
+    this.getCollectionQuery.fetch({colID: this.collectionID})
       .subscribe(results => {
         this.collectionName = results.data.collectionByID?.name;
         this.snapshots = results.data.collectionByID?.processSnapshots?.map(
@@ -82,7 +84,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    this.weightedTree!.interactionsDir!.get().withAction(
+    this.weightedTree!.interactionsDir?.get().withAction(
       new Action(WeightedTreeComponent.NODE, WeightedTreeComponent.CTRL_CLICK,
         new Call(this.onNodeCtrlClick.bind(this))));
   }
@@ -123,7 +125,10 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   onSelectedSnapshotChange(newValue: string) {
     let newSnapshotID = Number(newValue);
-    this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(newSnapshotID), false /* toggle */);
+    // !!! this.appCoreService.appCore.globalState.get("snapshot_id").fold(new IntegerValue(newSnapshotID), false /* toggle */);
+    console.log('navigating to', `collections/${this.collectionID}/snap/${newSnapshotID}`);
+    this.router.navigateByUrl(`collections/${this.collectionID}/snap/${newSnapshotID}`)
+      .then(value => window.location.reload());
   }
 
 
