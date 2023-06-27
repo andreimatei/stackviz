@@ -17,6 +17,7 @@ import (
 	weightedtree "github.com/google/traceviz/server/go/weighted_tree"
 	pp "github.com/maruel/panicparse/v2/stack"
 	"hash/fnv"
+	"log"
 	"stacksviz/ent"
 	"strconv"
 	"strings"
@@ -62,6 +63,9 @@ func BuildTree(snap *pp.Snapshot, fois FOIS) *TreeNode {
 		myFois := fois[s.ID]
 		stack := make([]Frame, l)
 		for i := range s.Signature.Stack.Calls {
+			if len(myFois[i].Vars) > 0 {
+				log.Printf("!!! found frame with vars: %s", s.Signature.Stack.Calls[i].Func.Complete)
+			}
 			stack[l-i-1] = Frame{
 				call: s.Signature.Stack.Calls[i],
 				vars: myFois[i].Vars,
@@ -223,6 +227,10 @@ func (t *TreeNode) createPath(stack []Frame) {
 		return
 	}
 	call := &stack[0].call
+	var vars [][]VarInfo
+	if len(stack[0].vars) > 0 {
+		vars = [][]VarInfo{stack[0].vars}
+	}
 	t.children = append(t.children, TreeNode{
 		Function:          call.Func,
 		File:              call.RemoteSrcPath,
@@ -231,7 +239,7 @@ func (t *TreeNode) createPath(stack []Frame) {
 		path:              append(t.path, ComputeScopeID(call)),
 		children:          nil,
 		NumLeafGoroutines: 0,
-		Vars:              [][]VarInfo{stack[0].vars},
+		Vars:              vars,
 	})
 	t.children[len(t.children)-1].createPath(stack[1:])
 }
@@ -242,16 +250,52 @@ func (t *TreeNode) MarshalJSON() ([]byte, error) {
 	/*
 		{
 			"name": "...",
+			"details": "...",
+			"file": "...",
+			"line": x,
+			"pcoff": x,
 			"value": x,
 			"children": [
 				...recurse...
 			]
 		}
 	*/
+
+	var varsProp []string
+	{
+		var sb strings.Builder
+		for _, frame := range t.Vars {
+			sb.Reset()
+			for _, v := range frame {
+				sb.WriteString(v.Val)
+				sb.WriteRune('\n')
+				log.Printf("!!! found var: %s", v)
+			}
+			varsProp = append(varsProp, sb.String())
+		}
+	}
+	if len(varsProp) != 0 {
+		log.Printf("!!! found frame with vars: %s - (%d) %+v %q", t.Function.Complete, len(varsProp), varsProp, varsProp[0])
+	}
+
 	var sb strings.Builder
 	sb.WriteString("{\n")
 	sb.WriteString("\t\"name\": ")
+	sb.WriteString(fmt.Sprintf("%q", t.Function.DirName+"."+t.Function.Name))
+	sb.WriteString(",\n\t\"file\": ")
+	sb.WriteString(fmt.Sprintf("%q", t.File))
+	sb.WriteString(",\n\t\"line\": ")
+	sb.WriteString(strconv.Itoa(t.Line))
+	sb.WriteString(",\n\t\"pcoff\": ")
+	sb.WriteString(strconv.Itoa(int(t.PcOffset)))
+	sb.WriteString(",\n\t\"details\": ")
 	sb.WriteString(fmt.Sprintf("%q", t.Function.Complete))
+	sb.WriteString(",\n\t\"vars\": ")
+	varsJSON, err := json.Marshal(varsProp)
+	if err != nil {
+		return nil, err
+	}
+	sb.WriteString(string(varsJSON))
 	sb.WriteString(",\n\t\"value\": ")
 	sb.WriteString(strconv.Itoa(t.NumGoroutines))
 	if len(t.children) > 0 {
@@ -276,11 +320,12 @@ func (t *TreeNode) MarshalJSON() ([]byte, error) {
 }
 
 func (t *TreeNode) ToJSON() string {
-	xxx, err := t.MarshalJSON()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("!!! json: %s", xxx)
+	// !!!
+	//xxx, err := t.MarshalJSON()
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Printf("!!! json: %s", xxx)
 
 	s, err := json.Marshal(t)
 	if err != nil {

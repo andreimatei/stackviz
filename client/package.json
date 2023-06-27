@@ -27,6 +27,7 @@
     "@angular/router": "^16.1.2",
     "@apollo/client": "^3.0.0",
     "angular-resizable-element": "^7.0.2",
+    "angular-resize-event": "^3.2.0",
     "apollo-angular": "^5.0.0",
     "d3-ease": "^3.0.1",
     "graphql": "^16",

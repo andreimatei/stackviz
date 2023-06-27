@@ -151,6 +151,8 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 			log.Printf("!!! json: %s", snapRec.FramesOfInterest)
 			return ProcessSnapshot{}, fmt.Errorf("failed to unmarshal frames of interest: %w", err)
 		}
+	} else {
+		log.Printf("!!! snapshot %d does not have any frames of interest", snapshotID)
 	}
 
 	// Find links to other captured variables.
@@ -162,6 +164,9 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 	for gid, m := range fois {
 		prm := make(map[int]stacks.ProcessedFOI)
 		for idx, vars := range m {
+			if len(vars) > 0 {
+				log.Printf("!!! fetcher found vars: %d", gid)
+			}
 			var pf stacks.ProcessedFOI
 			pf.Vars = make([]stacks.VarInfo, len(vars))
 			for i, v := range vars {
@@ -189,7 +194,8 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 		FramesOfInterest: processed,
 	}
 
-	f.lru.Add(snapshotID, res)
+	// !!! I've removed the caching for debugging.
+	// !!! f.lru.Add(snapshotID, res)
 	return res, nil
 }
 

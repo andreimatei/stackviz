@@ -1,3 +1,7 @@
+div.flamegrapf-container {
+  width: auto;
+}
+
 .d3-flame-graph rect {
   stroke: #EEEEEE;
   fill-opacity: .8;

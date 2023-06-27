@@ -236,7 +236,6 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 	}
 	resTypes := make([]*TypeInfo, len(types))
 	for i, t := range types {
-		log.Printf("!!! got type: %s loaded: %t", t.Name, !t.FieldsNotLoaded)
 		resTypes[i] = &TypeInfo{
 			Name:            t.Name,
 			FieldsNotLoaded: t.FieldsNotLoaded,
@@ -303,7 +302,7 @@ func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int) (str
 	if err != nil {
 		return "", err
 	}
-	tree := stacks.BuildTree(snap.Snapshot, nil)
+	tree := stacks.BuildTree(snap.Snapshot, snap.FramesOfInterest)
 	return tree.ToJSON(), nil
 }
 

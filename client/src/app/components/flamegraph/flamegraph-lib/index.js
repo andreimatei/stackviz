@@ -33,6 +33,12 @@ export function flamegraph() {
     let getName = function (d) {
         return d.data.n || d.data.name
     }
+    let getDetails = function (d) {
+      if (d.data.details != undefined) {
+        return d.data.details;
+      }
+      return getName(d);
+    }
 
     let getValue = function (d) {
         if ('v' in d) {
@@ -99,6 +105,9 @@ export function flamegraph() {
 
     let labelHandler = function (d) {
         return getName(d) + ' (' + format('.3f')(100 * (d.x1 - d.x0), 3) + '%, ' + getValue(d) + ' samples)'
+    }
+    let detailsLabelHandler = function (d) {
+      return getDetails(d) + ' (' + format('.3f')(100 * (d.x1 - d.x0), 3) + '%, ' + getValue(d) + ' samples)'
     }
 
     let colorMapper = function (d) {
@@ -358,7 +367,7 @@ export function flamegraph() {
 
             g.on('mouseover', function (_, d) {
                 if (tooltip) tooltip.show(d, this)
-                detailsHandler(labelHandler(d))
+                detailsHandler(detailsLabelHandler(d))
                 if (typeof hoverHandler === 'function') {
                     hoverHandler(d)
                 }
