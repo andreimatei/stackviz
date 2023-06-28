@@ -80,7 +80,7 @@ export class FlamegraphComponent implements AfterViewInit {
   }
 
   redraw(data: any): void {
-    // !!!clear the flamegraph is we receive null?
+    // !!!clear the flamegraph if we receive null?
     if (data == null) {
       return;
     }
