@@ -13,10 +13,10 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
   imports: [CommonModule, DataTableModule, MatTabsModule, MatTableModule, BacktraceComponent],
   template: `
       <div>
-          <!-- !!! -->
-          <!--      {{ numStacks }} stacks-->
-          <!--      ({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines),-->
-          <!--      {{ numBuckets }} buckets-->
+          {{ goroutines.length }} goroutines
+          <!-- !!! reimplement filtering -->
+          <!--({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines),-->
+          {{ goroutineGroups.length }} buckets
           <hr>
 
           <mat-tab-group selectedIndex="0">
@@ -26,7 +26,8 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
                           <li *ngFor="let g of goroutineGroups">
                               {{g.IDs.length}} goroutines in goroutine group
                               Goroutine IDs {{g.IDs}}
-                              <app-backtrace [vars]="g.Vars" [frames]="g.Frames" [collectionID]="colID"></app-backtrace>
+                              <app-backtrace [vars]="g.Vars" [frames]="g.Frames"
+                                             [collectionID]="colID"></app-backtrace>
                           </li>
                       </ul>
                   </ng-template>
@@ -37,7 +38,8 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
                   <ul>
                       <li *ngFor="let g of goroutines" id="g_{{g.ID}}">
                           <a id="g_{{g.ID}}">Goroutine {{ g.ID }}</a>
-                          <app-backtrace [vars]="g.Vars" [frames]="g.Frames" [collectionID]="colID"></app-backtrace>
+                          <app-backtrace [vars]="g.Vars" [frames]="g.Frames"
+                                         [collectionID]="colID"></app-backtrace>
                       </li>
                   </ul>
               </mat-tab>
