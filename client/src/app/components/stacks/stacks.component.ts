@@ -13,10 +13,10 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
   imports: [CommonModule, DataTableModule, MatTabsModule, MatTableModule, BacktraceComponent],
   template: `
       <div>
-          {{ goroutines.length }} goroutines
+          {{ goroutines?.length }} goroutines
           <!-- !!! reimplement filtering -->
           <!--({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines),-->
-          {{ goroutineGroups.length }} buckets
+          {{ goroutineGroups?.length }} buckets
           <hr>
 
           <mat-tab-group selectedIndex="0">
@@ -73,8 +73,8 @@ export class StacksComponent {
   // protected numFilteredGoroutines?: number;
   // protected numTotalGoroutines?: number;
 
-  protected goroutines!: GoroutineInfo[];
-  protected goroutineGroups!: GoroutinesGroup[];
+  protected goroutines?: GoroutineInfo[];
+  protected goroutineGroups?: GoroutinesGroup[];
 
   // !!! backtracecols = ['frames'];
 
