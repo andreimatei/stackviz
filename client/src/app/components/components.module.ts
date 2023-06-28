@@ -6,7 +6,6 @@ import { DataTableModule } from 'traceviz/dist/ngx-traceviz-lib';
 
 
 @NgModule({
-  declarations: [],
   imports: [
     CommonModule,
     ReactiveFormsModule,

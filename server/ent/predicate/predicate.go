@@ -12,8 +12,8 @@ type CollectSpec func(*sql.Selector)
 // Collection is the predicate function for collection builders.
 type Collection func(*sql.Selector)
 
-// FrameInfo is the predicate function for frameinfo builders.
-type FrameInfo func(*sql.Selector)
+// FrameSpec is the predicate function for framespec builders.
+type FrameSpec func(*sql.Selector)
 
 // ProcessSnapshot is the predicate function for processsnapshot builders.
 type ProcessSnapshot func(*sql.Selector)

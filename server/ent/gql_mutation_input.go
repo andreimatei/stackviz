@@ -40,22 +40,22 @@ func (c *CollectionCreate) SetInput(i CreateCollectionInput) *CollectionCreate {
 	return c
 }
 
-// CreateFrameInfoInput represents a mutation input for creating frameinfos.
-type CreateFrameInfoInput struct {
+// CreateFrameSpecInput represents a mutation input for creating framespecs.
+type CreateFrameSpecInput struct {
 	Frame string
 	Exprs []string
 }
 
-// Mutate applies the CreateFrameInfoInput on the FrameInfoMutation builder.
-func (i *CreateFrameInfoInput) Mutate(m *FrameInfoMutation) {
+// Mutate applies the CreateFrameSpecInput on the FrameSpecMutation builder.
+func (i *CreateFrameSpecInput) Mutate(m *FrameSpecMutation) {
 	m.SetFrame(i.Frame)
 	if v := i.Exprs; v != nil {
 		m.SetExprs(v)
 	}
 }
 
-// SetInput applies the change-set in the CreateFrameInfoInput on the FrameInfoCreate builder.
-func (c *FrameInfoCreate) SetInput(i CreateFrameInfoInput) *FrameInfoCreate {
+// SetInput applies the change-set in the CreateFrameSpecInput on the FrameSpecCreate builder.
+func (c *FrameSpecCreate) SetInput(i CreateFrameSpecInput) *FrameSpecCreate {
 	i.Mutate(c.Mutation())
 	return c
 }

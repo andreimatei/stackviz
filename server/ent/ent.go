@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"stacksviz/ent/collection"
 	"stacksviz/ent/collectspec"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"stacksviz/ent/processsnapshot"
 	"sync"
 
@@ -78,7 +78,7 @@ func checkColumn(table, column string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			collectspec.Table:     collectspec.ValidColumn,
 			collection.Table:      collection.ValidColumn,
-			frameinfo.Table:       frameinfo.ValidColumn,
+			framespec.Table:       framespec.ValidColumn,
 			processsnapshot.Table: processsnapshot.ValidColumn,
 		})
 	})

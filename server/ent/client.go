@@ -12,7 +12,7 @@ import (
 
 	"stacksviz/ent/collection"
 	"stacksviz/ent/collectspec"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"stacksviz/ent/processsnapshot"
 
 	"entgo.io/ent"
@@ -30,8 +30,8 @@ type Client struct {
 	CollectSpec *CollectSpecClient
 	// Collection is the client for interacting with the Collection builders.
 	Collection *CollectionClient
-	// FrameInfo is the client for interacting with the FrameInfo builders.
-	FrameInfo *FrameInfoClient
+	// FrameSpec is the client for interacting with the FrameSpec builders.
+	FrameSpec *FrameSpecClient
 	// ProcessSnapshot is the client for interacting with the ProcessSnapshot builders.
 	ProcessSnapshot *ProcessSnapshotClient
 	// additional fields for node api
@@ -51,7 +51,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.CollectSpec = NewCollectSpecClient(c.config)
 	c.Collection = NewCollectionClient(c.config)
-	c.FrameInfo = NewFrameInfoClient(c.config)
+	c.FrameSpec = NewFrameSpecClient(c.config)
 	c.ProcessSnapshot = NewProcessSnapshotClient(c.config)
 }
 
@@ -137,7 +137,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:          cfg,
 		CollectSpec:     NewCollectSpecClient(cfg),
 		Collection:      NewCollectionClient(cfg),
-		FrameInfo:       NewFrameInfoClient(cfg),
+		FrameSpec:       NewFrameSpecClient(cfg),
 		ProcessSnapshot: NewProcessSnapshotClient(cfg),
 	}, nil
 }
@@ -160,7 +160,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:          cfg,
 		CollectSpec:     NewCollectSpecClient(cfg),
 		Collection:      NewCollectionClient(cfg),
-		FrameInfo:       NewFrameInfoClient(cfg),
+		FrameSpec:       NewFrameSpecClient(cfg),
 		ProcessSnapshot: NewProcessSnapshotClient(cfg),
 	}, nil
 }
@@ -192,7 +192,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.CollectSpec.Use(hooks...)
 	c.Collection.Use(hooks...)
-	c.FrameInfo.Use(hooks...)
+	c.FrameSpec.Use(hooks...)
 	c.ProcessSnapshot.Use(hooks...)
 }
 
@@ -201,7 +201,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.CollectSpec.Intercept(interceptors...)
 	c.Collection.Intercept(interceptors...)
-	c.FrameInfo.Intercept(interceptors...)
+	c.FrameSpec.Intercept(interceptors...)
 	c.ProcessSnapshot.Intercept(interceptors...)
 }
 
@@ -212,8 +212,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.CollectSpec.mutate(ctx, m)
 	case *CollectionMutation:
 		return c.Collection.mutate(ctx, m)
-	case *FrameInfoMutation:
-		return c.FrameInfo.mutate(ctx, m)
+	case *FrameSpecMutation:
+		return c.FrameSpec.mutate(ctx, m)
 	case *ProcessSnapshotMutation:
 		return c.ProcessSnapshot.mutate(ctx, m)
 	default:
@@ -315,13 +315,13 @@ func (c *CollectSpecClient) GetX(ctx context.Context, id int) *CollectSpec {
 }
 
 // QueryFrames queries the frames edge of a CollectSpec.
-func (c *CollectSpecClient) QueryFrames(cs *CollectSpec) *FrameInfoQuery {
-	query := (&FrameInfoClient{config: c.config}).Query()
+func (c *CollectSpecClient) QueryFrames(cs *CollectSpec) *FrameSpecQuery {
+	query := (&FrameSpecClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := cs.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(collectspec.Table, collectspec.FieldID, id),
-			sqlgraph.To(frameinfo.Table, frameinfo.FieldID),
+			sqlgraph.To(framespec.Table, framespec.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, collectspec.FramesTable, collectspec.FramesColumn),
 		)
 		fromV = sqlgraph.Neighbors(cs.driver.Dialect(), step)
@@ -489,92 +489,92 @@ func (c *CollectionClient) mutate(ctx context.Context, m *CollectionMutation) (V
 	}
 }
 
-// FrameInfoClient is a client for the FrameInfo schema.
-type FrameInfoClient struct {
+// FrameSpecClient is a client for the FrameSpec schema.
+type FrameSpecClient struct {
 	config
 }
 
-// NewFrameInfoClient returns a client for the FrameInfo from the given config.
-func NewFrameInfoClient(c config) *FrameInfoClient {
-	return &FrameInfoClient{config: c}
+// NewFrameSpecClient returns a client for the FrameSpec from the given config.
+func NewFrameSpecClient(c config) *FrameSpecClient {
+	return &FrameSpecClient{config: c}
 }
 
 // Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `frameinfo.Hooks(f(g(h())))`.
-func (c *FrameInfoClient) Use(hooks ...Hook) {
-	c.hooks.FrameInfo = append(c.hooks.FrameInfo, hooks...)
+// A call to `Use(f, g, h)` equals to `framespec.Hooks(f(g(h())))`.
+func (c *FrameSpecClient) Use(hooks ...Hook) {
+	c.hooks.FrameSpec = append(c.hooks.FrameSpec, hooks...)
 }
 
 // Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `frameinfo.Intercept(f(g(h())))`.
-func (c *FrameInfoClient) Intercept(interceptors ...Interceptor) {
-	c.inters.FrameInfo = append(c.inters.FrameInfo, interceptors...)
+// A call to `Intercept(f, g, h)` equals to `framespec.Intercept(f(g(h())))`.
+func (c *FrameSpecClient) Intercept(interceptors ...Interceptor) {
+	c.inters.FrameSpec = append(c.inters.FrameSpec, interceptors...)
 }
 
-// Create returns a builder for creating a FrameInfo entity.
-func (c *FrameInfoClient) Create() *FrameInfoCreate {
-	mutation := newFrameInfoMutation(c.config, OpCreate)
-	return &FrameInfoCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Create returns a builder for creating a FrameSpec entity.
+func (c *FrameSpecClient) Create() *FrameSpecCreate {
+	mutation := newFrameSpecMutation(c.config, OpCreate)
+	return &FrameSpecCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// CreateBulk returns a builder for creating a bulk of FrameInfo entities.
-func (c *FrameInfoClient) CreateBulk(builders ...*FrameInfoCreate) *FrameInfoCreateBulk {
-	return &FrameInfoCreateBulk{config: c.config, builders: builders}
+// CreateBulk returns a builder for creating a bulk of FrameSpec entities.
+func (c *FrameSpecClient) CreateBulk(builders ...*FrameSpecCreate) *FrameSpecCreateBulk {
+	return &FrameSpecCreateBulk{config: c.config, builders: builders}
 }
 
-// Update returns an update builder for FrameInfo.
-func (c *FrameInfoClient) Update() *FrameInfoUpdate {
-	mutation := newFrameInfoMutation(c.config, OpUpdate)
-	return &FrameInfoUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Update returns an update builder for FrameSpec.
+func (c *FrameSpecClient) Update() *FrameSpecUpdate {
+	mutation := newFrameSpecMutation(c.config, OpUpdate)
+	return &FrameSpecUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *FrameInfoClient) UpdateOne(fi *FrameInfo) *FrameInfoUpdateOne {
-	mutation := newFrameInfoMutation(c.config, OpUpdateOne, withFrameInfo(fi))
-	return &FrameInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *FrameSpecClient) UpdateOne(fs *FrameSpec) *FrameSpecUpdateOne {
+	mutation := newFrameSpecMutation(c.config, OpUpdateOne, withFrameSpec(fs))
+	return &FrameSpecUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *FrameInfoClient) UpdateOneID(id int) *FrameInfoUpdateOne {
-	mutation := newFrameInfoMutation(c.config, OpUpdateOne, withFrameInfoID(id))
-	return &FrameInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *FrameSpecClient) UpdateOneID(id int) *FrameSpecUpdateOne {
+	mutation := newFrameSpecMutation(c.config, OpUpdateOne, withFrameSpecID(id))
+	return &FrameSpecUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// Delete returns a delete builder for FrameInfo.
-func (c *FrameInfoClient) Delete() *FrameInfoDelete {
-	mutation := newFrameInfoMutation(c.config, OpDelete)
-	return &FrameInfoDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Delete returns a delete builder for FrameSpec.
+func (c *FrameSpecClient) Delete() *FrameSpecDelete {
+	mutation := newFrameSpecMutation(c.config, OpDelete)
+	return &FrameSpecDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *FrameInfoClient) DeleteOne(fi *FrameInfo) *FrameInfoDeleteOne {
-	return c.DeleteOneID(fi.ID)
+func (c *FrameSpecClient) DeleteOne(fs *FrameSpec) *FrameSpecDeleteOne {
+	return c.DeleteOneID(fs.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *FrameInfoClient) DeleteOneID(id int) *FrameInfoDeleteOne {
-	builder := c.Delete().Where(frameinfo.ID(id))
+func (c *FrameSpecClient) DeleteOneID(id int) *FrameSpecDeleteOne {
+	builder := c.Delete().Where(framespec.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
-	return &FrameInfoDeleteOne{builder}
+	return &FrameSpecDeleteOne{builder}
 }
 
-// Query returns a query builder for FrameInfo.
-func (c *FrameInfoClient) Query() *FrameInfoQuery {
-	return &FrameInfoQuery{
+// Query returns a query builder for FrameSpec.
+func (c *FrameSpecClient) Query() *FrameSpecQuery {
+	return &FrameSpecQuery{
 		config: c.config,
-		ctx:    &QueryContext{Type: TypeFrameInfo},
+		ctx:    &QueryContext{Type: TypeFrameSpec},
 		inters: c.Interceptors(),
 	}
 }
 
-// Get returns a FrameInfo entity by its id.
-func (c *FrameInfoClient) Get(ctx context.Context, id int) (*FrameInfo, error) {
-	return c.Query().Where(frameinfo.ID(id)).Only(ctx)
+// Get returns a FrameSpec entity by its id.
+func (c *FrameSpecClient) Get(ctx context.Context, id int) (*FrameSpec, error) {
+	return c.Query().Where(framespec.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *FrameInfoClient) GetX(ctx context.Context, id int) *FrameInfo {
+func (c *FrameSpecClient) GetX(ctx context.Context, id int) *FrameSpec {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -583,27 +583,27 @@ func (c *FrameInfoClient) GetX(ctx context.Context, id int) *FrameInfo {
 }
 
 // Hooks returns the client hooks.
-func (c *FrameInfoClient) Hooks() []Hook {
-	return c.hooks.FrameInfo
+func (c *FrameSpecClient) Hooks() []Hook {
+	return c.hooks.FrameSpec
 }
 
 // Interceptors returns the client interceptors.
-func (c *FrameInfoClient) Interceptors() []Interceptor {
-	return c.inters.FrameInfo
+func (c *FrameSpecClient) Interceptors() []Interceptor {
+	return c.inters.FrameSpec
 }
 
-func (c *FrameInfoClient) mutate(ctx context.Context, m *FrameInfoMutation) (Value, error) {
+func (c *FrameSpecClient) mutate(ctx context.Context, m *FrameSpecMutation) (Value, error) {
 	switch m.Op() {
 	case OpCreate:
-		return (&FrameInfoCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&FrameSpecCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdate:
-		return (&FrameInfoUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&FrameSpecUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdateOne:
-		return (&FrameInfoUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&FrameSpecUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpDelete, OpDeleteOne:
-		return (&FrameInfoDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+		return (&FrameSpecDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
-		return nil, fmt.Errorf("ent: unknown FrameInfo mutation op: %q", m.Op())
+		return nil, fmt.Errorf("ent: unknown FrameSpec mutation op: %q", m.Op())
 	}
 }
 
@@ -728,9 +728,9 @@ func (c *ProcessSnapshotClient) mutate(ctx context.Context, m *ProcessSnapshotMu
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		CollectSpec, Collection, FrameInfo, ProcessSnapshot []ent.Hook
+		CollectSpec, Collection, FrameSpec, ProcessSnapshot []ent.Hook
 	}
 	inters struct {
-		CollectSpec, Collection, FrameInfo, ProcessSnapshot []ent.Interceptor
+		CollectSpec, Collection, FrameSpec, ProcessSnapshot []ent.Interceptor
 	}
 )

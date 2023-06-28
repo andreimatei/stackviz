@@ -7,7 +7,7 @@ import (
 	"errors"
 	"stacksviz/ent/collection"
 	"stacksviz/ent/collectspec"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"stacksviz/ent/processsnapshot"
 
 	"entgo.io/contrib/entgql"
@@ -590,20 +590,20 @@ func (c *Collection) ToEdge(order *CollectionOrder) *CollectionEdge {
 	}
 }
 
-// FrameInfoEdge is the edge representation of FrameInfo.
-type FrameInfoEdge struct {
-	Node   *FrameInfo `json:"node"`
+// FrameSpecEdge is the edge representation of FrameSpec.
+type FrameSpecEdge struct {
+	Node   *FrameSpec `json:"node"`
 	Cursor Cursor     `json:"cursor"`
 }
 
-// FrameInfoConnection is the connection containing edges to FrameInfo.
-type FrameInfoConnection struct {
-	Edges      []*FrameInfoEdge `json:"edges"`
+// FrameSpecConnection is the connection containing edges to FrameSpec.
+type FrameSpecConnection struct {
+	Edges      []*FrameSpecEdge `json:"edges"`
 	PageInfo   PageInfo         `json:"pageInfo"`
 	TotalCount int              `json:"totalCount"`
 }
 
-func (c *FrameInfoConnection) build(nodes []*FrameInfo, pager *frameinfoPager, after *Cursor, first *int, before *Cursor, last *int) {
+func (c *FrameSpecConnection) build(nodes []*FrameSpec, pager *framespecPager, after *Cursor, first *int, before *Cursor, last *int) {
 	c.PageInfo.HasNextPage = before != nil
 	c.PageInfo.HasPreviousPage = after != nil
 	if first != nil && *first+1 == len(nodes) {
@@ -613,21 +613,21 @@ func (c *FrameInfoConnection) build(nodes []*FrameInfo, pager *frameinfoPager, a
 		c.PageInfo.HasPreviousPage = true
 		nodes = nodes[:len(nodes)-1]
 	}
-	var nodeAt func(int) *FrameInfo
+	var nodeAt func(int) *FrameSpec
 	if last != nil {
 		n := len(nodes) - 1
-		nodeAt = func(i int) *FrameInfo {
+		nodeAt = func(i int) *FrameSpec {
 			return nodes[n-i]
 		}
 	} else {
-		nodeAt = func(i int) *FrameInfo {
+		nodeAt = func(i int) *FrameSpec {
 			return nodes[i]
 		}
 	}
-	c.Edges = make([]*FrameInfoEdge, len(nodes))
+	c.Edges = make([]*FrameSpecEdge, len(nodes))
 	for i := range nodes {
 		node := nodeAt(i)
-		c.Edges[i] = &FrameInfoEdge{
+		c.Edges[i] = &FrameSpecEdge{
 			Node:   node,
 			Cursor: pager.toCursor(node),
 		}
@@ -641,87 +641,87 @@ func (c *FrameInfoConnection) build(nodes []*FrameInfo, pager *frameinfoPager, a
 	}
 }
 
-// FrameInfoPaginateOption enables pagination customization.
-type FrameInfoPaginateOption func(*frameinfoPager) error
+// FrameSpecPaginateOption enables pagination customization.
+type FrameSpecPaginateOption func(*framespecPager) error
 
-// WithFrameInfoOrder configures pagination ordering.
-func WithFrameInfoOrder(order *FrameInfoOrder) FrameInfoPaginateOption {
+// WithFrameSpecOrder configures pagination ordering.
+func WithFrameSpecOrder(order *FrameSpecOrder) FrameSpecPaginateOption {
 	if order == nil {
-		order = DefaultFrameInfoOrder
+		order = DefaultFrameSpecOrder
 	}
 	o := *order
-	return func(pager *frameinfoPager) error {
+	return func(pager *framespecPager) error {
 		if err := o.Direction.Validate(); err != nil {
 			return err
 		}
 		if o.Field == nil {
-			o.Field = DefaultFrameInfoOrder.Field
+			o.Field = DefaultFrameSpecOrder.Field
 		}
 		pager.order = &o
 		return nil
 	}
 }
 
-// WithFrameInfoFilter configures pagination filter.
-func WithFrameInfoFilter(filter func(*FrameInfoQuery) (*FrameInfoQuery, error)) FrameInfoPaginateOption {
-	return func(pager *frameinfoPager) error {
+// WithFrameSpecFilter configures pagination filter.
+func WithFrameSpecFilter(filter func(*FrameSpecQuery) (*FrameSpecQuery, error)) FrameSpecPaginateOption {
+	return func(pager *framespecPager) error {
 		if filter == nil {
-			return errors.New("FrameInfoQuery filter cannot be nil")
+			return errors.New("FrameSpecQuery filter cannot be nil")
 		}
 		pager.filter = filter
 		return nil
 	}
 }
 
-type frameinfoPager struct {
+type framespecPager struct {
 	reverse bool
-	order   *FrameInfoOrder
-	filter  func(*FrameInfoQuery) (*FrameInfoQuery, error)
+	order   *FrameSpecOrder
+	filter  func(*FrameSpecQuery) (*FrameSpecQuery, error)
 }
 
-func newFrameInfoPager(opts []FrameInfoPaginateOption, reverse bool) (*frameinfoPager, error) {
-	pager := &frameinfoPager{reverse: reverse}
+func newFrameSpecPager(opts []FrameSpecPaginateOption, reverse bool) (*framespecPager, error) {
+	pager := &framespecPager{reverse: reverse}
 	for _, opt := range opts {
 		if err := opt(pager); err != nil {
 			return nil, err
 		}
 	}
 	if pager.order == nil {
-		pager.order = DefaultFrameInfoOrder
+		pager.order = DefaultFrameSpecOrder
 	}
 	return pager, nil
 }
 
-func (p *frameinfoPager) applyFilter(query *FrameInfoQuery) (*FrameInfoQuery, error) {
+func (p *framespecPager) applyFilter(query *FrameSpecQuery) (*FrameSpecQuery, error) {
 	if p.filter != nil {
 		return p.filter(query)
 	}
 	return query, nil
 }
 
-func (p *frameinfoPager) toCursor(fi *FrameInfo) Cursor {
-	return p.order.Field.toCursor(fi)
+func (p *framespecPager) toCursor(fs *FrameSpec) Cursor {
+	return p.order.Field.toCursor(fs)
 }
 
-func (p *frameinfoPager) applyCursors(query *FrameInfoQuery, after, before *Cursor) (*FrameInfoQuery, error) {
+func (p *framespecPager) applyCursors(query *FrameSpecQuery, after, before *Cursor) (*FrameSpecQuery, error) {
 	direction := p.order.Direction
 	if p.reverse {
 		direction = direction.Reverse()
 	}
-	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultFrameInfoOrder.Field.column, p.order.Field.column, direction) {
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultFrameSpecOrder.Field.column, p.order.Field.column, direction) {
 		query = query.Where(predicate)
 	}
 	return query, nil
 }
 
-func (p *frameinfoPager) applyOrder(query *FrameInfoQuery) *FrameInfoQuery {
+func (p *framespecPager) applyOrder(query *FrameSpecQuery) *FrameSpecQuery {
 	direction := p.order.Direction
 	if p.reverse {
 		direction = direction.Reverse()
 	}
 	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
-	if p.order.Field != DefaultFrameInfoOrder.Field {
-		query = query.Order(DefaultFrameInfoOrder.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultFrameSpecOrder.Field {
+		query = query.Order(DefaultFrameSpecOrder.Field.toTerm(direction.OrderTermOption()))
 	}
 	if len(query.ctx.Fields) > 0 {
 		query.ctx.AppendFieldOnce(p.order.Field.column)
@@ -729,7 +729,7 @@ func (p *frameinfoPager) applyOrder(query *FrameInfoQuery) *FrameInfoQuery {
 	return query
 }
 
-func (p *frameinfoPager) orderExpr(query *FrameInfoQuery) sql.Querier {
+func (p *framespecPager) orderExpr(query *FrameSpecQuery) sql.Querier {
 	direction := p.order.Direction
 	if p.reverse {
 		direction = direction.Reverse()
@@ -739,33 +739,33 @@ func (p *frameinfoPager) orderExpr(query *FrameInfoQuery) sql.Querier {
 	}
 	return sql.ExprFunc(func(b *sql.Builder) {
 		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
-		if p.order.Field != DefaultFrameInfoOrder.Field {
-			b.Comma().Ident(DefaultFrameInfoOrder.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultFrameSpecOrder.Field {
+			b.Comma().Ident(DefaultFrameSpecOrder.Field.column).Pad().WriteString(string(direction))
 		}
 	})
 }
 
-// Paginate executes the query and returns a relay based cursor connection to FrameInfo.
-func (fi *FrameInfoQuery) Paginate(
+// Paginate executes the query and returns a relay based cursor connection to FrameSpec.
+func (fs *FrameSpecQuery) Paginate(
 	ctx context.Context, after *Cursor, first *int,
-	before *Cursor, last *int, opts ...FrameInfoPaginateOption,
-) (*FrameInfoConnection, error) {
+	before *Cursor, last *int, opts ...FrameSpecPaginateOption,
+) (*FrameSpecConnection, error) {
 	if err := validateFirstLast(first, last); err != nil {
 		return nil, err
 	}
-	pager, err := newFrameInfoPager(opts, last != nil)
+	pager, err := newFrameSpecPager(opts, last != nil)
 	if err != nil {
 		return nil, err
 	}
-	if fi, err = pager.applyFilter(fi); err != nil {
+	if fs, err = pager.applyFilter(fs); err != nil {
 		return nil, err
 	}
-	conn := &FrameInfoConnection{Edges: []*FrameInfoEdge{}}
+	conn := &FrameSpecConnection{Edges: []*FrameSpecEdge{}}
 	ignoredEdges := !hasCollectedField(ctx, edgesField)
 	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
 		hasPagination := after != nil || first != nil || before != nil || last != nil
 		if hasPagination || ignoredEdges {
-			if conn.TotalCount, err = fi.Clone().Count(ctx); err != nil {
+			if conn.TotalCount, err = fs.Clone().Count(ctx); err != nil {
 				return nil, err
 			}
 			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
@@ -775,19 +775,19 @@ func (fi *FrameInfoQuery) Paginate(
 	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
 		return conn, nil
 	}
-	if fi, err = pager.applyCursors(fi, after, before); err != nil {
+	if fs, err = pager.applyCursors(fs, after, before); err != nil {
 		return nil, err
 	}
 	if limit := paginateLimit(first, last); limit != 0 {
-		fi.Limit(limit)
+		fs.Limit(limit)
 	}
 	if field := collectedField(ctx, edgesField, nodeField); field != nil {
-		if err := fi.collectField(ctx, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+		if err := fs.collectField(ctx, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
 			return nil, err
 		}
 	}
-	fi = pager.applyOrder(fi)
-	nodes, err := fi.All(ctx)
+	fs = pager.applyOrder(fs)
+	nodes, err := fs.All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -795,44 +795,44 @@ func (fi *FrameInfoQuery) Paginate(
 	return conn, nil
 }
 
-// FrameInfoOrderField defines the ordering field of FrameInfo.
-type FrameInfoOrderField struct {
-	// Value extracts the ordering value from the given FrameInfo.
-	Value    func(*FrameInfo) (ent.Value, error)
+// FrameSpecOrderField defines the ordering field of FrameSpec.
+type FrameSpecOrderField struct {
+	// Value extracts the ordering value from the given FrameSpec.
+	Value    func(*FrameSpec) (ent.Value, error)
 	column   string // field or computed.
-	toTerm   func(...sql.OrderTermOption) frameinfo.OrderOption
-	toCursor func(*FrameInfo) Cursor
+	toTerm   func(...sql.OrderTermOption) framespec.OrderOption
+	toCursor func(*FrameSpec) Cursor
 }
 
-// FrameInfoOrder defines the ordering of FrameInfo.
-type FrameInfoOrder struct {
+// FrameSpecOrder defines the ordering of FrameSpec.
+type FrameSpecOrder struct {
 	Direction OrderDirection       `json:"direction"`
-	Field     *FrameInfoOrderField `json:"field"`
+	Field     *FrameSpecOrderField `json:"field"`
 }
 
-// DefaultFrameInfoOrder is the default ordering of FrameInfo.
-var DefaultFrameInfoOrder = &FrameInfoOrder{
+// DefaultFrameSpecOrder is the default ordering of FrameSpec.
+var DefaultFrameSpecOrder = &FrameSpecOrder{
 	Direction: entgql.OrderDirectionAsc,
-	Field: &FrameInfoOrderField{
-		Value: func(fi *FrameInfo) (ent.Value, error) {
-			return fi.ID, nil
+	Field: &FrameSpecOrderField{
+		Value: func(fs *FrameSpec) (ent.Value, error) {
+			return fs.ID, nil
 		},
-		column: frameinfo.FieldID,
-		toTerm: frameinfo.ByID,
-		toCursor: func(fi *FrameInfo) Cursor {
-			return Cursor{ID: fi.ID}
+		column: framespec.FieldID,
+		toTerm: framespec.ByID,
+		toCursor: func(fs *FrameSpec) Cursor {
+			return Cursor{ID: fs.ID}
 		},
 	},
 }
 
-// ToEdge converts FrameInfo into FrameInfoEdge.
-func (fi *FrameInfo) ToEdge(order *FrameInfoOrder) *FrameInfoEdge {
+// ToEdge converts FrameSpec into FrameSpecEdge.
+func (fs *FrameSpec) ToEdge(order *FrameSpecOrder) *FrameSpecEdge {
 	if order == nil {
-		order = DefaultFrameInfoOrder
+		order = DefaultFrameSpecOrder
 	}
-	return &FrameInfoEdge{
-		Node:   fi,
-		Cursor: order.Field.toCursor(fi),
+	return &FrameSpecEdge{
+		Node:   fs,
+		Cursor: order.Field.toCursor(fs),
 	}
 }
 

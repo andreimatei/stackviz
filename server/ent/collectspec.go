@@ -25,19 +25,19 @@ type CollectSpec struct {
 // CollectSpecEdges holds the relations/edges for other nodes in the graph.
 type CollectSpecEdges struct {
 	// Frames holds the value of the frames edge.
-	Frames []*FrameInfo `json:"frames,omitempty"`
+	Frames []*FrameSpec `json:"frames,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 	// totalCount holds the count of the edges above.
 	totalCount [1]map[string]int
 
-	namedFrames map[string][]*FrameInfo
+	namedFrames map[string][]*FrameSpec
 }
 
 // FramesOrErr returns the Frames value or an error if the edge
 // was not loaded in eager-loading.
-func (e CollectSpecEdges) FramesOrErr() ([]*FrameInfo, error) {
+func (e CollectSpecEdges) FramesOrErr() ([]*FrameSpec, error) {
 	if e.loadedTypes[0] {
 		return e.Frames, nil
 	}
@@ -86,7 +86,7 @@ func (cs *CollectSpec) Value(name string) (ent.Value, error) {
 }
 
 // QueryFrames queries the "frames" edge of the CollectSpec entity.
-func (cs *CollectSpec) QueryFrames() *FrameInfoQuery {
+func (cs *CollectSpec) QueryFrames() *FrameSpecQuery {
 	return NewCollectSpecClient(cs.config).QueryFrames(cs)
 }
 
@@ -119,7 +119,7 @@ func (cs *CollectSpec) String() string {
 
 // NamedFrames returns the Frames named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (cs *CollectSpec) NamedFrames(name string) ([]*FrameInfo, error) {
+func (cs *CollectSpec) NamedFrames(name string) ([]*FrameSpec, error) {
 	if cs.Edges.namedFrames == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
@@ -130,12 +130,12 @@ func (cs *CollectSpec) NamedFrames(name string) ([]*FrameInfo, error) {
 	return nodes, nil
 }
 
-func (cs *CollectSpec) appendNamedFrames(name string, edges ...*FrameInfo) {
+func (cs *CollectSpec) appendNamedFrames(name string, edges ...*FrameSpec) {
 	if cs.Edges.namedFrames == nil {
-		cs.Edges.namedFrames = make(map[string][]*FrameInfo)
+		cs.Edges.namedFrames = make(map[string][]*FrameSpec)
 	}
 	if len(edges) == 0 {
-		cs.Edges.namedFrames[name] = []*FrameInfo{}
+		cs.Edges.namedFrames[name] = []*FrameSpec{}
 	} else {
 		cs.Edges.namedFrames[name] = append(cs.Edges.namedFrames[name], edges...)
 	}

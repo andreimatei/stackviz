@@ -17,10 +17,10 @@ const (
 	// Table holds the table name of the collectspec in the database.
 	Table = "collect_specs"
 	// FramesTable is the table that holds the frames relation/edge.
-	FramesTable = "frame_infos"
-	// FramesInverseTable is the table name for the FrameInfo entity.
-	// It exists in this package in order to avoid circular dependency with the "frameinfo" package.
-	FramesInverseTable = "frame_infos"
+	FramesTable = "frame_specs"
+	// FramesInverseTable is the table name for the FrameSpec entity.
+	// It exists in this package in order to avoid circular dependency with the "framespec" package.
+	FramesInverseTable = "frame_specs"
 	// FramesColumn is the table column denoting the frames relation/edge.
 	FramesColumn = "collect_spec_frames"
 )

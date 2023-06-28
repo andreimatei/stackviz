@@ -65,7 +65,7 @@ func New(fetcher StacksFetcher) *DataSource {
 type ProcessSnapshot struct {
 	processID        string
 	Snapshot         *pp.Snapshot
-	agg              *pp.Aggregated
+	Agg              *pp.Aggregated
 	FramesOfInterest stacks.FOIS
 }
 
@@ -190,7 +190,7 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 
 	res := ProcessSnapshot{
 		Snapshot:         snap,
-		agg:              agg,
+		Agg:              agg,
 		FramesOfInterest: processed,
 	}
 

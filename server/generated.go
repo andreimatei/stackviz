@@ -69,6 +69,12 @@ type ComplexityRoot struct {
 	}
 
 	FrameInfo struct {
+		File func(childComplexity int) int
+		Func func(childComplexity int) int
+		Line func(childComplexity int) int
+	}
+
+	FrameSpec struct {
 		Exprs func(childComplexity int) int
 		Frame func(childComplexity int) int
 		ID    func(childComplexity int) int
@@ -77,6 +83,12 @@ type ComplexityRoot struct {
 	GoroutineInfo struct {
 		Frames func(childComplexity int) int
 		ID     func(childComplexity int) int
+		Vars   func(childComplexity int) int
+	}
+
+	GoroutinesGroup struct {
+		Frames func(childComplexity int) int
+		IDs    func(childComplexity int) int
 		Vars   func(childComplexity int) int
 	}
 
@@ -113,13 +125,18 @@ type ComplexityRoot struct {
 		CollectionByID   func(childComplexity int, id int) int
 		Collections      func(childComplexity int) int
 		FrameInfo        func(childComplexity int, funcArg string) int
-		FrameInfos       func(childComplexity int) int
+		FrameSpecs       func(childComplexity int) int
 		GetTree          func(childComplexity int, colID int, snapID int) int
 		Goroutines       func(childComplexity int, colID int, snapID int, gID *int) int
 		Node             func(childComplexity int, id int) int
 		Nodes            func(childComplexity int, ids []int) int
 		ProcessSnapshots func(childComplexity int) int
 		TypeInfo         func(childComplexity int, name string) int
+	}
+
+	SnapshotInfo struct {
+		Aggregated func(childComplexity int) int
+		Raw        func(childComplexity int) int
 	}
 
 	TypeInfo struct {
@@ -152,12 +169,12 @@ type QueryResolver interface {
 	Nodes(ctx context.Context, ids []int) ([]ent.Noder, error)
 	CollectSpecs(ctx context.Context) ([]*ent.CollectSpec, error)
 	Collections(ctx context.Context) ([]*ent.Collection, error)
-	FrameInfos(ctx context.Context) ([]*ent.FrameInfo, error)
+	FrameSpecs(ctx context.Context) ([]*ent.FrameSpec, error)
 	ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
-	Goroutines(ctx context.Context, colID int, snapID int, gID *int) ([]*GoroutineInfo, error)
+	Goroutines(ctx context.Context, colID int, snapID int, gID *int) (*SnapshotInfo, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
-	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameInfo, error)
+	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameSpec, error)
 	TypeInfo(ctx context.Context, name string) (*TypeInfo, error)
 	GetTree(ctx context.Context, colID int, snapID int) (string, error)
 }
@@ -247,26 +264,47 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.FieldInfo.Type(childComplexity), true
 
-	case "FrameInfo.exprs":
-		if e.complexity.FrameInfo.Exprs == nil {
+	case "FrameInfo.File":
+		if e.complexity.FrameInfo.File == nil {
 			break
 		}
 
-		return e.complexity.FrameInfo.Exprs(childComplexity), true
+		return e.complexity.FrameInfo.File(childComplexity), true
 
-	case "FrameInfo.frame":
-		if e.complexity.FrameInfo.Frame == nil {
+	case "FrameInfo.Func":
+		if e.complexity.FrameInfo.Func == nil {
 			break
 		}
 
-		return e.complexity.FrameInfo.Frame(childComplexity), true
+		return e.complexity.FrameInfo.Func(childComplexity), true
 
-	case "FrameInfo.id":
-		if e.complexity.FrameInfo.ID == nil {
+	case "FrameInfo.Line":
+		if e.complexity.FrameInfo.Line == nil {
 			break
 		}
 
-		return e.complexity.FrameInfo.ID(childComplexity), true
+		return e.complexity.FrameInfo.Line(childComplexity), true
+
+	case "FrameSpec.exprs":
+		if e.complexity.FrameSpec.Exprs == nil {
+			break
+		}
+
+		return e.complexity.FrameSpec.Exprs(childComplexity), true
+
+	case "FrameSpec.frame":
+		if e.complexity.FrameSpec.Frame == nil {
+			break
+		}
+
+		return e.complexity.FrameSpec.Frame(childComplexity), true
+
+	case "FrameSpec.id":
+		if e.complexity.FrameSpec.ID == nil {
+			break
+		}
+
+		return e.complexity.FrameSpec.ID(childComplexity), true
 
 	case "GoroutineInfo.Frames":
 		if e.complexity.GoroutineInfo.Frames == nil {
@@ -288,6 +326,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GoroutineInfo.Vars(childComplexity), true
+
+	case "GoroutinesGroup.Frames":
+		if e.complexity.GoroutinesGroup.Frames == nil {
+			break
+		}
+
+		return e.complexity.GoroutinesGroup.Frames(childComplexity), true
+
+	case "GoroutinesGroup.IDs":
+		if e.complexity.GoroutinesGroup.IDs == nil {
+			break
+		}
+
+		return e.complexity.GoroutinesGroup.IDs(childComplexity), true
+
+	case "GoroutinesGroup.Vars":
+		if e.complexity.GoroutinesGroup.Vars == nil {
+			break
+		}
+
+		return e.complexity.GoroutinesGroup.Vars(childComplexity), true
 
 	case "Link.FrameIdx":
 		if e.complexity.Link.FrameIdx == nil {
@@ -459,12 +518,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.FrameInfo(childComplexity, args["func"].(string)), true
 
-	case "Query.frameInfos":
-		if e.complexity.Query.FrameInfos == nil {
+	case "Query.frameSpecs":
+		if e.complexity.Query.FrameSpecs == nil {
 			break
 		}
 
-		return e.complexity.Query.FrameInfos(childComplexity), true
+		return e.complexity.Query.FrameSpecs(childComplexity), true
 
 	case "Query.getTree":
 		if e.complexity.Query.GetTree == nil {
@@ -532,6 +591,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.TypeInfo(childComplexity, args["name"].(string)), true
+
+	case "SnapshotInfo.Aggregated":
+		if e.complexity.SnapshotInfo.Aggregated == nil {
+			break
+		}
+
+		return e.complexity.SnapshotInfo.Aggregated(childComplexity), true
+
+	case "SnapshotInfo.Raw":
+		if e.complexity.SnapshotInfo.Raw == nil {
+			break
+		}
+
+		return e.complexity.SnapshotInfo.Raw(childComplexity), true
 
 	case "TypeInfo.Fields":
 		if e.complexity.TypeInfo.Fields == nil {
@@ -606,7 +679,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateCollectSpecInput,
 		ec.unmarshalInputCreateCollectionInput,
-		ec.unmarshalInputCreateFrameInfoInput,
+		ec.unmarshalInputCreateFrameSpecInput,
 		ec.unmarshalInputCreateProcessSnapshotInput,
 	)
 	first := true
@@ -1027,9 +1100,9 @@ func (ec *executionContext) _CollectSpec_frames(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.FrameInfo)
+	res := resTmp.([]*ent.FrameSpec)
 	fc.Result = res
-	return ec.marshalOFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalOFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1041,13 +1114,13 @@ func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_FrameInfo_id(ctx, field)
+				return ec.fieldContext_FrameSpec_id(ctx, field)
 			case "frame":
-				return ec.fieldContext_FrameInfo_frame(ctx, field)
+				return ec.fieldContext_FrameSpec_frame(ctx, field)
 			case "exprs":
-				return ec.fieldContext_FrameInfo_exprs(ctx, field)
+				return ec.fieldContext_FrameSpec_exprs(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type FrameSpec", field.Name)
 		},
 	}
 	return fc, nil
@@ -1420,8 +1493,140 @@ func (ec *executionContext) fieldContext_FieldInfo_Embedded(ctx context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _FrameInfo_id(ctx context.Context, field graphql.CollectedField, obj *ent.FrameInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_FrameInfo_id(ctx, field)
+func (ec *executionContext) _FrameInfo_Func(ctx context.Context, field graphql.CollectedField, obj *FrameInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameInfo_Func(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Func, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameInfo_Func(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameInfo_File(ctx context.Context, field graphql.CollectedField, obj *FrameInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameInfo_File(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.File, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameInfo_File(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameInfo_Line(ctx context.Context, field graphql.CollectedField, obj *FrameInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameInfo_Line(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Line, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameInfo_Line(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpec_id(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpec_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1451,9 +1656,9 @@ func (ec *executionContext) _FrameInfo_id(ctx context.Context, field graphql.Col
 	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_FrameInfo_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_FrameSpec_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "FrameInfo",
+		Object:     "FrameSpec",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -1464,8 +1669,8 @@ func (ec *executionContext) fieldContext_FrameInfo_id(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _FrameInfo_frame(ctx context.Context, field graphql.CollectedField, obj *ent.FrameInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_FrameInfo_frame(ctx, field)
+func (ec *executionContext) _FrameSpec_frame(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpec_frame(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1495,9 +1700,9 @@ func (ec *executionContext) _FrameInfo_frame(ctx context.Context, field graphql.
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_FrameInfo_frame(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_FrameSpec_frame(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "FrameInfo",
+		Object:     "FrameSpec",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -1508,8 +1713,8 @@ func (ec *executionContext) fieldContext_FrameInfo_frame(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _FrameInfo_exprs(ctx context.Context, field graphql.CollectedField, obj *ent.FrameInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_FrameInfo_exprs(ctx, field)
+func (ec *executionContext) _FrameSpec_exprs(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpec_exprs(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1539,9 +1744,9 @@ func (ec *executionContext) _FrameInfo_exprs(ctx context.Context, field graphql.
 	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_FrameInfo_exprs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_FrameSpec_exprs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "FrameInfo",
+		Object:     "FrameSpec",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -1622,9 +1827,9 @@ func (ec *executionContext) _GoroutineInfo_Frames(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]string)
+	res := resTmp.([]*FrameInfo)
 	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNFrameInfo2ᚕᚖstacksvizᚐFrameInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GoroutineInfo_Frames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1634,7 +1839,15 @@ func (ec *executionContext) fieldContext_GoroutineInfo_Frames(ctx context.Contex
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "Func":
+				return ec.fieldContext_FrameInfo_Func(ctx, field)
+			case "File":
+				return ec.fieldContext_FrameInfo_File(ctx, field)
+			case "Line":
+				return ec.fieldContext_FrameInfo_Line(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
 		},
 	}
 	return fc, nil
@@ -1674,6 +1887,152 @@ func (ec *executionContext) _GoroutineInfo_Vars(ctx context.Context, field graph
 func (ec *executionContext) fieldContext_GoroutineInfo_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GoroutineInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Value":
+				return ec.fieldContext_CollectedVar_Value(ctx, field)
+			case "Links":
+				return ec.fieldContext_CollectedVar_Links(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectedVar", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GoroutinesGroup_IDs(ctx context.Context, field graphql.CollectedField, obj *GoroutinesGroup) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutinesGroup_IDs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IDs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GoroutinesGroup_IDs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GoroutinesGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GoroutinesGroup_Frames(ctx context.Context, field graphql.CollectedField, obj *GoroutinesGroup) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutinesGroup_Frames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Frames, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*FrameInfo)
+	fc.Result = res
+	return ec.marshalNFrameInfo2ᚕᚖstacksvizᚐFrameInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GoroutinesGroup_Frames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GoroutinesGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Func":
+				return ec.fieldContext_FrameInfo_Func(ctx, field)
+			case "File":
+				return ec.fieldContext_FrameInfo_File(ctx, field)
+			case "Line":
+				return ec.fieldContext_FrameInfo_Line(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GoroutinesGroup_Vars(ctx context.Context, field graphql.CollectedField, obj *GoroutinesGroup) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutinesGroup_Vars(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Vars, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*CollectedVar)
+	fc.Result = res
+	return ec.marshalNCollectedVar2ᚕᚖstacksvizᚐCollectedVarᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GoroutinesGroup_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GoroutinesGroup",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -2605,8 +2964,8 @@ func (ec *executionContext) fieldContext_Query_collections(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_frameInfos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_frameInfos(ctx, field)
+func (ec *executionContext) _Query_frameSpecs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_frameSpecs(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2619,7 +2978,7 @@ func (ec *executionContext) _Query_frameInfos(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().FrameInfos(rctx)
+		return ec.resolvers.Query().FrameSpecs(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2631,12 +2990,12 @@ func (ec *executionContext) _Query_frameInfos(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.FrameInfo)
+	res := resTmp.([]*ent.FrameSpec)
 	fc.Result = res
-	return ec.marshalNFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_frameInfos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_frameSpecs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -2645,13 +3004,13 @@ func (ec *executionContext) fieldContext_Query_frameInfos(ctx context.Context, f
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_FrameInfo_id(ctx, field)
+				return ec.fieldContext_FrameSpec_id(ctx, field)
 			case "frame":
-				return ec.fieldContext_FrameInfo_frame(ctx, field)
+				return ec.fieldContext_FrameSpec_frame(ctx, field)
 			case "exprs":
-				return ec.fieldContext_FrameInfo_exprs(ctx, field)
+				return ec.fieldContext_FrameSpec_exprs(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type FrameSpec", field.Name)
 		},
 	}
 	return fc, nil
@@ -2797,9 +3156,9 @@ func (ec *executionContext) _Query_goroutines(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*GoroutineInfo)
+	res := resTmp.(*SnapshotInfo)
 	fc.Result = res
-	return ec.marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNSnapshotInfo2ᚖstacksvizᚐSnapshotInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_goroutines(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2810,14 +3169,12 @@ func (ec *executionContext) fieldContext_Query_goroutines(ctx context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "ID":
-				return ec.fieldContext_GoroutineInfo_ID(ctx, field)
-			case "Frames":
-				return ec.fieldContext_GoroutineInfo_Frames(ctx, field)
-			case "Vars":
-				return ec.fieldContext_GoroutineInfo_Vars(ctx, field)
+			case "Raw":
+				return ec.fieldContext_SnapshotInfo_Raw(ctx, field)
+			case "Aggregated":
+				return ec.fieldContext_SnapshotInfo_Aggregated(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GoroutineInfo", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type SnapshotInfo", field.Name)
 		},
 	}
 	defer func() {
@@ -2918,9 +3275,9 @@ func (ec *executionContext) _Query_frameInfo(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*ent.FrameInfo)
+	res := resTmp.(*ent.FrameSpec)
 	fc.Result = res
-	return ec.marshalOFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx, field.Selections, res)
+	return ec.marshalOFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_frameInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2932,13 +3289,13 @@ func (ec *executionContext) fieldContext_Query_frameInfo(ctx context.Context, fi
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_FrameInfo_id(ctx, field)
+				return ec.fieldContext_FrameSpec_id(ctx, field)
 			case "frame":
-				return ec.fieldContext_FrameInfo_frame(ctx, field)
+				return ec.fieldContext_FrameSpec_frame(ctx, field)
 			case "exprs":
-				return ec.fieldContext_FrameInfo_exprs(ctx, field)
+				return ec.fieldContext_FrameSpec_exprs(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type FrameInfo", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type FrameSpec", field.Name)
 		},
 	}
 	defer func() {
@@ -3197,6 +3554,110 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 				return ec.fieldContext___Schema_directives(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Schema", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SnapshotInfo_Raw(ctx context.Context, field graphql.CollectedField, obj *SnapshotInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SnapshotInfo_Raw(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Raw, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*GoroutineInfo)
+	fc.Result = res
+	return ec.marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SnapshotInfo_Raw(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SnapshotInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ID":
+				return ec.fieldContext_GoroutineInfo_ID(ctx, field)
+			case "Frames":
+				return ec.fieldContext_GoroutineInfo_Frames(ctx, field)
+			case "Vars":
+				return ec.fieldContext_GoroutineInfo_Vars(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GoroutineInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SnapshotInfo_Aggregated(ctx context.Context, field graphql.CollectedField, obj *SnapshotInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SnapshotInfo_Aggregated(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Aggregated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*GoroutinesGroup)
+	fc.Result = res
+	return ec.marshalNGoroutinesGroup2ᚕᚖstacksvizᚐGoroutinesGroupᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SnapshotInfo_Aggregated(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SnapshotInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "IDs":
+				return ec.fieldContext_GoroutinesGroup_IDs(ctx, field)
+			case "Frames":
+				return ec.fieldContext_GoroutinesGroup_Frames(ctx, field)
+			case "Vars":
+				return ec.fieldContext_GoroutinesGroup_Vars(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GoroutinesGroup", field.Name)
 		},
 	}
 	return fc, nil
@@ -5461,8 +5922,8 @@ func (ec *executionContext) unmarshalInputCreateCollectionInput(ctx context.Cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCreateFrameInfoInput(ctx context.Context, obj interface{}) (ent.CreateFrameInfoInput, error) {
-	var it ent.CreateFrameInfoInput
+func (ec *executionContext) unmarshalInputCreateFrameSpecInput(ctx context.Context, obj interface{}) (ent.CreateFrameSpecInput, error) {
+	var it ent.CreateFrameSpecInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -5564,11 +6025,11 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Collection(ctx, sel, obj)
-	case *ent.FrameInfo:
+	case *ent.FrameSpec:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._FrameInfo(ctx, sel, obj)
+		return ec._FrameSpec(ctx, sel, obj)
 	case *ent.ProcessSnapshot:
 		if obj == nil {
 			return graphql.Null
@@ -5757,9 +6218,9 @@ func (ec *executionContext) _FieldInfo(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
-var frameInfoImplementors = []string{"FrameInfo", "Node"}
+var frameInfoImplementors = []string{"FrameInfo"}
 
-func (ec *executionContext) _FrameInfo(ctx context.Context, sel ast.SelectionSet, obj *ent.FrameInfo) graphql.Marshaler {
+func (ec *executionContext) _FrameInfo(ctx context.Context, sel ast.SelectionSet, obj *FrameInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, frameInfoImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -5767,23 +6228,65 @@ func (ec *executionContext) _FrameInfo(ctx context.Context, sel ast.SelectionSet
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("FrameInfo")
+		case "Func":
+
+			out.Values[i] = ec._FrameInfo_Func(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "File":
+
+			out.Values[i] = ec._FrameInfo_File(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Line":
+
+			out.Values[i] = ec._FrameInfo_Line(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var frameSpecImplementors = []string{"FrameSpec", "Node"}
+
+func (ec *executionContext) _FrameSpec(ctx context.Context, sel ast.SelectionSet, obj *ent.FrameSpec) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, frameSpecImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FrameSpec")
 		case "id":
 
-			out.Values[i] = ec._FrameInfo_id(ctx, field, obj)
+			out.Values[i] = ec._FrameSpec_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "frame":
 
-			out.Values[i] = ec._FrameInfo_frame(ctx, field, obj)
+			out.Values[i] = ec._FrameSpec_frame(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "exprs":
 
-			out.Values[i] = ec._FrameInfo_exprs(ctx, field, obj)
+			out.Values[i] = ec._FrameSpec_exprs(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -5826,6 +6329,48 @@ func (ec *executionContext) _GoroutineInfo(ctx context.Context, sel ast.Selectio
 		case "Vars":
 
 			out.Values[i] = ec._GoroutineInfo_Vars(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var goroutinesGroupImplementors = []string{"GoroutinesGroup"}
+
+func (ec *executionContext) _GoroutinesGroup(ctx context.Context, sel ast.SelectionSet, obj *GoroutinesGroup) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, goroutinesGroupImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GoroutinesGroup")
+		case "IDs":
+
+			out.Values[i] = ec._GoroutinesGroup_IDs(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Frames":
+
+			out.Values[i] = ec._GoroutinesGroup_Frames(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Vars":
+
+			out.Values[i] = ec._GoroutinesGroup_Vars(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -6140,7 +6685,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
-		case "frameInfos":
+		case "frameSpecs":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -6149,7 +6694,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_frameInfos(ctx, field)
+				res = ec._Query_frameSpecs(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -6330,6 +6875,41 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				return ec._Query___schema(ctx, field)
 			})
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var snapshotInfoImplementors = []string{"SnapshotInfo"}
+
+func (ec *executionContext) _SnapshotInfo(ctx context.Context, sel ast.SelectionSet, obj *SnapshotInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, snapshotInfoImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SnapshotInfo")
+		case "Raw":
+
+			out.Values[i] = ec._SnapshotInfo_Raw(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Aggregated":
+
+			out.Values[i] = ec._SnapshotInfo_Aggregated(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6963,7 +7543,7 @@ func (ec *executionContext) marshalNCollection2ᚖstacksvizᚋentᚐCollection(c
 	return ec._Collection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNFrameInfo2ᚕᚖstacksvizᚐFrameInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*FrameInfo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -6987,7 +7567,7 @@ func (ec *executionContext) marshalNFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfo�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx, sel, v[i])
+			ret[i] = ec.marshalNFrameInfo2ᚖstacksvizᚐFrameInfo(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7007,7 +7587,7 @@ func (ec *executionContext) marshalNFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfo�
 	return ret
 }
 
-func (ec *executionContext) marshalNFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx context.Context, sel ast.SelectionSet, v *ent.FrameInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNFrameInfo2ᚖstacksvizᚐFrameInfo(ctx context.Context, sel ast.SelectionSet, v *FrameInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -7015,6 +7595,60 @@ func (ec *executionContext) marshalNFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx
 		return graphql.Null
 	}
 	return ec._FrameInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameSpec) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx context.Context, sel ast.SelectionSet, v *ent.FrameSpec) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FrameSpec(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*GoroutineInfo) graphql.Marshaler {
@@ -7069,6 +7703,60 @@ func (ec *executionContext) marshalNGoroutineInfo2ᚖstacksvizᚐGoroutineInfo(c
 		return graphql.Null
 	}
 	return ec._GoroutineInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGoroutinesGroup2ᚕᚖstacksvizᚐGoroutinesGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*GoroutinesGroup) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGoroutinesGroup2ᚖstacksvizᚐGoroutinesGroup(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNGoroutinesGroup2ᚖstacksvizᚐGoroutinesGroup(ctx context.Context, sel ast.SelectionSet, v *GoroutinesGroup) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GoroutinesGroup(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNID2int(ctx context.Context, v interface{}) (int, error) {
@@ -7131,6 +7819,38 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNInt2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]int, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v []int) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNLink2ᚕᚖstacksvizᚐLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []*Link) graphql.Marshaler {
@@ -7277,6 +7997,20 @@ func (ec *executionContext) marshalNProcessSnapshot2ᚖstacksvizᚋentᚐProcess
 		return graphql.Null
 	}
 	return ec._ProcessSnapshot(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSnapshotInfo2stacksvizᚐSnapshotInfo(ctx context.Context, sel ast.SelectionSet, v SnapshotInfo) graphql.Marshaler {
+	return ec._SnapshotInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSnapshotInfo2ᚖstacksvizᚐSnapshotInfo(ctx context.Context, sel ast.SelectionSet, v *SnapshotInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SnapshotInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
@@ -7810,7 +8544,7 @@ func (ec *executionContext) marshalOFieldInfo2ᚖstacksvizᚐFieldInfo(ctx conte
 	return ec._FieldInfo(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameInfo) graphql.Marshaler {
+func (ec *executionContext) marshalOFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameSpec) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -7837,7 +8571,7 @@ func (ec *executionContext) marshalOFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfo�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx, sel, v[i])
+			ret[i] = ec.marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7857,11 +8591,11 @@ func (ec *executionContext) marshalOFrameInfo2ᚕᚖstacksvizᚋentᚐFrameInfo�
 	return ret
 }
 
-func (ec *executionContext) marshalOFrameInfo2ᚖstacksvizᚋentᚐFrameInfo(ctx context.Context, sel ast.SelectionSet, v *ent.FrameInfo) graphql.Marshaler {
+func (ec *executionContext) marshalOFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx context.Context, sel ast.SelectionSet, v *ent.FrameSpec) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return ec._FrameInfo(ctx, sel, v)
+	return ec._FrameSpec(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOID2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {

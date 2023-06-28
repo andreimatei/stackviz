@@ -5,15 +5,15 @@ package ent
 import (
 	"encoding/json"
 	"fmt"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"strings"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 )
 
-// FrameInfo is the model entity for the FrameInfo schema.
-type FrameInfo struct {
+// FrameSpec is the model entity for the FrameSpec schema.
+type FrameSpec struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
@@ -26,17 +26,17 @@ type FrameInfo struct {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*FrameInfo) scanValues(columns []string) ([]any, error) {
+func (*FrameSpec) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case frameinfo.FieldExprs:
+		case framespec.FieldExprs:
 			values[i] = new([]byte)
-		case frameinfo.FieldID:
+		case framespec.FieldID:
 			values[i] = new(sql.NullInt64)
-		case frameinfo.FieldFrame:
+		case framespec.FieldFrame:
 			values[i] = new(sql.NullString)
-		case frameinfo.ForeignKeys[0]: // collect_spec_frames
+		case framespec.ForeignKeys[0]: // collect_spec_frames
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -46,84 +46,84 @@ func (*FrameInfo) scanValues(columns []string) ([]any, error) {
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
-// to the FrameInfo fields.
-func (fi *FrameInfo) assignValues(columns []string, values []any) error {
+// to the FrameSpec fields.
+func (fs *FrameSpec) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
 	for i := range columns {
 		switch columns[i] {
-		case frameinfo.FieldID:
+		case framespec.FieldID:
 			value, ok := values[i].(*sql.NullInt64)
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			fi.ID = int(value.Int64)
-		case frameinfo.FieldFrame:
+			fs.ID = int(value.Int64)
+		case framespec.FieldFrame:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field frame", values[i])
 			} else if value.Valid {
-				fi.Frame = value.String
+				fs.Frame = value.String
 			}
-		case frameinfo.FieldExprs:
+		case framespec.FieldExprs:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field exprs", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &fi.Exprs); err != nil {
+				if err := json.Unmarshal(*value, &fs.Exprs); err != nil {
 					return fmt.Errorf("unmarshal field exprs: %w", err)
 				}
 			}
-		case frameinfo.ForeignKeys[0]:
+		case framespec.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field collect_spec_frames", value)
 			} else if value.Valid {
-				fi.collect_spec_frames = new(int)
-				*fi.collect_spec_frames = int(value.Int64)
+				fs.collect_spec_frames = new(int)
+				*fs.collect_spec_frames = int(value.Int64)
 			}
 		default:
-			fi.selectValues.Set(columns[i], values[i])
+			fs.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
 }
 
-// Value returns the ent.Value that was dynamically selected and assigned to the FrameInfo.
+// Value returns the ent.Value that was dynamically selected and assigned to the FrameSpec.
 // This includes values selected through modifiers, order, etc.
-func (fi *FrameInfo) Value(name string) (ent.Value, error) {
-	return fi.selectValues.Get(name)
+func (fs *FrameSpec) Value(name string) (ent.Value, error) {
+	return fs.selectValues.Get(name)
 }
 
-// Update returns a builder for updating this FrameInfo.
-// Note that you need to call FrameInfo.Unwrap() before calling this method if this FrameInfo
+// Update returns a builder for updating this FrameSpec.
+// Note that you need to call FrameSpec.Unwrap() before calling this method if this FrameSpec
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (fi *FrameInfo) Update() *FrameInfoUpdateOne {
-	return NewFrameInfoClient(fi.config).UpdateOne(fi)
+func (fs *FrameSpec) Update() *FrameSpecUpdateOne {
+	return NewFrameSpecClient(fs.config).UpdateOne(fs)
 }
 
-// Unwrap unwraps the FrameInfo entity that was returned from a transaction after it was closed,
+// Unwrap unwraps the FrameSpec entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (fi *FrameInfo) Unwrap() *FrameInfo {
-	_tx, ok := fi.config.driver.(*txDriver)
+func (fs *FrameSpec) Unwrap() *FrameSpec {
+	_tx, ok := fs.config.driver.(*txDriver)
 	if !ok {
-		panic("ent: FrameInfo is not a transactional entity")
+		panic("ent: FrameSpec is not a transactional entity")
 	}
-	fi.config.driver = _tx.drv
-	return fi
+	fs.config.driver = _tx.drv
+	return fs
 }
 
 // String implements the fmt.Stringer.
-func (fi *FrameInfo) String() string {
+func (fs *FrameSpec) String() string {
 	var builder strings.Builder
-	builder.WriteString("FrameInfo(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", fi.ID))
+	builder.WriteString("FrameSpec(")
+	builder.WriteString(fmt.Sprintf("id=%v, ", fs.ID))
 	builder.WriteString("frame=")
-	builder.WriteString(fi.Frame)
+	builder.WriteString(fs.Frame)
 	builder.WriteString(", ")
 	builder.WriteString("exprs=")
-	builder.WriteString(fmt.Sprintf("%v", fi.Exprs))
+	builder.WriteString(fmt.Sprintf("%v", fs.Exprs))
 	builder.WriteByte(')')
 	return builder.String()
 }
 
-// FrameInfos is a parsable slice of FrameInfo.
-type FrameInfos []*FrameInfo
+// FrameSpecs is a parsable slice of FrameSpec.
+type FrameSpecs []*FrameSpec

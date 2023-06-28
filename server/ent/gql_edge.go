@@ -8,7 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 )
 
-func (cs *CollectSpec) Frames(ctx context.Context) (result []*FrameInfo, err error) {
+func (cs *CollectSpec) Frames(ctx context.Context) (result []*FrameSpec, err error) {
 	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
 		result, err = cs.NamedFrames(graphql.GetFieldContext(ctx).Field.Alias)
 	} else {

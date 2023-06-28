@@ -12,7 +12,7 @@ import (
 	"log"
 	"stacksviz/ent"
 	"stacksviz/ent/collection"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"stacksviz/stacks"
 	"time"
 
@@ -95,10 +95,10 @@ func (r *mutationResolver) AddExprToCollectSpec(ctx context.Context, frame strin
 	// TODO(andrei): use transactions
 	ci := r.getOrCreateCollectSpec(ctx)
 	// Create of update the frame info.
-	fi, err := ci.QueryFrames().Where(frameinfo.Frame(frame)).Only(ctx)
+	fi, err := ci.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
-		fi = r.dbClient.FrameInfo.Create().SetFrame(frame).SetExprs([]string{expr}).SaveX(ctx)
+		fi = r.dbClient.FrameSpec.Create().SetFrame(frame).SetExprs([]string{expr}).SaveX(ctx)
 		ci = ci.Update().AddFrames(fi).SaveX(ctx)
 		return ci, nil
 	}
@@ -117,7 +117,7 @@ func (r *mutationResolver) AddExprToCollectSpec(ctx context.Context, frame strin
 // RemoveExprFromCollectSpec is the resolver for the removeExprFromCollectSpec field.
 func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr string, frame string) (*ent.CollectSpec, error) {
 	ci := r.getOrCreateCollectSpec(ctx)
-	fi, err := ci.QueryFrames().Where(frameinfo.Frame(frame)).Only(ctx)
+	fi, err := ci.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
 		return ci, nil
@@ -142,16 +142,20 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 }
 
 // Goroutines is the resolver for the goroutines field.
-func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int) ([]*GoroutineInfo, error) {
+func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int) (*SnapshotInfo, error) {
 	snap, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*GoroutineInfo, len(snap.Snapshot.Goroutines))
-	for i, g := range snap.Snapshot.Goroutines {
-		frames := make([]string, len(g.Stack.Calls))
+	gMap := make(map[int]*GoroutineInfo, len(snap.Snapshot.Goroutines))
+	for _, g := range snap.Snapshot.Goroutines {
+		frames := make([]*FrameInfo, len(g.Stack.Calls))
 		for j, c := range g.Stack.Calls {
-			frames[j] = c.Func.Complete
+			frames[j] = &FrameInfo{
+				Func: c.Func.Complete,
+				File: c.RemoteSrcPath,
+				Line: c.Line,
+			}
 		}
 
 		// Render all the frames of interest for the goroutine, across all the frames.
@@ -179,7 +183,7 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 			}
 		}
 
-		res[i] = &GoroutineInfo{
+		gMap[g.ID] = &GoroutineInfo{
 			ID:     g.ID,
 			Frames: frames,
 			Vars:   vs,
@@ -188,22 +192,49 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 
 	if gID != nil {
 		log.Printf("!!! filtering for goroutine: %d", *gID)
-		idx := -1
-		for i, g := range res {
-			if g.ID == *gID {
-				idx = i
-				break
-			}
+		if gi := gMap[*gID]; gi != nil {
+			return &SnapshotInfo{
+				Raw:        []*GoroutineInfo{gi},
+				Aggregated: nil,
+			}, nil
 		}
-		if idx == -1 {
-			return nil, nil
-		}
-		return []*GoroutineInfo{res[idx]}, nil
+		return nil, nil
 	} else {
 		log.Printf("!!! not filtering for a specific goroutine")
 	}
 
-	return res, nil
+	allGs := make([]*GoroutineInfo, 0, len(gMap))
+	for _, gi := range gMap {
+		allGs = append(allGs, gi)
+	}
+
+	groups := make([]*GoroutinesGroup, len(snap.Agg.Buckets))
+	for i, b := range snap.Agg.Buckets {
+		frames := make([]*FrameInfo, len(b.Stack.Calls))
+		for j, c := range b.Stack.Calls {
+			frames[j] = &FrameInfo{
+				Func: c.Func.Complete,
+				File: c.RemoteSrcPath,
+				Line: c.Line,
+			}
+		}
+		groups[i] = &GoroutinesGroup{
+			IDs:    b.IDs,
+			Frames: frames,
+		}
+
+		for _, gID := range b.IDs {
+			if gi := gMap[gID]; gi != nil {
+				groups[i].Vars = append(groups[i].Vars, gi.Vars...)
+			}
+		}
+	}
+
+	si := &SnapshotInfo{
+		Raw:        allGs,
+		Aggregated: groups,
+	}
+	return si, nil
 }
 
 // AvailableVars is the resolver for the availableVars field.
@@ -258,8 +289,8 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 }
 
 // FrameInfo is the resolver for the frameInfo field.
-func (r *queryResolver) FrameInfo(ctx context.Context, funcArg string) (*ent.FrameInfo, error) {
-	fi, err := r.dbClient.FrameInfo.Query().Where(frameinfo.Frame(funcArg)).Only(ctx)
+func (r *queryResolver) FrameInfo(ctx context.Context, funcArg string) (*ent.FrameSpec, error) {
+	fi, err := r.dbClient.FrameSpec.Query().Where(framespec.Frame(funcArg)).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
 		return nil, nil

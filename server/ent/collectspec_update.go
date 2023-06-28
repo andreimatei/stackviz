@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"stacksviz/ent/collectspec"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"stacksviz/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
@@ -28,14 +28,14 @@ func (csu *CollectSpecUpdate) Where(ps ...predicate.CollectSpec) *CollectSpecUpd
 	return csu
 }
 
-// AddFrameIDs adds the "frames" edge to the FrameInfo entity by IDs.
+// AddFrameIDs adds the "frames" edge to the FrameSpec entity by IDs.
 func (csu *CollectSpecUpdate) AddFrameIDs(ids ...int) *CollectSpecUpdate {
 	csu.mutation.AddFrameIDs(ids...)
 	return csu
 }
 
-// AddFrames adds the "frames" edges to the FrameInfo entity.
-func (csu *CollectSpecUpdate) AddFrames(f ...*FrameInfo) *CollectSpecUpdate {
+// AddFrames adds the "frames" edges to the FrameSpec entity.
+func (csu *CollectSpecUpdate) AddFrames(f ...*FrameSpec) *CollectSpecUpdate {
 	ids := make([]int, len(f))
 	for i := range f {
 		ids[i] = f[i].ID
@@ -48,20 +48,20 @@ func (csu *CollectSpecUpdate) Mutation() *CollectSpecMutation {
 	return csu.mutation
 }
 
-// ClearFrames clears all "frames" edges to the FrameInfo entity.
+// ClearFrames clears all "frames" edges to the FrameSpec entity.
 func (csu *CollectSpecUpdate) ClearFrames() *CollectSpecUpdate {
 	csu.mutation.ClearFrames()
 	return csu
 }
 
-// RemoveFrameIDs removes the "frames" edge to FrameInfo entities by IDs.
+// RemoveFrameIDs removes the "frames" edge to FrameSpec entities by IDs.
 func (csu *CollectSpecUpdate) RemoveFrameIDs(ids ...int) *CollectSpecUpdate {
 	csu.mutation.RemoveFrameIDs(ids...)
 	return csu
 }
 
-// RemoveFrames removes "frames" edges to FrameInfo entities.
-func (csu *CollectSpecUpdate) RemoveFrames(f ...*FrameInfo) *CollectSpecUpdate {
+// RemoveFrames removes "frames" edges to FrameSpec entities.
+func (csu *CollectSpecUpdate) RemoveFrames(f ...*FrameSpec) *CollectSpecUpdate {
 	ids := make([]int, len(f))
 	for i := range f {
 		ids[i] = f[i].ID
@@ -113,7 +113,7 @@ func (csu *CollectSpecUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{collectspec.FramesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(frameinfo.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -126,7 +126,7 @@ func (csu *CollectSpecUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{collectspec.FramesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(frameinfo.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -142,7 +142,7 @@ func (csu *CollectSpecUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{collectspec.FramesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(frameinfo.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -170,14 +170,14 @@ type CollectSpecUpdateOne struct {
 	mutation *CollectSpecMutation
 }
 
-// AddFrameIDs adds the "frames" edge to the FrameInfo entity by IDs.
+// AddFrameIDs adds the "frames" edge to the FrameSpec entity by IDs.
 func (csuo *CollectSpecUpdateOne) AddFrameIDs(ids ...int) *CollectSpecUpdateOne {
 	csuo.mutation.AddFrameIDs(ids...)
 	return csuo
 }
 
-// AddFrames adds the "frames" edges to the FrameInfo entity.
-func (csuo *CollectSpecUpdateOne) AddFrames(f ...*FrameInfo) *CollectSpecUpdateOne {
+// AddFrames adds the "frames" edges to the FrameSpec entity.
+func (csuo *CollectSpecUpdateOne) AddFrames(f ...*FrameSpec) *CollectSpecUpdateOne {
 	ids := make([]int, len(f))
 	for i := range f {
 		ids[i] = f[i].ID
@@ -190,20 +190,20 @@ func (csuo *CollectSpecUpdateOne) Mutation() *CollectSpecMutation {
 	return csuo.mutation
 }
 
-// ClearFrames clears all "frames" edges to the FrameInfo entity.
+// ClearFrames clears all "frames" edges to the FrameSpec entity.
 func (csuo *CollectSpecUpdateOne) ClearFrames() *CollectSpecUpdateOne {
 	csuo.mutation.ClearFrames()
 	return csuo
 }
 
-// RemoveFrameIDs removes the "frames" edge to FrameInfo entities by IDs.
+// RemoveFrameIDs removes the "frames" edge to FrameSpec entities by IDs.
 func (csuo *CollectSpecUpdateOne) RemoveFrameIDs(ids ...int) *CollectSpecUpdateOne {
 	csuo.mutation.RemoveFrameIDs(ids...)
 	return csuo
 }
 
-// RemoveFrames removes "frames" edges to FrameInfo entities.
-func (csuo *CollectSpecUpdateOne) RemoveFrames(f ...*FrameInfo) *CollectSpecUpdateOne {
+// RemoveFrames removes "frames" edges to FrameSpec entities.
+func (csuo *CollectSpecUpdateOne) RemoveFrames(f ...*FrameSpec) *CollectSpecUpdateOne {
 	ids := make([]int, len(f))
 	for i := range f {
 		ids[i] = f[i].ID
@@ -285,7 +285,7 @@ func (csuo *CollectSpecUpdateOne) sqlSave(ctx context.Context) (_node *CollectSp
 			Columns: []string{collectspec.FramesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(frameinfo.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -298,7 +298,7 @@ func (csuo *CollectSpecUpdateOne) sqlSave(ctx context.Context) (_node *CollectSp
 			Columns: []string{collectspec.FramesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(frameinfo.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -314,7 +314,7 @@ func (csuo *CollectSpecUpdateOne) sqlSave(ctx context.Context) (_node *CollectSp
 			Columns: []string{collectspec.FramesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(frameinfo.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

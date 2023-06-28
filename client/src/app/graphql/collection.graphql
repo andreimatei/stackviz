@@ -77,14 +77,36 @@ query GetTypeInfo($name: String!) {
 
 query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int) {
   goroutines(colID: $colID, snapID: $snapID, gID: $gID) {
-    ID
-    Frames
-    Vars {
-      Value
-      Links {
-        SnapshotID
-        GoroutineID
-        FrameIdx
+    Raw {
+      ID
+      Frames {
+        Func
+        File
+        Line
+      }
+      Vars {
+        Value
+        Links {
+          SnapshotID
+          GoroutineID
+          FrameIdx
+        }
+      }
+    }
+    Aggregated {
+      IDs
+      Frames {
+        Func
+        File
+        Line
+      }
+      Vars {
+        Value
+        Links {
+          SnapshotID
+          GoroutineID
+          FrameIdx
+        }
       }
     }
   }

@@ -66,7 +66,7 @@ func HasFrames() predicate.CollectSpec {
 }
 
 // HasFramesWith applies the HasEdge predicate on the "frames" edge with a given conditions (other predicates).
-func HasFramesWith(preds ...predicate.FrameInfo) predicate.CollectSpec {
+func HasFramesWith(preds ...predicate.FrameSpec) predicate.CollectSpec {
 	return predicate.CollectSpec(func(s *sql.Selector) {
 		step := newFramesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {

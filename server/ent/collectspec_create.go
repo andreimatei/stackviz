@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 	"stacksviz/ent/collectspec"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -19,14 +19,14 @@ type CollectSpecCreate struct {
 	hooks    []Hook
 }
 
-// AddFrameIDs adds the "frames" edge to the FrameInfo entity by IDs.
+// AddFrameIDs adds the "frames" edge to the FrameSpec entity by IDs.
 func (csc *CollectSpecCreate) AddFrameIDs(ids ...int) *CollectSpecCreate {
 	csc.mutation.AddFrameIDs(ids...)
 	return csc
 }
 
-// AddFrames adds the "frames" edges to the FrameInfo entity.
-func (csc *CollectSpecCreate) AddFrames(f ...*FrameInfo) *CollectSpecCreate {
+// AddFrames adds the "frames" edges to the FrameSpec entity.
+func (csc *CollectSpecCreate) AddFrames(f ...*FrameSpec) *CollectSpecCreate {
 	ids := make([]int, len(f))
 	for i := range f {
 		ids[i] = f[i].ID
@@ -102,7 +102,7 @@ func (csc *CollectSpecCreate) createSpec() (*CollectSpec, *sqlgraph.CreateSpec) 
 			Columns: []string{collectspec.FramesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(frameinfo.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

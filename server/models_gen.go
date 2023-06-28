@@ -13,9 +13,21 @@ type FieldInfo struct {
 	Embedded bool   `json:"Embedded"`
 }
 
+type FrameInfo struct {
+	Func string `json:"Func"`
+	File string `json:"File"`
+	Line int    `json:"Line"`
+}
+
 type GoroutineInfo struct {
 	ID     int             `json:"ID"`
-	Frames []string        `json:"Frames"`
+	Frames []*FrameInfo    `json:"Frames"`
+	Vars   []*CollectedVar `json:"Vars"`
+}
+
+type GoroutinesGroup struct {
+	IDs    []int           `json:"IDs"`
+	Frames []*FrameInfo    `json:"Frames"`
 	Vars   []*CollectedVar `json:"Vars"`
 }
 
@@ -23,6 +35,11 @@ type Link struct {
 	SnapshotID  int `json:"SnapshotID"`
 	GoroutineID int `json:"GoroutineID"`
 	FrameIdx    int `json:"FrameIdx"`
+}
+
+type SnapshotInfo struct {
+	Raw        []*GoroutineInfo   `json:"Raw"`
+	Aggregated []*GoroutinesGroup `json:"Aggregated"`
 }
 
 type TypeInfo struct {

@@ -21,7 +21,7 @@ func (CollectSpec) Fields() []ent.Field {
 
 func (CollectSpec) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("frames", FrameInfo.Type),
+		edge.To("frames", FrameSpec.Type),
 	}
 }
 
@@ -32,22 +32,22 @@ func (CollectSpec) Annotations() []schema.Annotation {
 	}
 }
 
-type FrameInfo struct {
+type FrameSpec struct {
 	ent.Schema
 }
 
-func (FrameInfo) Fields() []ent.Field {
+func (FrameSpec) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("frame"),
 		field.Strings("exprs"),
 	}
 }
 
-func (FrameInfo) Edges() []ent.Edge {
+func (FrameSpec) Edges() []ent.Edge {
 	return nil
 }
 
-func (FrameInfo) Annotations() []schema.Annotation {
+func (FrameSpec) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		entgql.QueryField(),
 		entgql.Mutations(entgql.MutationCreate()),

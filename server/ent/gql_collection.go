@@ -5,7 +5,7 @@ package ent
 import (
 	"context"
 	"stacksviz/ent/collection"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"stacksviz/ent/processsnapshot"
 
 	"entgo.io/ent/dialect/sql"
@@ -32,12 +32,12 @@ func (cs *CollectSpecQuery) collectField(ctx context.Context, opCtx *graphql.Ope
 			var (
 				alias = field.Alias
 				path  = append(path, alias)
-				query = (&FrameInfoClient{config: cs.config}).Query()
+				query = (&FrameSpecClient{config: cs.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, frameinfoImplementors)...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, framespecImplementors)...); err != nil {
 				return err
 			}
-			cs.WithNamedFrames(alias, func(wq *FrameInfoQuery) {
+			cs.WithNamedFrames(alias, func(wq *FrameSpecQuery) {
 				*wq = *query
 			})
 		}
@@ -148,35 +148,35 @@ func newCollectionPaginateArgs(rv map[string]any) *collectionPaginateArgs {
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
-func (fi *FrameInfoQuery) CollectFields(ctx context.Context, satisfies ...string) (*FrameInfoQuery, error) {
+func (fs *FrameSpecQuery) CollectFields(ctx context.Context, satisfies ...string) (*FrameSpecQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
-		return fi, nil
+		return fs, nil
 	}
-	if err := fi.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+	if err := fs.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
 		return nil, err
 	}
-	return fi, nil
+	return fs, nil
 }
 
-func (fi *FrameInfoQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+func (fs *FrameSpecQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
 	path = append([]string(nil), path...)
 	var (
 		unknownSeen    bool
-		fieldSeen      = make(map[string]struct{}, len(frameinfo.Columns))
-		selectedFields = []string{frameinfo.FieldID}
+		fieldSeen      = make(map[string]struct{}, len(framespec.Columns))
+		selectedFields = []string{framespec.FieldID}
 	)
 	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 		case "frame":
-			if _, ok := fieldSeen[frameinfo.FieldFrame]; !ok {
-				selectedFields = append(selectedFields, frameinfo.FieldFrame)
-				fieldSeen[frameinfo.FieldFrame] = struct{}{}
+			if _, ok := fieldSeen[framespec.FieldFrame]; !ok {
+				selectedFields = append(selectedFields, framespec.FieldFrame)
+				fieldSeen[framespec.FieldFrame] = struct{}{}
 			}
 		case "exprs":
-			if _, ok := fieldSeen[frameinfo.FieldExprs]; !ok {
-				selectedFields = append(selectedFields, frameinfo.FieldExprs)
-				fieldSeen[frameinfo.FieldExprs] = struct{}{}
+			if _, ok := fieldSeen[framespec.FieldExprs]; !ok {
+				selectedFields = append(selectedFields, framespec.FieldExprs)
+				fieldSeen[framespec.FieldExprs] = struct{}{}
 			}
 		case "id":
 		case "__typename":
@@ -185,19 +185,19 @@ func (fi *FrameInfoQuery) collectField(ctx context.Context, opCtx *graphql.Opera
 		}
 	}
 	if !unknownSeen {
-		fi.Select(selectedFields...)
+		fs.Select(selectedFields...)
 	}
 	return nil
 }
 
-type frameinfoPaginateArgs struct {
+type framespecPaginateArgs struct {
 	first, last   *int
 	after, before *Cursor
-	opts          []FrameInfoPaginateOption
+	opts          []FrameSpecPaginateOption
 }
 
-func newFrameInfoPaginateArgs(rv map[string]any) *frameinfoPaginateArgs {
-	args := &frameinfoPaginateArgs{}
+func newFrameSpecPaginateArgs(rv map[string]any) *framespecPaginateArgs {
+	args := &framespecPaginateArgs{}
 	if rv == nil {
 		return args
 	}

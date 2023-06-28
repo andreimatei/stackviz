@@ -3,81 +3,46 @@ import { CommonModule } from '@angular/common';
 import { DataTableModule } from 'traceviz/dist/ngx-traceviz-lib';
 import { MatTabsModule, } from '@angular/material/tabs'
 import { Observable } from "rxjs";
-import { GoroutineInfo } from "../../graphql/graphql-codegen-generated";
+import { GoroutineInfo, GoroutinesGroup, SnapshotInfo } from "../../graphql/graphql-codegen-generated";
 import { MatTableModule } from "@angular/material/table";
+import { BacktraceComponent } from "../backtrace/backtrace.component";
 
 @Component({
   selector: 'app-stacks',
   standalone: true,
-  imports: [CommonModule, DataTableModule, MatTabsModule, MatTableModule],
+  imports: [CommonModule, DataTableModule, MatTabsModule, MatTableModule, BacktraceComponent],
   template: `
-    <div>
-<!--      {{ numStacks }} stacks-->
-<!--      ({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines),-->
-<!--      {{ numBuckets }} buckets-->
-      <hr>
+      <div>
+          <!-- !!! -->
+          <!--      {{ numStacks }} stacks-->
+          <!--      ({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines),-->
+          <!--      {{ numBuckets }} buckets-->
+          <hr>
 
-      <mat-tab-group selectedIndex="2">
-<!--        <mat-tab label="Aggregated">-->
-<!--          <ul>-->
-<!--            <li *ngFor="let stack of aggStacks">-->
-<!--              {{ stack.properties.expectNumber("num_gs_in_bucket") }} goroutine(s):-->
-<!--              &lt;!&ndash;<data-table [data]="stack" [style]="  "></data-table>&ndash;&gt;-->
-<!--            </li>-->
-<!--          </ul>-->
-<!--        </mat-tab>-->
-<!--        <mat-tab label="Raw">-->
-<!--          <ng-template matTabContent>-->
-<!--            <ul>-->
-<!--              <li *ngFor="let stack of rawStacks">-->
-<!--                Goroutine ID {{ stack.properties.expectNumber("g_id") }}:-->
-<!--                &lt;!&ndash;<data-table [data]="stack" ></data-table>&ndash;&gt;-->
-<!--              </li>-->
-<!--            </ul>-->
-<!--          </ng-template>-->
-<!--         </mat-tab>-->
-        <mat-tab label="Raw">
-          #goroutines: {{goroutines ? goroutines.length : 0}}
-          <ul>
-            <li *ngFor="let g of goroutines" id="g_{{g.ID}}">
-              <a id="g_{{g.ID}}">Goroutine {{ g.ID }}</a>
-
-              <table mat-table [dataSource]="g.Vars" *ngIf="g.Vars && g.Vars.length > 0">
-                <ng-container matColumnDef="vars">
-                  <th mat-header-cell *matHeaderCellDef> Vars </th>
-                  <td mat-cell *matCellDef="let v">
-                    {{v.Value}}
-                    <div *ngIf="v.Links?.length > 0">
-                      Links:
+          <mat-tab-group selectedIndex="0">
+              <mat-tab label="Aggregated">
+                  <ng-template matTabContent>
                       <ul>
-                        <li *ngFor="let l of v.Links">
-<!--                          <a href="/collections/{{colID}}/snap/{{l.SnapshotID}}#g_{{l.GoroutineID}}">-->
-                            Snapshot: {{l.SnapshotID}} Goroutine: {{l.GoroutineID}}
-<!--                          </a>-->
-                        </li>
+                          <li *ngFor="let g of goroutineGroups">
+                              {{g.IDs.length}} goroutines in goroutine group
+                              Goroutine IDs {{g.IDs}}
+                              <app-backtrace [vars]="g.Vars" [frames]="g.Frames" [collectionID]="colID"></app-backtrace>
+                          </li>
                       </ul>
-                    </div>
-                  </td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['vars']"></tr>
-                <tr mat-row *matRowDef="let rowData; columns: ['vars']"></tr>
-               </table>
+                  </ng-template>
+              </mat-tab>
 
-              <table mat-table [dataSource]="g.Frames">
-                <ng-container matColumnDef="frames">
-                  <th mat-header-cell *matHeaderCellDef> Backtrace </th>
-                  <td mat-cell *matCellDef="let frame"> {{frame}} </td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['frames']"></tr>
-                <tr mat-row *matRowDef="let rowData; columns: ['frames']"></tr>
-              </table>
-            </li>
-          </ul>
-        </mat-tab>
-      </mat-tab-group>
-
-    <a id="xxx"></a>
-    </div>
+              <mat-tab label="Raw">
+                  #goroutines: {{goroutines ? goroutines.length : 0}}
+                  <ul>
+                      <li *ngFor="let g of goroutines" id="g_{{g.ID}}">
+                          <a id="g_{{g.ID}}">Goroutine {{ g.ID }}</a>
+                          <app-backtrace [vars]="g.Vars" [frames]="g.Frames" [collectionID]="colID"></app-backtrace>
+                      </li>
+                  </ul>
+              </mat-tab>
+          </mat-tab-group>
+      </div>
   `,
   styles: [`ul {
       list-style-type: none; /* Remove bullets */
@@ -86,14 +51,6 @@ import { MatTableModule } from "@angular/material/table";
     }
     li {
       border-bottom: 1px solid black;
-    }
-    data-table::part(table) {background: #f4f4f4; border: 1px solid #dcdcdc; width: unset; min-width: 350px;}
-
-    th.mat-mdc-header-cell {
-      background-color: gray;
-    }
-    tr.mat-mdc-row {
-      height: 20px;
     }
     `
   ]
@@ -115,19 +72,21 @@ export class StacksComponent {
   // protected numTotalGoroutines?: number;
 
   protected goroutines!: GoroutineInfo[];
+  protected goroutineGroups!: GoroutinesGroup[];
 
   // !!! backtracecols = ['frames'];
 
-  @Input() set data$(val$: Observable<GoroutineInfo[]>) {
+  @Input() set data$(val$: Observable<SnapshotInfo>) {
     val$.subscribe(
       value => {
         // Updating all the tables can take a few seconds, so in order to make
         // the user experience better, we first clear them, and only then create
         // the new ones.
         console.log("stacks got value: ", value);
+        this.goroutineGroups = value.Aggregated;
         this.goroutines = [];
         setTimeout(() => {
-          this.goroutines = value;
+          this.goroutines = value.Raw;
         }, 0);
       }
     )

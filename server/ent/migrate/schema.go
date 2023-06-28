@@ -29,22 +29,22 @@ var (
 		Columns:    CollectionsColumns,
 		PrimaryKey: []*schema.Column{CollectionsColumns[0]},
 	}
-	// FrameInfosColumns holds the columns for the "frame_infos" table.
-	FrameInfosColumns = []*schema.Column{
+	// FrameSpecsColumns holds the columns for the "frame_specs" table.
+	FrameSpecsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "frame", Type: field.TypeString},
 		{Name: "exprs", Type: field.TypeJSON},
 		{Name: "collect_spec_frames", Type: field.TypeInt, Nullable: true},
 	}
-	// FrameInfosTable holds the schema information for the "frame_infos" table.
-	FrameInfosTable = &schema.Table{
-		Name:       "frame_infos",
-		Columns:    FrameInfosColumns,
-		PrimaryKey: []*schema.Column{FrameInfosColumns[0]},
+	// FrameSpecsTable holds the schema information for the "frame_specs" table.
+	FrameSpecsTable = &schema.Table{
+		Name:       "frame_specs",
+		Columns:    FrameSpecsColumns,
+		PrimaryKey: []*schema.Column{FrameSpecsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "frame_infos_collect_specs_frames",
-				Columns:    []*schema.Column{FrameInfosColumns[3]},
+				Symbol:     "frame_specs_collect_specs_frames",
+				Columns:    []*schema.Column{FrameSpecsColumns[3]},
 				RefColumns: []*schema.Column{CollectSpecsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -76,12 +76,12 @@ var (
 	Tables = []*schema.Table{
 		CollectSpecsTable,
 		CollectionsTable,
-		FrameInfosTable,
+		FrameSpecsTable,
 		ProcessSnapshotsTable,
 	}
 )
 
 func init() {
-	FrameInfosTable.ForeignKeys[0].RefTable = CollectSpecsTable
+	FrameSpecsTable.ForeignKeys[0].RefTable = CollectSpecsTable
 	ProcessSnapshotsTable.ForeignKeys[0].RefTable = CollectionsTable
 }

@@ -8,9 +8,9 @@ type Mutation {
 
 extend type Query {
   collectionByID(id: ID!): Collection
-  goroutines(colID: Int!, snapID: Int!, gID: Int): [GoroutineInfo!]!
+  goroutines(colID: Int!, snapID: Int!, gID: Int): SnapshotInfo!
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
-  frameInfo(func: String!): FrameInfo
+  frameInfo(func: String!): FrameSpec
   typeInfo(name: String!): TypeInfo!
   getTree(colID: Int!, snapID: Int!): String!
 }
@@ -41,8 +41,27 @@ type FieldInfo {
 
 type GoroutineInfo {
   ID: Int!
-  Frames: [String!]!
+  Frames: [FrameInfo!]!
   Vars: [CollectedVar!]!
+}
+
+type GoroutinesGroup {
+  IDs: [Int!]!
+  Frames: [FrameInfo!]!
+  # All the vars collected for all the goroutines in the group.
+  # TODO(andrei): group by goroutine
+  Vars: [CollectedVar!]!
+}
+
+type SnapshotInfo {
+  Raw: [GoroutineInfo!]!
+  Aggregated: [GoroutinesGroup!]!
+}
+
+type FrameInfo {
+  Func: String!
+  File: String!
+  Line: Int!
 }
 
 type CollectedVar {

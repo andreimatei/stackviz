@@ -16,8 +16,8 @@ type Tx struct {
 	CollectSpec *CollectSpecClient
 	// Collection is the client for interacting with the Collection builders.
 	Collection *CollectionClient
-	// FrameInfo is the client for interacting with the FrameInfo builders.
-	FrameInfo *FrameInfoClient
+	// FrameSpec is the client for interacting with the FrameSpec builders.
+	FrameSpec *FrameSpecClient
 	// ProcessSnapshot is the client for interacting with the ProcessSnapshot builders.
 	ProcessSnapshot *ProcessSnapshotClient
 
@@ -153,7 +153,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.CollectSpec = NewCollectSpecClient(tx.config)
 	tx.Collection = NewCollectionClient(tx.config)
-	tx.FrameInfo = NewFrameInfoClient(tx.config)
+	tx.FrameSpec = NewFrameSpecClient(tx.config)
 	tx.ProcessSnapshot = NewProcessSnapshotClient(tx.config)
 }
 

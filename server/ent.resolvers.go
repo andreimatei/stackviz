@@ -30,9 +30,9 @@ func (r *queryResolver) Collections(ctx context.Context) ([]*ent.Collection, err
 	return r.dbClient.Collection.Query().All(ctx)
 }
 
-// FrameInfos is the resolver for the frameInfos field.
-func (r *queryResolver) FrameInfos(ctx context.Context) ([]*ent.FrameInfo, error) {
-	panic(fmt.Errorf("not implemented: FrameInfos - frameInfos"))
+// FrameSpecs is the resolver for the frameSpecs field.
+func (r *queryResolver) FrameSpecs(ctx context.Context) ([]*ent.FrameSpec, error) {
+	panic(fmt.Errorf("not implemented: FrameSpecs - frameSpecs"))
 }
 
 // ProcessSnapshots is the resolver for the processSnapshots field.

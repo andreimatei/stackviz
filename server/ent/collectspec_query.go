@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"math"
 	"stacksviz/ent/collectspec"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"stacksviz/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
@@ -23,10 +23,10 @@ type CollectSpecQuery struct {
 	order           []collectspec.OrderOption
 	inters          []Interceptor
 	predicates      []predicate.CollectSpec
-	withFrames      *FrameInfoQuery
+	withFrames      *FrameSpecQuery
 	modifiers       []func(*sql.Selector)
 	loadTotal       []func(context.Context, []*CollectSpec) error
-	withNamedFrames map[string]*FrameInfoQuery
+	withNamedFrames map[string]*FrameSpecQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -64,8 +64,8 @@ func (csq *CollectSpecQuery) Order(o ...collectspec.OrderOption) *CollectSpecQue
 }
 
 // QueryFrames chains the current query on the "frames" edge.
-func (csq *CollectSpecQuery) QueryFrames() *FrameInfoQuery {
-	query := (&FrameInfoClient{config: csq.config}).Query()
+func (csq *CollectSpecQuery) QueryFrames() *FrameSpecQuery {
+	query := (&FrameSpecClient{config: csq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := csq.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -76,7 +76,7 @@ func (csq *CollectSpecQuery) QueryFrames() *FrameInfoQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(collectspec.Table, collectspec.FieldID, selector),
-			sqlgraph.To(frameinfo.Table, frameinfo.FieldID),
+			sqlgraph.To(framespec.Table, framespec.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, collectspec.FramesTable, collectspec.FramesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(csq.driver.Dialect(), step)
@@ -286,8 +286,8 @@ func (csq *CollectSpecQuery) Clone() *CollectSpecQuery {
 
 // WithFrames tells the query-builder to eager-load the nodes that are connected to
 // the "frames" edge. The optional arguments are used to configure the query builder of the edge.
-func (csq *CollectSpecQuery) WithFrames(opts ...func(*FrameInfoQuery)) *CollectSpecQuery {
-	query := (&FrameInfoClient{config: csq.config}).Query()
+func (csq *CollectSpecQuery) WithFrames(opts ...func(*FrameSpecQuery)) *CollectSpecQuery {
+	query := (&FrameSpecClient{config: csq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -378,15 +378,15 @@ func (csq *CollectSpecQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	}
 	if query := csq.withFrames; query != nil {
 		if err := csq.loadFrames(ctx, query, nodes,
-			func(n *CollectSpec) { n.Edges.Frames = []*FrameInfo{} },
-			func(n *CollectSpec, e *FrameInfo) { n.Edges.Frames = append(n.Edges.Frames, e) }); err != nil {
+			func(n *CollectSpec) { n.Edges.Frames = []*FrameSpec{} },
+			func(n *CollectSpec, e *FrameSpec) { n.Edges.Frames = append(n.Edges.Frames, e) }); err != nil {
 			return nil, err
 		}
 	}
 	for name, query := range csq.withNamedFrames {
 		if err := csq.loadFrames(ctx, query, nodes,
 			func(n *CollectSpec) { n.appendNamedFrames(name) },
-			func(n *CollectSpec, e *FrameInfo) { n.appendNamedFrames(name, e) }); err != nil {
+			func(n *CollectSpec, e *FrameSpec) { n.appendNamedFrames(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -398,7 +398,7 @@ func (csq *CollectSpecQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	return nodes, nil
 }
 
-func (csq *CollectSpecQuery) loadFrames(ctx context.Context, query *FrameInfoQuery, nodes []*CollectSpec, init func(*CollectSpec), assign func(*CollectSpec, *FrameInfo)) error {
+func (csq *CollectSpecQuery) loadFrames(ctx context.Context, query *FrameSpecQuery, nodes []*CollectSpec, init func(*CollectSpec), assign func(*CollectSpec, *FrameSpec)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int]*CollectSpec)
 	for i := range nodes {
@@ -409,7 +409,7 @@ func (csq *CollectSpecQuery) loadFrames(ctx context.Context, query *FrameInfoQue
 		}
 	}
 	query.withFKs = true
-	query.Where(predicate.FrameInfo(func(s *sql.Selector) {
+	query.Where(predicate.FrameSpec(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(collectspec.FramesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
@@ -516,13 +516,13 @@ func (csq *CollectSpecQuery) sqlQuery(ctx context.Context) *sql.Selector {
 
 // WithNamedFrames tells the query-builder to eager-load the nodes that are connected to the "frames"
 // edge with the given name. The optional arguments are used to configure the query builder of the edge.
-func (csq *CollectSpecQuery) WithNamedFrames(name string, opts ...func(*FrameInfoQuery)) *CollectSpecQuery {
-	query := (&FrameInfoClient{config: csq.config}).Query()
+func (csq *CollectSpecQuery) WithNamedFrames(name string, opts ...func(*FrameSpecQuery)) *CollectSpecQuery {
+	query := (&FrameSpecClient{config: csq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
 	if csq.withNamedFrames == nil {
-		csq.withNamedFrames = make(map[string]*FrameInfoQuery)
+		csq.withNamedFrames = make(map[string]*FrameSpecQuery)
 	}
 	csq.withNamedFrames[name] = query
 	return csq

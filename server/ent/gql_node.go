@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"stacksviz/ent/collection"
 	"stacksviz/ent/collectspec"
-	"stacksviz/ent/frameinfo"
+	"stacksviz/ent/framespec"
 	"stacksviz/ent/processsnapshot"
 	"sync"
 	"sync/atomic"
@@ -36,10 +36,10 @@ var collectionImplementors = []string{"Collection", "Node"}
 // IsNode implements the Node interface check for GQLGen.
 func (*Collection) IsNode() {}
 
-var frameinfoImplementors = []string{"FrameInfo", "Node"}
+var framespecImplementors = []string{"FrameSpec", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
-func (*FrameInfo) IsNode() {}
+func (*FrameSpec) IsNode() {}
 
 var processsnapshotImplementors = []string{"ProcessSnapshot", "Node"}
 
@@ -128,10 +128,10 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			return nil, err
 		}
 		return n, nil
-	case frameinfo.Table:
-		query := c.FrameInfo.Query().
-			Where(frameinfo.ID(id))
-		query, err := query.CollectFields(ctx, frameinfoImplementors...)
+	case framespec.Table:
+		query := c.FrameSpec.Query().
+			Where(framespec.ID(id))
+		query, err := query.CollectFields(ctx, framespecImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -257,10 +257,10 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 				*noder = node
 			}
 		}
-	case frameinfo.Table:
-		query := c.FrameInfo.Query().
-			Where(frameinfo.IDIn(ids...))
-		query, err := query.CollectFields(ctx, frameinfoImplementors...)
+	case framespec.Table:
+		query := c.FrameSpec.Query().
+			Where(framespec.IDIn(ids...))
+		query, err := query.CollectFields(ctx, framespecImplementors...)
 		if err != nil {
 			return nil, err
 		}

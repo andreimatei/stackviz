@@ -32,16 +32,16 @@ func (f CollectionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CollectionMutation", m)
 }
 
-// The FrameInfoFunc type is an adapter to allow the use of ordinary
-// function as FrameInfo mutator.
-type FrameInfoFunc func(context.Context, *ent.FrameInfoMutation) (ent.Value, error)
+// The FrameSpecFunc type is an adapter to allow the use of ordinary
+// function as FrameSpec mutator.
+type FrameSpecFunc func(context.Context, *ent.FrameSpecMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f FrameInfoFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.FrameInfoMutation); ok {
+func (f FrameSpecFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FrameSpecMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FrameInfoMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FrameSpecMutation", m)
 }
 
 // The ProcessSnapshotFunc type is an adapter to allow the use of ordinary

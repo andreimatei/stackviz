@@ -63,9 +63,6 @@ func BuildTree(snap *pp.Snapshot, fois FOIS) *TreeNode {
 		myFois := fois[s.ID]
 		stack := make([]Frame, l)
 		for i := range s.Signature.Stack.Calls {
-			if len(myFois[i].Vars) > 0 {
-				log.Printf("!!! found frame with vars: %s", s.Signature.Stack.Calls[i].Func.Complete)
-			}
 			stack[l-i-1] = Frame{
 				call: s.Signature.Stack.Calls[i],
 				vars: myFois[i].Vars,
@@ -269,7 +266,6 @@ func (t *TreeNode) MarshalJSON() ([]byte, error) {
 			for _, v := range frame {
 				sb.WriteString(v.Val)
 				sb.WriteRune('\n')
-				log.Printf("!!! found var: %s", v)
 			}
 			varsProp = append(varsProp, sb.String())
 		}

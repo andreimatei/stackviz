@@ -1,0 +1,26 @@
+th.mat-mdc-header-cell {
+  background-color: gray;
+  font-weight: bold;
+}
+
+tr.mat-mdc-row {
+  height: 20px;
+}
+
+.mat-mdc-row:nth-child(even) {
+  background-color: white;
+}
+
+.mat-mdc-row:nth-child(odd) {
+  background-color: #F0F0F0;
+}
+
+.cell-index {
+  width: 5px;
+  /* For the first column, only use left padding. */
+  padding: 0px 0px 0px 10px;
+}
+
+.mdc-data-table__table {
+  min-width: 600px;
+}
