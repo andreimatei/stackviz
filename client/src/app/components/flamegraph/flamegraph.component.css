@@ -1,5 +1,6 @@
-div.flamegrapf-container {
+div.flamegraph-container {
   width: auto;
+  overflow: scroll;
 }
 
 .d3-flame-graph rect {

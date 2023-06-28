@@ -27,7 +27,7 @@ export interface Frame {
   standalone: true,
   imports: [AngularResizeEventModule],
   template: `
-    <div #flamegraph id="flamegraph" class="flamegrapf-container" (resized)="onResized($event)">
+    <div #flamegraph id="flamegraph" class="flamegraph-container" (resized)="onResized($event)">
     </div>
     <div #details>
     </div>
@@ -68,6 +68,7 @@ export class FlamegraphComponent implements AfterViewInit {
       .onCtrlClick(this.onCtrlClick.bind(this))
       // !!! .differential(false)
       .selfValue(false);
+    console.log("!!! height", this.flameGraph.height());
   }
 
   ngAfterViewInit(): void {
@@ -80,6 +81,10 @@ export class FlamegraphComponent implements AfterViewInit {
   }
 
   redraw(data: any): void {
+    // HACK: reset the flamegraph's height, otherwise it stays the same height
+    // as it was previously. This is because, if a size hasn't be explicitly
+    // set, the flamegraph remembers its computed size after the first draw.
+    this.flameGraph.height(null);
     // !!!clear the flamegraph if we receive null?
     if (data == null) {
       return;

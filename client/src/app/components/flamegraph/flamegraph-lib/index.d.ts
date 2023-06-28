@@ -21,7 +21,7 @@
     selfValue(): boolean;
     width(val: number): FlameGraph;
     width(): number;
-    height(val: number): FlameGraph;
+    height(val: number | null): FlameGraph;
     height(): number;
     cellHeight(val: number): FlameGraph;
     cellHeight(): number;

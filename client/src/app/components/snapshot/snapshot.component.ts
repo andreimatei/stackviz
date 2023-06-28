@@ -34,6 +34,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshotID$ = new Subject<number>();
   private _snapshotID!: number;
   @Input('snapID') set snapshotID(val: number) {
+    console.log("!!! snapshotID being set to:", val);
     this._snapshotID = val;
     this.snapshotID$.next(val);
   }

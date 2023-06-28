@@ -70,13 +70,14 @@
     <mat-sidenav-content>
       <p>
         Collection <a routerLink="/collections"> {{ collectionName }} </a>
-        Snapshot ID: {{snapshotID$ | async}}
+        <br>
+        Snapshot ID: {{snapshotID}}
       </p>
       <mat-form-field>
         <mat-label>Snapshots</mat-label>
         <mat-select #snapshotsSelect
                     (selectionChange)="onSelectedSnapshotChange(snapshotsSelect.value)"
-                    [value]="snapshotID$ | async"
+                    [value]="snapshotID"
         >
           <mat-option *ngFor="let snap of snapshots"
                       [value]="snap.id">{{ snap.processID }}</mat-option>
@@ -87,7 +88,7 @@
         <mat-form-field class="example-form-field">
           <mat-label>Filter</mat-label>
           <input matInput type="text" [(ngModel)]="filter" (ngModelChange)="onFilterChange($event)" placeholder="filter by package or function name">
-          <button *ngIf="filter$ | async" matSuffix mat-icon-button (click)="onFilterChange('');">
+          <button *ngIf="filter$ | async" matSuffix mat-icon-button (click)="filter=''; onFilterChange('');">
             <mat-icon>close</mat-icon>
           </button>
         </mat-form-field>
