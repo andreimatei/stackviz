@@ -9,8 +9,6 @@ import {
   RemoveExprFromCollectSpecGQL
 } from "../../graphql/graphql-codegen-generated";
 import { Router } from "@angular/router";
-import { WeightedTreeComponent } from 'traceviz/dist/ngx-traceviz-lib';
-import { Update, ValueMap, } from "traceviz-client-core";
 import { MatDrawer } from "@angular/material/sidenav";
 import { ResizeEvent } from 'angular-resizable-element';
 import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
@@ -28,16 +26,6 @@ class Frame {
   selector: 'snapshot',
   templateUrl: './snapshot.component.html',
   styleUrls: ['snapshot.component.css'],
-  // !!!
-  // // Provide the AppCoreService at the level of this component, overriding the
-  // // `providedIn: 'root'` specified on the declaration of AppCoreService (which
-  // // asks for a single instance of AppCoreService to be injected everywhere in
-  // // the app). By scoping an instance to this SnapshotComponent, we prevent the
-  // // state from escaping this component. In turn, this means that every time
-  // // that a user navigates to the snapshot page, she gets an empty state (i.e.
-  // // any filtering they might have previously done on the page is gone; this is
-  // // considered a good thing).
-  // providers: [AppCoreService]
 })
 export class SnapshotComponent implements OnInit, AfterViewInit {
   // collectionID and snapshotID input properties are set by the router.
@@ -53,7 +41,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   protected collectionName?: string;
   protected snapshots?: Partial<ProcessSnapshot>[];
-  @ViewChild(WeightedTreeComponent) weightedTree: WeightedTreeComponent | undefined;
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   @ViewChild(TypeInfoComponent) typeInfo?: TypeInfoComponent;
   @ViewChild('snapshotsSelect') snapSelect!: MatSelect;
@@ -89,24 +76,11 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
         this.collectionName = results.data.collectionByID?.name;
         this.snapshots = results.data.collectionByID?.processSnapshots!;
       })
-
-    // !!!
-    // this.appCoreService.appCore.globalState.set(
-    //   "collection_id", new IntegerValue(this.collectionID));
-
-    // this.getTreeQuery.fetch({colID: this.collectionID, snapID: this.snapshotID})
-    //   .subscribe(value => {
-    //     console.log("!!! query got result")
-    //     this.flamegraph.data = JSON.parse(value.data.getTree);
-    //   })
-
   }
 
   ngAfterViewInit() {
-    console.log("!!! snapshot afterviewinit")
     // Bind the flamegraph data to updates of snapshot ID.
     this.flamegraph.data$ = this.snapshotID$.pipe(
-      // !!! tap(val => console.log("snapshotID$ got", val)),
       switchMap(snapID =>
         this.getTreeQuery.fetch({colID: this.collectionID, snapID: snapID})
           .pipe(
@@ -139,38 +113,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     )
 
     // !!! update the sidebar in response to snapshotID changes
-
-  }
-
-  // !!! remove
-  onNodeCtrlClick(localState: ValueMap): void {
-    if (localState.has('vars')) {
-      this.funcInfo = localState.expectStringList('vars');
-    }
-
-    const funcName = localState.expectString('full_name');
-    this.selectedFrame = new Frame(funcName, localState.expectString('file'), localState.expectNumber('line'))
-    const pcOffset = localState.expectNumber('pc_off');
-    console.log("querying for available vars for func: %s off: %d", funcName, pcOffset);
-    this.loadingAvailableVars = true;
-    this.typeInfo!.dataSource.data = [];
-    this.varsQuery.fetch({func: funcName, pcOff: pcOffset})
-      .subscribe(
-        results => {
-          console.log("got results");
-          this.loadingAvailableVars = false;
-          if (results.error) {
-            console.log("err: ", results.error)
-            return
-          }
-          this.typeInfo!.dataSource.initData(
-            results.data.availableVars.Vars,
-            results.data.availableVars.Types,
-            results.data.frameInfo ? results.data.frameInfo.exprs : [],
-          )
-        })
-    console.log("opening sidebar")
-    this.frameDetailsSidebar.open();
   }
 
   closeSidebar() {
@@ -238,21 +180,5 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   validateResize(event: ResizeEvent): boolean {
     return true;
-  }
-}
-
-
-// Call is an implementation of Update that calls the provided function.
-class Call extends Update {
-  constructor(private readonly handler: ((localState: ValueMap) => void)) {
-    super();
-  }
-
-  override update(localState?: ValueMap | undefined) {
-    this.handler(localState!)
-  }
-
-  get autoDocument(): string {
-    throw new Error('Method not implemented.');
   }
 }

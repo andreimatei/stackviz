@@ -11,15 +11,8 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-builders/custom-webpack:browser",
+          "builder" : "@angular-devkit/build-angular:browser-esbuild" ,
           "options": {
-            "customWebpackConfig": {
-              "path": "./extra-webpack.config.js",
-              "mergeRules": {
-                "externals": "replace"
-              },
-              "replaceDuplicatePlugins": true
-            },
             "outputPath": "dist/client",
             "index": "src/index.html",
             "main": "src/main.ts",

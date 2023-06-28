@@ -1,6 +1,5 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DataTableModule } from 'traceviz/dist/ngx-traceviz-lib';
 import { MatTabsModule, } from '@angular/material/tabs'
 import { Observable } from "rxjs";
 import { GoroutineInfo, GoroutinesGroup, SnapshotInfo } from "../../graphql/graphql-codegen-generated";
@@ -10,7 +9,7 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
 @Component({
   selector: 'app-stacks',
   standalone: true,
-  imports: [CommonModule, DataTableModule, MatTabsModule, MatTableModule, BacktraceComponent],
+  imports: [CommonModule, MatTabsModule, MatTableModule, BacktraceComponent],
   template: `
       <div>
           {{ goroutines?.length }} goroutines
@@ -58,25 +57,12 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
   ]
 })
 export class StacksComponent {
-  // @ContentChild(DataSeriesQueryDirective) dataSeriesQueryDir?: DataSeriesQueryDirective;
-  // @ContentChild(InteractionsDirective) interactionsDir?: InteractionsDirective;
-
-  // TODO(andrei): mark these as required.
-  @Input() colID!: number;
-  @Input() snapID?: number | null;
-  //
-  // private unsubscribe = new Subject<void>();
-  // protected rawStacks?: ResponseNode[];
-  // protected aggStacks?: ResponseNode[];
-  // protected numStacks?: number;
-  // protected numBuckets?: number;
-  // protected numFilteredGoroutines?: number;
-  // protected numTotalGoroutines?: number;
+  @Input({required: true}) colID!: number;
+  @Input({required: true}) snapID: number | null = null;
 
   protected goroutines?: GoroutineInfo[];
   protected goroutineGroups?: GoroutinesGroup[];
 
-  // !!! backtracecols = ['frames'];
 
   @Input() set data$(val$: Observable<SnapshotInfo>) {
     val$.subscribe(
@@ -97,68 +83,7 @@ export class StacksComponent {
   constructor() {
   }
 
-  // ngAfterContentInit(): void {
-  //   // !!!
-  //   if (!this.snapID) {
-  //     console.log("!!! stacks: short circuit");
-  //     return;
-  //   }
-  //
-  //   // this.appCoreService.appCore.onPublish((appCore: AppCore) => {
-  //   //   if (this.dataSeriesQueryDir === undefined) {
-  //   //     appCore.err(new ConfigurationError(`stacks is missing required 'data-series' child.`)
-  //   //       .from(SOURCE)
-  //   //       .at(Severity.ERROR));
-  //   //     return;
-  //   //   }
-  //   //   let dataSeriesQuery = this.dataSeriesQueryDir?.dataSeriesQuery;
-  //   //
-  //   //   // Handle new data series.
-  //   //   dataSeriesQuery?.response
-  //   //     .pipe(takeUntil(this.unsubscribe))
-  //   //     .subscribe((response: ResponseNode) => {
-  //   //       this.numTotalGoroutines = response.properties.expectNumber('num_total_goroutines');
-  //   //       this.numFilteredGoroutines = response.properties.expectNumber('num_filtered_goroutines');
-  //   //       this.numBuckets = response.children[0].properties.expectNumber('num_buckets');
-  //   //       this.aggStacks = response.children[0].children;
-  //   //       this.rawStacks = response.children[1].children;
-  //   //       this.numStacks = this.rawStacks.length;
-  //   //     })
-  //   // });
-  //
-  //   type Args = {
-  //     colID: number,
-  //     snapID: number,
-  //     gID: number | undefined,
-  //   };
-  //   const args: Args = {colID: this.colID, snapID: this.snapID, gID: undefined};
-  //   const urlParts = document.URL.split('#');
-  //   if (urlParts.length > 1) {
-  //     if (urlParts[1].startsWith('g_')) {
-  //       args.gID = Number(urlParts[1].slice(2));
-  //       console.log("filtering for goroutine: ", args.gID);
-  //     }
-  //   }
-  //
-  //   console.log(`calling GetGoroutines with args:`, args);
-  //   this.getGoroutinesQuery
-  //     .fetch(args)
-  //     .subscribe(
-  //       res => {
-  //         this.goroutines = res.data.goroutines;
-  //         this.mustScroll = true;
-  //         console.log("got goroutines:", this.goroutines.length)
-  //       },
-  //       error => {
-  //         console.log("!!! error getting Goroutines: ", error);
-  //       })
-  // }
-
-  // ngOnDestroy(): void {
-  //   this.unsubscribe.next();
-  //   this.unsubscribe.complete();
-  // }
-
+  // !!!
   // ngAfterViewChecked(): void {
   //   if (!this.mustScroll) {
   //     return

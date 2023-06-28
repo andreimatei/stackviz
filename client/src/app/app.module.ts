@@ -4,12 +4,6 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MatCardModule } from '@angular/material/card';
 import { MatPaginatorModule } from '@angular/material/paginator';
-import {
-  CoreModule,
-  DataTableModule,
-  TextFieldModule,
-  WeightedTreeModule
-} from 'traceviz/dist/ngx-traceviz-lib';
 import { AppComponent } from './app.component';
 import { ComponentsModule } from "./components/components.module";
 import { StacksComponent } from "./components/stacks/stacks.component";
@@ -60,9 +54,7 @@ const routes: Routes = [
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
-    CoreModule,
     ComponentsModule,
-    DataTableModule,
     GraphQLModule,
     HttpClientModule,
     MatCardModule,
@@ -75,8 +67,6 @@ const routes: Routes = [
     ),
     StacksComponent,
     SnapshotModule,
-    TextFieldModule,
-    WeightedTreeModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

@@ -27,10 +27,10 @@ export interface Frame {
   standalone: true,
   imports: [AngularResizeEventModule],
   template: `
-<div #flamegraph id="flamegraph" class="flamegrapf-container" (resized)="onResized($event)">
-</div>
-<div #details>
-</div>
+    <div #flamegraph id="flamegraph" class="flamegrapf-container" (resized)="onResized($event)">
+    </div>
+    <div #details>
+    </div>
   `,
   styleUrls: ['flamegraph.component.css'],
   // I've disabled encapsulation because otherwise the classes in the css file are not
@@ -59,7 +59,7 @@ export class FlamegraphComponent implements AfterViewInit {
       .width(1500)
       .cellHeight(18)
       .transitionDuration(750)
-      // .minFrameSize(5)  // !!! I've removed this in order to make it look like traceviz
+      // .minFrameSize(5)
       // !!! .transitionEase(d3.easeCubic)
       .inverted(true)
       .sort(true)

@@ -4,12 +4,6 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MatCardModule } from '@angular/material/card';
 import { MatPaginatorModule } from '@angular/material/paginator';
-import {
-  CoreModule,
-  DataTableModule,
-  TextFieldModule,
-  WeightedTreeModule
-} from 'traceviz/dist/ngx-traceviz-lib';
 import { SnapshotComponent } from './snapshot.component';
 import { ComponentsModule } from "../components.module";
 import { StacksComponent } from "../stacks/stacks.component";
@@ -37,9 +31,7 @@ import { FlamegraphComponent } from "../flamegraph/flamegraph.component";
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
-    CoreModule,
     ComponentsModule,
-    DataTableModule,
     GraphQLModule,
     HttpClientModule,
     MatButtonModule,
@@ -57,8 +49,6 @@ import { FlamegraphComponent } from "../flamegraph/flamegraph.component";
     RouterModule,
     StacksComponent,
     FlamegraphComponent,
-    TextFieldModule,
-    WeightedTreeModule,
   ],
   providers: [],
 })

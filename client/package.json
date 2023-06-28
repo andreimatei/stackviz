@@ -58,8 +58,6 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.0.0",
-    "traceviz": "file:../../../google/traceviz/client/angular/traceviz",
-    "traceviz-client-core": "file:../../../google/traceviz/client/core",
     "typescript": "~4.9.4"
   }
 }
