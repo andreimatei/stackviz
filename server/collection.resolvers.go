@@ -239,7 +239,6 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 		Raw:        allGs,
 		Aggregated: groups,
 	}
-	log.Printf("!!! returning SnapshotInfo: %+v", si)
 	return si, nil
 }
 
