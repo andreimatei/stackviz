@@ -13,7 +13,7 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
   template: `
       <div>
           {{ goroutines?.length }} goroutines
-          <!-- !!! reimplement filtering -->
+          <!-- TODO(andrei): retrieve the total/filtered number from the server -->
           <!--({{ numFilteredGoroutines }} filtered / {{ numTotalGoroutines }} total Goroutines),-->
           {{ goroutineGroups?.length }} buckets
           <hr>

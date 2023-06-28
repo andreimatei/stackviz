@@ -75,8 +75,8 @@ query GetTypeInfo($name: String!) {
   }
 }
 
-query GetGoroutines($colID: Int!, $snapID: Int!, $filter: String, $gID: Int) {
-  goroutines(colID: $colID, snapID: $snapID, filter: $filter, gID: $gID) {
+query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
+  goroutines(colID: $colID, snapID: $snapID,  gID: $gID, filter: $filter) {
     Raw {
       ID
       Frames {
@@ -112,6 +112,6 @@ query GetGoroutines($colID: Int!, $snapID: Int!, $filter: String, $gID: Int) {
   }
 }
 
-query GetTree($colID: Int!, $snapID: Int!, $filter: String) {
-  getTree(colID: $colID, snapID: $snapID, filter: $filter)
+query GetTree($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
+  getTree(colID: $colID, snapID: $snapID, gID: $gID, filter: $filter)
 }

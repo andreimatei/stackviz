@@ -138,17 +138,30 @@ func stackMatchesFilter(g *pp.Goroutine, filter string) bool {
 
 // filterStacks returns a new Snapshot containing the goroutines in snap that
 // contain at least a frame that matches filter.
-func filterStacks(snap *pp.Snapshot, filter string) *pp.Snapshot {
-	if filter == "" {
-		return snap
-	}
+func filterStacks(snap *pp.Snapshot, gid *int, filter *string) *pp.Snapshot {
 	res := new(pp.Snapshot)
 	*res = *snap // shallow copy
-	res.Goroutines = nil
-	for _, g := range snap.Goroutines {
-		if stackMatchesFilter(g, filter) {
-			res.Goroutines = append(res.Goroutines, g)
+
+	if gid != nil {
+		origGs := res.Goroutines
+		res.Goroutines = nil
+		for _, g := range origGs {
+			if g.ID == *gid {
+				res.Goroutines = append(res.Goroutines, g)
+				break
+			}
 		}
 	}
+
+	if filter != nil && *filter != "" {
+		origGs := res.Goroutines
+		res.Goroutines = nil
+		for _, g := range origGs {
+			if stackMatchesFilter(g, *filter) {
+				res.Goroutines = append(res.Goroutines, g)
+			}
+		}
+	}
+
 	return res
 }

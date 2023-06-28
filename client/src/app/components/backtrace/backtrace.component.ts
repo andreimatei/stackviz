@@ -17,7 +17,7 @@ import { CollectedVar } from "../../graphql/graphql-codegen-generated";
                       Links:
                       <ul>
                           <li *ngFor="let l of v.Links">
-                              <a href="/collections/{{collectionID}}/snap/{{l.SnapshotID}}#g_{{l.GoroutineID}}">
+                              <a href="/collections/{{collectionID}}/snap/{{l.SnapshotID}}?filter={{encodeURIComponent('gid=')}}{{l.GoroutineID}}">
                               Snapshot: {{l.SnapshotID}} Goroutine: {{l.GoroutineID}}
                               </a>
                           </li>
@@ -53,6 +53,7 @@ export class BacktraceComponent {
   // collectionID identifies the collection that the stacktrace is part of. Used
   // to generate the correct links.
   @Input({required: true}) collectionID!: number;
+  protected readonly encodeURIComponent = encodeURIComponent;
 }
 
 interface Frame {

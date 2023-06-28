@@ -8,7 +8,7 @@ import {
   ProcessSnapshot,
   RemoveExprFromCollectSpecGQL
 } from "../../graphql/graphql-codegen-generated";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { MatDrawer } from "@angular/material/sidenav";
 import { ResizeEvent } from 'angular-resizable-element';
 import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
@@ -73,24 +73,34 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly addExpr: AddExprToCollectSpecGQL,
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
   ) {
   }
 
   ngOnInit(): void {
+    const filterParam = this.route.snapshot.queryParamMap.get('filter');
+    console.log("filter: ", filterParam);
+    if (filterParam) {
+      this.onFilterChange(filterParam);
+    }
+
     this.getCollectionQuery.fetch({colID: this.collectionID})
       .subscribe(results => {
         this.collectionName = results.data.collectionByID?.name;
         this.snapshots = results.data.collectionByID?.processSnapshots!;
       });
 
-    this.treeQuery = this.getTreeQuery.watch({
+    const parsedFilter = this.filter ? parseFilter(this.filter) : {};
+    const args = {
       colID: this.collectionID,
       snapID: this.snapshotID,
-    });
-    this.goroutinesQuery = this.getGoroutinesQuery.watch({
-      colID: this.collectionID,
-      snapID: this.snapshotID,
-    });
+      filter: parsedFilter.filter,
+      gID: parsedFilter.gID,
+    }
+
+    console.log("!!! watching with args:", args);
+    this.treeQuery = this.getTreeQuery.watch(args);
+    this.goroutinesQuery = this.getGoroutinesQuery.watch(args);
 
     // Refetch all the data when either the selected snapshot or the filter
     // changes.
@@ -101,10 +111,12 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       ),
       this.snapshotID$,
     ).subscribe(val => {
+      const parsedFilter = this.filter ? parseFilter(this.filter) : {};
       const args = {
         colID: this.collectionID,
         snapID: this.snapshotID,
-        filter: this.filter,
+        filter: parsedFilter.filter,
+        gID: parsedFilter.gID,
       };
       console.log("refetching with filter:", this.filter);
       this.treeQuery.refetch(args);
@@ -136,6 +148,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   }
 
   onFilterChange(val: string) {
+    this.filter = val;
     this.filter$.next(val);
   }
 
@@ -191,3 +204,21 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     return true;
   }
 }
+
+interface parsedFilter {
+  gID?: number;
+  filter?: string;
+}
+
+function parseFilter(filter : string ): parsedFilter {
+  const gidPrefix = "gid="
+  if (filter.startsWith(gidPrefix)) {
+    return {
+      gID: Number(filter.slice(gidPrefix.length))
+    };
+  }
+  return {
+    filter: filter
+  };
+}
+

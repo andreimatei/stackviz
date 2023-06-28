@@ -143,14 +143,12 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 }
 
 // Goroutines is the resolver for the goroutines field.
-func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, filter *string, gID *int) (*SnapshotInfo, error) {
+func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*SnapshotInfo, error) {
 	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return nil, err
 	}
-	if filter != nil && *filter != "" {
-		snap = filterStacks(snap, *filter)
-	}
+	snap = filterStacks(snap, gID, filter)
 	agg := snap.Aggregate(pp.AnyValue)
 
 	gMap := make(map[int]*GoroutineInfo, len(snap.Goroutines))
@@ -196,18 +194,19 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, f
 		}
 	}
 
-	if gID != nil {
-		log.Printf("!!! filtering for goroutine: %d", *gID)
-		if gi := gMap[*gID]; gi != nil {
-			return &SnapshotInfo{
-				Raw:        []*GoroutineInfo{gi},
-				Aggregated: nil,
-			}, nil
-		}
-		return nil, nil
-	} else {
-		log.Printf("!!! not filtering for a specific goroutine")
-	}
+	// !!!
+	//if gID != nil {
+	//	log.Printf("!!! filtering for goroutine: %d", *gID)
+	//	if gi := gMap[*gID]; gi != nil {
+	//		return &SnapshotInfo{
+	//			Raw:        []*GoroutineInfo{gi},
+	//			Aggregated: nil,
+	//		}, nil
+	//	}
+	//	return nil, nil
+	//} else {
+	//	log.Printf("!!! not filtering for a specific goroutine")
+	//}
 
 	allGs := make([]*GoroutineInfo, 0, len(gMap))
 	for _, gi := range gMap {
@@ -240,6 +239,7 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, f
 		Raw:        allGs,
 		Aggregated: groups,
 	}
+	log.Printf("!!! returning SnapshotInfo: %+v", si)
 	return si, nil
 }
 
@@ -334,14 +334,13 @@ func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*TypeInfo, e
 }
 
 // GetTree is the resolver for the getTree field.
-func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int, filter *string) (string, error) {
+func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int, gID *int, filter *string) (string, error) {
 	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return "", err
 	}
-	if filter != nil && *filter != "" {
-		snap = filterStacks(snap, *filter)
-	}
+	log.Printf("!!! filtering tree for gid: %v, filter: %v", gID, filter)
+	snap = filterStacks(snap, gID, filter)
 	tree := stacks.BuildTree(snap, fois)
 	return tree.ToJSON(), nil
 }
