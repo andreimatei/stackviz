@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"github.com/go-delve/delve/service/debugger"
+	pp "github.com/maruel/panicparse/v2/stack"
 	"io"
 	"log"
 	"net/http"
@@ -124,4 +125,30 @@ func (r *queryResolver) getTypeInfoFromDelveAgent(agentAddr string, typeName str
 		}
 	}
 	return fields, nil
+}
+
+func stackMatchesFilter(g *pp.Goroutine, filter string) bool {
+	for i := range g.Stack.Calls {
+		if strings.Contains(g.Stack.Calls[i].Func.Complete, filter) {
+			return true
+		}
+	}
+	return false
+}
+
+// filterStacks returns a new Snapshot containing the goroutines in snap that
+// contain at least a frame that matches filter.
+func filterStacks(snap *pp.Snapshot, filter string) *pp.Snapshot {
+	if filter == "" {
+		return snap
+	}
+	res := new(pp.Snapshot)
+	*res = *snap // shallow copy
+	res.Goroutines = nil
+	for _, g := range snap.Goroutines {
+		if stackMatchesFilter(g, filter) {
+			res.Goroutines = append(res.Goroutines, g)
+		}
+	}
+	return res
 }

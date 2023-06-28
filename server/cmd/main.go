@@ -14,7 +14,6 @@ import (
 	server "stacksviz"
 	"stacksviz/datasource"
 	"stacksviz/ent"
-	"stacksviz/service"
 	"stacksviz/util"
 )
 
@@ -52,13 +51,14 @@ func main() {
 	}
 
 	stacksFetcher := datasource.NewStacksFetcher(client)
-	service, err := service.New(*resourceRoot, stacksFetcher)
-	if err != nil {
-		log.Fatalf("Failed to create LogViz service: %s", err)
-	}
+	// !!!
+	//service, err := service.New(*resourceRoot, stacksFetcher)
+	//if err != nil {
+	//	log.Fatalf("Failed to create LogViz service: %s", err)
+	//}
 
 	mux := http.DefaultServeMux
-	service.RegisterHandlers(mux)
+	// !!! service.RegisterHandlers(mux)
 	mux.Handle("/", http.FileServer(http.Dir(*resourceRoot)))
 
 	// Create the Graphql server and register it and the playground.

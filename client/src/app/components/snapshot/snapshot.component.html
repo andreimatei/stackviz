@@ -30,9 +30,7 @@
         <pre>{{selectedFrame?.file}}:{{selectedFrame?.line}}</pre>
       </div>
 
-
       <mat-expansion-panel expanded style="margin-left: 5px">
-
         <mat-expansion-panel-header>
           <mat-panel-title>
             Available variables
@@ -70,139 +68,34 @@
     </mat-sidenav>
 
     <mat-sidenav-content>
-<!--      <app-core>-->
-<!--        &lt;!&ndash;-->
-<!--          Define the global key-value mapping, with it initial values.  This global state provides-->
-<!--          communication between components.-->
-<!--        &ndash;&gt;-->
-<!--        <global-state>-->
-<!--          <value-map>-->
-<!--            <value key="path_prefix">-->
-<!--              <string-list></string-list>-->
-<!--            </value>-->
-<!--            <value key="filter">-->
-<!--              <string></string>-->
-<!--            </value>-->
-<!--          </value-map>-->
-<!--        </global-state>-->
-
-<!--        &lt;!&ndash;-->
-<!--          A handler for Data queries issued to a connected backend via HTTP.-->
-<!--          Multiple components may use this to subscribe to DataSeries streams;-->
-<!--          these will be automatically updated as new data becomes available.-->
-<!--        &ndash;&gt;-->
-<!--        <data-query [debounceMs]="50">-->
-<!--          &lt;!&ndash;-->
-<!--            The set of filters to attach to DataRequests.  Each specified global-->
-<!--            value is provided with each DataRequest under the provided query key.-->
-<!--            Note that backend data series providers may ignore some global filters.-->
-<!--          &ndash;&gt;-->
-<!--          <value-map>-->
-<!--            <value key="collection_id">-->
-<!--              <global-ref key="collection_id"></global-ref>-->
-<!--            </value>-->
-<!--            <value key="snapshot_id">-->
-<!--              <global-ref key="snapshot_id"></global-ref>-->
-<!--            </value>-->
-<!--            <value key="path_prefix">-->
-<!--              <global-ref key="path_prefix"></global-ref>-->
-<!--            </value>-->
-<!--            <value key="filter">-->
-<!--              <global-ref key="filter"></global-ref>-->
-<!--            </value>-->
-<!--          </value-map>-->
-<!--        </data-query>-->
-<!--      </app-core>-->
-
       <p>
         Collection <a routerLink="/collections"> {{ collectionName }} </a>
-        Snapshot ID: {{snapshotID}}
+        Snapshot ID: {{snapshotID$ | async}}
       </p>
-
       <mat-form-field>
         <mat-label>Snapshots</mat-label>
         <mat-select #snapshotsSelect
                     (selectionChange)="onSelectedSnapshotChange(snapshotsSelect.value)"
                     [value]="snapshotID$ | async"
         >
-          <mat-option *ngFor="let snap of snapshots" [value]="snap.id">{{ snap.processID }}</mat-option>
+          <mat-option *ngFor="let snap of snapshots"
+                      [value]="snap.id">{{ snap.processID }}</mat-option>
         </mat-select>
       </mat-form-field>
 
+      <p>
+        <mat-form-field class="example-form-field">
+          <mat-label>Filter</mat-label>
+          <input matInput type="text" [(ngModel)]="filter" (ngModelChange)="onFilterChange($event)" placeholder="filter by package or function name">
+          <button *ngIf="filter$ | async" matSuffix mat-icon-button (click)="onFilterChange('');">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-form-field>
+      </p>
+
       <app-flamegraph (ctrlClick)="showDetails($event)"></app-flamegraph>
-<!--      <app-flamegraph [colId]="collectionID" [snapID]="snapshotID"> </app-flamegraph>-->
+      <app-stacks [colID]="collectionID" [snapID]="snapshotID$ | async"> </app-stacks>
 
-<!--      <text-field label="Filter" placeholder="filter by package or function name"-->
-<!--                  updateOnEnter=false>-->
-<!--        <interactions>-->
-<!--          <action target="text_field" type="update">-->
-<!--            <set>-->
-<!--              <global-ref key="filter"></global-ref>-->
-<!--              <local-ref key="contents"></local-ref>-->
-<!--            </set>-->
-<!--          </action>-->
-<!--        </interactions>-->
-<!--      </text-field>-->
-
-<!--      <weighted-tree>-->
-
-<!--        <data-series>-->
-<!--          <query>-->
-<!--            <string>stacks.tree</string>-->
-<!--          </query>-->
-
-<!--          <interactions>-->
-<!--            <reaction target="data-series" type="fetch">-->
-<!--              <or>-->
-<!--                <changed>-->
-<!--                  <global-ref key="snapshot_id"></global-ref>-->
-<!--                </changed>-->
-<!--                <changed>-->
-<!--                  <global-ref key="path_prefix"></global-ref>-->
-<!--                </changed>-->
-<!--                <changed>-->
-<!--                  <global-ref key="filter"></global-ref>-->
-<!--                </changed>-->
-<!--              </or>-->
-<!--            </reaction>-->
-<!--          </interactions>-->
-<!--        </data-series>-->
-
-<!--        <interactions>-->
-<!--          <action target="node" type="click">-->
-<!--            <set>-->
-<!--              <global-ref key="path_prefix"></global-ref>-->
-<!--              <local-ref key="path"></local-ref>-->
-<!--            </set>-->
-<!--          </action>-->
-<!--          <action target="node" type="ctrl-click">-->
-<!--          </action>-->
-<!--        </interactions>-->
-<!--      </weighted-tree>-->
-
-      <app-stacks [colID]="collectionID" [snapID]="snapshotID$ | async">
-<!--        <data-series>-->
-<!--          <query>-->
-<!--            <string>stacks.raw</string>-->
-<!--          </query>-->
-
-<!--          <interactions>-->
-<!--            <reaction target="data-series" type="fetch">-->
-<!--              <or>-->
-<!--                <changed>-->
-<!--                  <global-ref key="snapshot_id"></global-ref>-->
-<!--                </changed>-->
-<!--                <changed>-->
-<!--                  <global-ref key="path_prefix"></global-ref>-->
-<!--                </changed>-->
-<!--                <changed>-->
-<!--                  <global-ref key="filter"></global-ref>-->
-<!--                </changed>-->
-<!--              </or>-->
-<!--            </reaction>-->
-<!--          </interactions>-->
-<!--        </data-series>-->
-      </app-stacks>
     </mat-sidenav-content>
   </mat-sidenav-container>
 </div>

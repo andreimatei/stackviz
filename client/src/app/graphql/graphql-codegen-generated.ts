@@ -220,12 +220,14 @@ export type QueryFrameInfoArgs = {
 
 export type QueryGetTreeArgs = {
   colID: Scalars['Int'];
+  filter?: InputMaybe<Scalars['String']>;
   snapID: Scalars['Int'];
 };
 
 
 export type QueryGoroutinesArgs = {
   colID: Scalars['Int'];
+  filter?: InputMaybe<Scalars['String']>;
   gID?: InputMaybe<Scalars['Int']>;
   snapID: Scalars['Int'];
 };
@@ -323,6 +325,7 @@ export type GetTypeInfoQuery = { __typename?: 'Query', typeInfo: { __typename?: 
 export type GetGoroutinesQueryVariables = Exact<{
   colID: Scalars['Int'];
   snapID: Scalars['Int'];
+  filter?: InputMaybe<Scalars['String']>;
   gID?: InputMaybe<Scalars['Int']>;
 }>;
 
@@ -332,6 +335,7 @@ export type GetGoroutinesQuery = { __typename?: 'Query', goroutines: { __typenam
 export type GetTreeQueryVariables = Exact<{
   colID: Scalars['Int'];
   snapID: Scalars['Int'];
+  filter?: InputMaybe<Scalars['String']>;
 }>;
 
 
@@ -499,8 +503,8 @@ export const GetTypeInfoDocument = gql`
     }
   }
 export const GetGoroutinesDocument = gql`
-    query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int) {
-  goroutines(colID: $colID, snapID: $snapID, gID: $gID) {
+    query GetGoroutines($colID: Int!, $snapID: Int!, $filter: String, $gID: Int) {
+  goroutines(colID: $colID, snapID: $snapID, filter: $filter, gID: $gID) {
     Raw {
       ID
       Frames {
@@ -548,8 +552,8 @@ export const GetGoroutinesDocument = gql`
     }
   }
 export const GetTreeDocument = gql`
-    query GetTree($colID: Int!, $snapID: Int!) {
-  getTree(colID: $colID, snapID: $snapID)
+    query GetTree($colID: Int!, $snapID: Int!, $filter: String) {
+  getTree(colID: $colID, snapID: $snapID, filter: $filter)
 }
     `;
 

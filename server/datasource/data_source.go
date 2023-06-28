@@ -22,7 +22,6 @@ import (
 	"stacksviz/ent"
 	"stacksviz/ent/processsnapshot"
 	"stacksviz/stacks"
-	"strconv"
 	"strings"
 )
 
@@ -74,7 +73,7 @@ type ProcessSnapshot struct {
 type StacksFetcher interface {
 	// Fetch fetches the stacks specified by collectionName, returning a
 	// LogTrace or an error if a failure is encountered.
-	Fetch(ctx context.Context, collectionID int, snapshotID int) (ProcessSnapshot, error)
+	Fetch(ctx context.Context, collectionID int, snapshotID int) (*pp.Snapshot, stacks.FOIS, error)
 }
 
 type stacksFetcherImpl struct {
@@ -119,37 +118,34 @@ func getSnapshotsForCollection(ctx context.Context, collectionID int, client *en
 	return c.ProcessSnapshots(ctx)
 }
 
-func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapshotID int) (ProcessSnapshot, error) {
-	// Check the cache first.
-	{
-		snap, ok := f.lru.Get(snapshotID)
-		if ok {
-			return snap, nil
-		}
-	}
+func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapshotID int) (*pp.Snapshot, stacks.FOIS, error) {
+	//// Check the cache first.
+	//{
+	//	snap, ok := f.lru.Get(snapshotID)
+	//	if ok {
+	//		return snap, nil
+	//	}
+	//}
 
 	snapRec, err := getSnapshot(ctx, snapshotID, f.client)
 	if err != nil {
-		return ProcessSnapshot{}, err
+		return nil, nil, err
 	}
 
 	opts := pp.DefaultOpts()
 	opts.ParsePC = true
 	snap, _, err := pp.ScanSnapshot(strings.NewReader(snapRec.Snapshot), io.Discard, opts)
 	if err != nil && err != io.EOF {
-		return ProcessSnapshot{}, err
+		return nil, nil, err
 	}
 	if snap == nil {
-		return ProcessSnapshot{}, fmt.Errorf("failed to parse any stacks")
+		return nil, nil, fmt.Errorf("failed to parse any stacks")
 	}
 
-	agg := snap.Aggregate(pp.AnyValue)
-
-	var fois stacks.FramesOfInterest
+	var rawFois stacks.FramesOfInterest
 	if snapRec.FramesOfInterest != "" {
-		if err = json.Unmarshal([]byte(snapRec.FramesOfInterest), &fois); err != nil {
-			log.Printf("!!! json: %s", snapRec.FramesOfInterest)
-			return ProcessSnapshot{}, fmt.Errorf("failed to unmarshal frames of interest: %w", err)
+		if err = json.Unmarshal([]byte(snapRec.FramesOfInterest), &rawFois); err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal frames of interest: %w", err)
 		}
 	} else {
 		log.Printf("!!! snapshot %d does not have any frames of interest", snapshotID)
@@ -158,10 +154,10 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 	// Find links to other captured variables.
 	allSnaps, err := getSnapshotsForCollection(ctx, collectionID, f.client)
 	if err != nil {
-		return ProcessSnapshot{}, err
+		return nil, nil, err
 	}
-	processed := make(stacks.FOIS)
-	for gid, m := range fois {
+	fois := make(stacks.FOIS)
+	for gid, m := range rawFois {
 		prm := make(map[int]stacks.ProcessedFOI)
 		for idx, vars := range m {
 			if len(vars) > 0 {
@@ -178,25 +174,12 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 			}
 			prm[idx] = pf
 		}
-		processed[gid] = prm
-	}
-
-	// !!!
-	//for i, foi := range snapRec.FramesOfInterest {
-	//	if err = json.Unmarshal([]byte(foi), &fois[i]); err != nil {
-	//		return processSnapshot{}, err
-	//	}
-	//}
-
-	res := ProcessSnapshot{
-		Snapshot:         snap,
-		Agg:              agg,
-		FramesOfInterest: processed,
+		fois[gid] = prm
 	}
 
 	// !!! I've removed the caching for debugging.
 	// !!! f.lru.Add(snapshotID, res)
-	return res, nil
+	return snap, fois, nil
 }
 
 // nodeBuilder abstracts the differences between a weightedtree.Tree and a
@@ -270,86 +253,87 @@ func (ds *DataSource) SupportedDataSeriesQueries() []string {
 	return []string{stacksRawQuery, stacksTreeQuery}
 }
 
-// HandleDataSeriesRequests handles the provided set of DataSeriesRequests, with
-// the provided global filters.  It assembles its responses in the provided
-// DataResponseBuilder.
-func (ds *DataSource) HandleDataSeriesRequests(
-	ctx context.Context,
-	globalFilters map[string]*tvutil.V,
-	drb *tvutil.DataResponseBuilder,
-	reqs []*tvutil.DataSeriesRequest,
-) error {
-	log.Printf("!!! global filters: %v", globalFilters)
-	snapshotIDVal, ok := globalFilters[snapshotIDKey]
-	if !ok {
-		return fmt.Errorf("missing required filter option '%s'", snapshotIDKey)
-	}
-	snapshotID, err := tvutil.ExpectIntegerValue(snapshotIDVal)
-	if err != nil {
-		return fmt.Errorf("required filter option '%s' must be an int", snapshotIDKey)
-	}
-	collectionIDVal, ok := globalFilters[collectionIDKey]
-	if !ok {
-		return fmt.Errorf("missing required filter option '%s'", collectionIDKey)
-	}
-	collectionID, err := tvutil.ExpectIntegerValue(collectionIDVal)
-	if err != nil {
-		return fmt.Errorf("required filter option '%s' must be an int", collectionIDKey)
-	}
-
-	processSnapshot, err := ds.fetchCollection(ctx, int(collectionID), int(snapshotID))
-	if err != nil {
-		log.Printf("Failed to fetch collection: %s", err)
-		return err
-	}
-	log.Printf("Loaded snapshot: id: %d, processID: %q", snapshotID, processSnapshot.processID)
-
-	var filter string
-	filterVal, ok := globalFilters[filterKey]
-	if ok {
-		filter, err = tvutil.ExpectStringValue(filterVal)
-		if err != nil {
-			return fmt.Errorf("filter '%s' must be a string list", filter)
-		}
-	}
-	pathPrefixVal, ok := globalFilters[pathPrefixKey]
-	var pathPrefix []string
-	if ok {
-		pathPrefix, err = tvutil.ExpectStringsValue(pathPrefixVal)
-		if err != nil {
-			return fmt.Errorf("filter '%s' must be a string list", pathPrefix)
-		}
-	}
-	log.Printf("!!! query (%d requests) filter: %s, path prefix: %s\n",
-		len(reqs), filter, pathPrefix)
-
-	snap := ds.filterStacks(processSnapshot.Snapshot, filter)
-	path := make([]weightedtree.ScopeID, len(pathPrefix))
-	for i, p := range pathPrefix {
-		sid, err := strconv.ParseUint(p, 10, 64)
-		if err != nil {
-			return err
-		}
-		path[i] = weightedtree.ScopeID(sid)
-	}
-	snap = ds.filterStacksByPrefix(snap, path)
-	log.Printf("!!! goroutines after prefix filter: %d", len(snap.Goroutines))
-
-	for _, req := range reqs {
-		builder := drb.DataSeries(req)
-		switch req.QueryName {
-		case stacksTreeQuery:
-			if err := ds.handleStacksTreeQuery(snap, processSnapshot.FramesOfInterest, path, builder); err != nil {
-				return err
-			}
-		case stacksRawQuery:
-			ds.handleStacksRawQuery(snap, len(processSnapshot.Snapshot.Goroutines), processSnapshot.FramesOfInterest, builder)
-		default:
-			return fmt.Errorf("unsupported data query: %s", req.QueryName)
-		}
-	}
-	return nil
-}
+// !!!
+//// HandleDataSeriesRequests handles the provided set of DataSeriesRequests, with
+//// the provided global filters.  It assembles its responses in the provided
+//// DataResponseBuilder.
+//func (ds *DataSource) HandleDataSeriesRequests(
+//	ctx context.Context,
+//	globalFilters map[string]*tvutil.V,
+//	drb *tvutil.DataResponseBuilder,
+//	reqs []*tvutil.DataSeriesRequest,
+//) error {
+//	log.Printf("!!! global filters: %v", globalFilters)
+//	snapshotIDVal, ok := globalFilters[snapshotIDKey]
+//	if !ok {
+//		return fmt.Errorf("missing required filter option '%s'", snapshotIDKey)
+//	}
+//	snapshotID, err := tvutil.ExpectIntegerValue(snapshotIDVal)
+//	if err != nil {
+//		return fmt.Errorf("required filter option '%s' must be an int", snapshotIDKey)
+//	}
+//	collectionIDVal, ok := globalFilters[collectionIDKey]
+//	if !ok {
+//		return fmt.Errorf("missing required filter option '%s'", collectionIDKey)
+//	}
+//	collectionID, err := tvutil.ExpectIntegerValue(collectionIDVal)
+//	if err != nil {
+//		return fmt.Errorf("required filter option '%s' must be an int", collectionIDKey)
+//	}
+//
+//	processSnapshot, err := ds.fetchCollection(ctx, int(collectionID), int(snapshotID))
+//	if err != nil {
+//		log.Printf("Failed to fetch collection: %s", err)
+//		return err
+//	}
+//	log.Printf("Loaded snapshot: id: %d, processID: %q", snapshotID, processSnapshot.processID)
+//
+//	var filter string
+//	filterVal, ok := globalFilters[filterKey]
+//	if ok {
+//		filter, err = tvutil.ExpectStringValue(filterVal)
+//		if err != nil {
+//			return fmt.Errorf("filter '%s' must be a string list", filter)
+//		}
+//	}
+//	pathPrefixVal, ok := globalFilters[pathPrefixKey]
+//	var pathPrefix []string
+//	if ok {
+//		pathPrefix, err = tvutil.ExpectStringsValue(pathPrefixVal)
+//		if err != nil {
+//			return fmt.Errorf("filter '%s' must be a string list", pathPrefix)
+//		}
+//	}
+//	log.Printf("!!! query (%d requests) filter: %s, path prefix: %s\n",
+//		len(reqs), filter, pathPrefix)
+//
+//	snap := ds.filterStacks(processSnapshot.Snapshot, filter)
+//	path := make([]weightedtree.ScopeID, len(pathPrefix))
+//	for i, p := range pathPrefix {
+//		sid, err := strconv.ParseUint(p, 10, 64)
+//		if err != nil {
+//			return err
+//		}
+//		path[i] = weightedtree.ScopeID(sid)
+//	}
+//	snap = ds.filterStacksByPrefix(snap, path)
+//	log.Printf("!!! goroutines after prefix filter: %d", len(snap.Goroutines))
+//
+//	for _, req := range reqs {
+//		builder := drb.DataSeries(req)
+//		switch req.QueryName {
+//		case stacksTreeQuery:
+//			if err := ds.handleStacksTreeQuery(snap, processSnapshot.FramesOfInterest, path, builder); err != nil {
+//				return err
+//			}
+//		case stacksRawQuery:
+//			ds.handleStacksRawQuery(snap, len(processSnapshot.Snapshot.Goroutines), processSnapshot.FramesOfInterest, builder)
+//		default:
+//			return fmt.Errorf("unsupported data query: %s", req.QueryName)
+//		}
+//	}
+//	return nil
+//}
 
 // filterStacks returns a new Snapshot containing the goroutines in snap that
 // contain at least a frame that matches filter.
@@ -486,16 +470,17 @@ func (ds *DataSource) handleStacksRawQuery(
 	}
 }
 
-// fetchCollection returns the specified ProcessSnapshot from the LRU if it's
-// present there.  If it isn't already in the LRU, it is fetched and added to
-// the LRU before being returned.
-func (ds *DataSource) fetchCollection(ctx context.Context, collectionID int, snapshotID int) (ProcessSnapshot, error) {
-	col, err := ds.fetcher.Fetch(ctx, collectionID, snapshotID)
-	if err != nil {
-		return ProcessSnapshot{}, err
-	}
-	return col, nil
-}
+// !!!
+//// fetchCollection returns the specified ProcessSnapshot from the LRU if it's
+//// present there.  If it isn't already in the LRU, it is fetched and added to
+//// the LRU before being returned.
+//func (ds *DataSource) fetchCollection(ctx context.Context, collectionID int, snapshotID int) (ProcessSnapshot, error) {
+//	col, err := ds.fetcher.Fetch(ctx, collectionID, snapshotID)
+//	if err != nil {
+//		return ProcessSnapshot{}, err
+//	}
+//	return col, nil
+//}
 
 func (ds *DataSource) stackMatchesFilter(g *pp.Goroutine, filter string) bool {
 	for i := range g.Stack.Calls {

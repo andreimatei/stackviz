@@ -33,7 +33,6 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
               </mat-tab>
 
               <mat-tab label="Raw">
-                  #goroutines: {{goroutines ? goroutines.length : 0}}
                   <ul>
                       <li *ngFor="let g of goroutines" id="g_{{g.ID}}">
                           <a id="g_{{g.ID}}">Goroutine {{ g.ID }}</a>

@@ -14,7 +14,7 @@ import { ResizeEvent } from 'angular-resizable-element';
 import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
 import { MatSelect } from "@angular/material/select";
 import { FlamegraphComponent, Frame as FlameFrame } from "../flamegraph/flamegraph.component";
-import { BehaviorSubject, map, switchMap } from "rxjs";
+import { debounceTime, distinctUntilChanged, map, merge, Subject } from "rxjs";
 import { StacksComponent } from "../stacks/stacks.component";
 
 class Frame {
@@ -30,14 +30,20 @@ class Frame {
 export class SnapshotComponent implements OnInit, AfterViewInit {
   // collectionID and snapshotID input properties are set by the router.
   @Input('colID') collectionID!: number;
-  // The initial value of snapshotID$ will be overwritten by the time the
-  // observable is read.
-  protected snapshotID$ = new BehaviorSubject<number>(-1);
 
+  protected snapshotID$ = new Subject<number>();
+  private _snapshotID!: number;
   @Input('snapID') set snapshotID(val: number) {
-    console.log("!!! snapshotID being set to:", val);
+    this._snapshotID = val;
     this.snapshotID$.next(val);
   }
+
+  get snapshotID(): number {
+    return this._snapshotID;
+  }
+
+  protected filter$ = new Subject<string>();
+  protected filter?: string;
 
   protected collectionName?: string;
   protected snapshots?: Partial<ProcessSnapshot>[];
@@ -55,9 +61,10 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   protected loadingAvailableVars: boolean = false;
 
+  private treeQuery!: ReturnType<GetTreeGQL["watch"]>;
+  private goroutinesQuery!: ReturnType<GetGoroutinesGQL["watch"]>;
+
   constructor(
-    // !!!
-    // private readonly appCoreService: AppCoreService,
     private readonly getCollectionQuery: GetCollectionGQL,
     private readonly getGoroutinesQuery: GetGoroutinesGQL,
     private readonly varsQuery: GetAvailableVariablesGQL,
@@ -66,53 +73,53 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
     private readonly router: Router,
   ) {
-    console.log('ctor');
   }
 
   ngOnInit(): void {
-    console.log('ngOnInit');
     this.getCollectionQuery.fetch({colID: this.collectionID})
       .subscribe(results => {
         this.collectionName = results.data.collectionByID?.name;
         this.snapshots = results.data.collectionByID?.processSnapshots!;
-      })
+      });
+
+    this.treeQuery = this.getTreeQuery.watch({
+      colID: this.collectionID,
+      snapID: this.snapshotID,
+    });
+    this.goroutinesQuery = this.getGoroutinesQuery.watch({
+      colID: this.collectionID,
+      snapID: this.snapshotID,
+    });
+
+    // Refetch all the data when either the selected snapshot or the filter
+    // changes.
+    merge(
+      this.filter$.pipe(
+        debounceTime(400),
+        distinctUntilChanged(),
+      ),
+      this.snapshotID$,
+    ).subscribe(val => {
+      const args = {
+        colID: this.collectionID,
+        snapID: this.snapshotID,
+        filter: this.filter,
+      };
+      console.log("refetching with filter:", this.filter);
+      this.treeQuery.refetch(args);
+      this.goroutinesQuery.refetch(args);
+    });
   }
 
   ngAfterViewInit() {
-    // Bind the flamegraph data to updates of snapshot ID.
-    this.flamegraph.data$ = this.snapshotID$.pipe(
-      switchMap(snapID =>
-        this.getTreeQuery.fetch({colID: this.collectionID, snapID: snapID})
-          .pipe(
-            map(res => JSON.parse(res.data.getTree))
-          )
-      )
-    )
-
-    this.stacks.data$ = this.snapshotID$.pipe(
-      switchMap(snapID => {
-          type Args = {
-            colID: number,
-            snapID: number,
-            gID: number | undefined,
-          };
-          const args: Args = {colID: this.collectionID, snapID: snapID, gID: undefined};
-          const urlParts = document.URL.split('#');
-          if (urlParts.length > 1) {
-            if (urlParts[1].startsWith('g_')) {
-              args.gID = Number(urlParts[1].slice(2));
-              console.log("filtering for goroutine: ", args.gID);
-            }
-          }
-          return this.getGoroutinesQuery.fetch(args)
-            .pipe(
-              map(res => res.data.goroutines)
-            )
-        }
-      )
-    )
-
-    // !!! update the sidebar in response to snapshotID changes
+    // Update the child components when we get new data results.
+    this.flamegraph.data$ = this.treeQuery.valueChanges.pipe(
+      map(res => JSON.parse(res.data.getTree))
+    );
+    this.stacks.data$ = this.goroutinesQuery.valueChanges.pipe(
+      map(res => res.data.goroutines)
+    );
+    // TODO(andrei): update the sidebar in response to snapshotID changes
   }
 
   closeSidebar() {
@@ -125,6 +132,10 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     // property to be updated by the router, which in turn causes everything to
     // be reloaded and re-rendered.
     this.router.navigateByUrl(`collections/${this.collectionID}/snap/${newSnapshotID}`);
+  }
+
+  onFilterChange(val: string) {
+    this.filter$.next(val);
   }
 
   checkedChange(ev: CheckedEventArg) {
@@ -142,19 +153,16 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   public style: object = {
     "width": '500px',
-    "text-color": 'red',
   };
 
   onResizeEnd(event: ResizeEvent): void {
     this.style = {
       width: `${event.rectangle.width}px`,
     };
-
   }
 
   showDetails(node: FlameFrame): void {
     console.log("showDetails", node.details);
-
     this.funcInfo = node.vars;
     this.selectedFrame = new Frame(node.details, node.file, node.line);
     console.log("querying for available vars for func: %s off: %d", node.details, node.pcoff);

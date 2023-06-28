@@ -46,7 +46,10 @@ type Frame struct {
 }
 
 // BuildTree builds a trie out of the stack traces in snap.
-func BuildTree(snap *pp.Snapshot, fois FOIS) *TreeNode {
+//
+// capturedData represents variables captured from different frames. It's OK for
+// capturedData to reference goroutines not in snap; such data will be ignored.
+func BuildTree(snap *pp.Snapshot, capturedData FOIS) *TreeNode {
 	root := &TreeNode{
 		Function: pp.Func{
 			Complete: "root",
@@ -60,7 +63,7 @@ func BuildTree(snap *pp.Snapshot, fois FOIS) *TreeNode {
 		// Join the stack trace with the variable data. Also invert the stack; we
 		// want it ordered from top-level function to leaf function.
 		l := len(s.Signature.Stack.Calls)
-		myFois := fois[s.ID]
+		myFois := capturedData[s.ID]
 		stack := make([]Frame, l)
 		for i := range s.Signature.Stack.Calls {
 			stack[l-i-1] = Frame{

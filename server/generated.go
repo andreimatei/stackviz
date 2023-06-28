@@ -126,8 +126,8 @@ type ComplexityRoot struct {
 		Collections      func(childComplexity int) int
 		FrameInfo        func(childComplexity int, funcArg string) int
 		FrameSpecs       func(childComplexity int) int
-		GetTree          func(childComplexity int, colID int, snapID int) int
-		Goroutines       func(childComplexity int, colID int, snapID int, gID *int) int
+		GetTree          func(childComplexity int, colID int, snapID int, filter *string) int
+		Goroutines       func(childComplexity int, colID int, snapID int, filter *string, gID *int) int
 		Node             func(childComplexity int, id int) int
 		Nodes            func(childComplexity int, ids []int) int
 		ProcessSnapshots func(childComplexity int) int
@@ -172,11 +172,11 @@ type QueryResolver interface {
 	FrameSpecs(ctx context.Context) ([]*ent.FrameSpec, error)
 	ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
-	Goroutines(ctx context.Context, colID int, snapID int, gID *int) (*SnapshotInfo, error)
+	Goroutines(ctx context.Context, colID int, snapID int, filter *string, gID *int) (*SnapshotInfo, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
 	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameSpec, error)
 	TypeInfo(ctx context.Context, name string) (*TypeInfo, error)
-	GetTree(ctx context.Context, colID int, snapID int) (string, error)
+	GetTree(ctx context.Context, colID int, snapID int, filter *string) (string, error)
 }
 
 type executableSchema struct {
@@ -535,7 +535,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.GetTree(childComplexity, args["colID"].(int), args["snapID"].(int)), true
+		return e.complexity.Query.GetTree(childComplexity, args["colID"].(int), args["snapID"].(int), args["filter"].(*string)), true
 
 	case "Query.goroutines":
 		if e.complexity.Query.Goroutines == nil {
@@ -547,7 +547,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Goroutines(childComplexity, args["colID"].(int), args["snapID"].(int), args["gID"].(*int)), true
+		return e.complexity.Query.Goroutines(childComplexity, args["colID"].(int), args["snapID"].(int), args["filter"].(*string), args["gID"].(*int)), true
 
 	case "Query.node":
 		if e.complexity.Query.Node == nil {
@@ -914,6 +914,15 @@ func (ec *executionContext) field_Query_getTree_args(ctx context.Context, rawArg
 		}
 	}
 	args["snapID"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["filter"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["filter"] = arg2
 	return args, nil
 }
 
@@ -938,15 +947,24 @@ func (ec *executionContext) field_Query_goroutines_args(ctx context.Context, raw
 		}
 	}
 	args["snapID"] = arg1
-	var arg2 *int
-	if tmp, ok := rawArgs["gID"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gID"))
-		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+	var arg2 *string
+	if tmp, ok := rawArgs["filter"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["gID"] = arg2
+	args["filter"] = arg2
+	var arg3 *int
+	if tmp, ok := rawArgs["gID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gID"))
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["gID"] = arg3
 	return args, nil
 }
 
@@ -3144,7 +3162,7 @@ func (ec *executionContext) _Query_goroutines(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Goroutines(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int), fc.Args["gID"].(*int))
+		return ec.resolvers.Query().Goroutines(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int), fc.Args["filter"].(*string), fc.Args["gID"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3389,7 +3407,7 @@ func (ec *executionContext) _Query_getTree(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetTree(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int))
+		return ec.resolvers.Query().GetTree(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int), fc.Args["filter"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

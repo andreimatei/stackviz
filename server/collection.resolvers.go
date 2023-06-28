@@ -16,6 +16,7 @@ import (
 	"stacksviz/stacks"
 	"time"
 
+	pp "github.com/maruel/panicparse/v2/stack"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -142,13 +143,18 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 }
 
 // Goroutines is the resolver for the goroutines field.
-func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int) (*SnapshotInfo, error) {
-	snap, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
+func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, filter *string, gID *int) (*SnapshotInfo, error) {
+	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return nil, err
 	}
-	gMap := make(map[int]*GoroutineInfo, len(snap.Snapshot.Goroutines))
-	for _, g := range snap.Snapshot.Goroutines {
+	if filter != nil && *filter != "" {
+		snap = filterStacks(snap, *filter)
+	}
+	agg := snap.Aggregate(pp.AnyValue)
+
+	gMap := make(map[int]*GoroutineInfo, len(snap.Goroutines))
+	for _, g := range snap.Goroutines {
 		frames := make([]*FrameInfo, len(g.Stack.Calls))
 		for j, c := range g.Stack.Calls {
 			frames[j] = &FrameInfo{
@@ -161,7 +167,7 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 		// Render all the frames of interest for the goroutine, across all the frames.
 		// !!! preprocess an index from variable value to list of links.
 		var vs []*CollectedVar
-		for _, frames := range snap.FramesOfInterest[g.ID] {
+		for _, frames := range fois[g.ID] {
 			for _, v := range frames.Vars {
 				links := make([]*Link, 0, len(v.Links))
 				for _, l := range v.Links {
@@ -208,8 +214,8 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 		allGs = append(allGs, gi)
 	}
 
-	groups := make([]*GoroutinesGroup, len(snap.Agg.Buckets))
-	for i, b := range snap.Agg.Buckets {
+	groups := make([]*GoroutinesGroup, len(agg.Buckets))
+	for i, b := range agg.Buckets {
 		frames := make([]*FrameInfo, len(b.Stack.Calls))
 		for j, c := range b.Stack.Calls {
 			frames[j] = &FrameInfo{
@@ -328,12 +334,15 @@ func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*TypeInfo, e
 }
 
 // GetTree is the resolver for the getTree field.
-func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int) (string, error) {
-	snap, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
+func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int, filter *string) (string, error) {
+	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return "", err
 	}
-	tree := stacks.BuildTree(snap.Snapshot, snap.FramesOfInterest)
+	if filter != nil && *filter != "" {
+		snap = filterStacks(snap, *filter)
+	}
+	tree := stacks.BuildTree(snap, fois)
 	return tree.ToJSON(), nil
 }
 

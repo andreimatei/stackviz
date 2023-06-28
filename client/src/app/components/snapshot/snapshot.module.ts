@@ -21,6 +21,7 @@ import { ResizableModule } from 'angular-resizable-element';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TypeInfoComponent } from "./type-info.component";
 import { FlamegraphComponent } from "../flamegraph/flamegraph.component";
+import { FormsModule } from "@angular/forms";
 
 
 @NgModule({
@@ -49,6 +50,7 @@ import { FlamegraphComponent } from "../flamegraph/flamegraph.component";
     RouterModule,
     StacksComponent,
     FlamegraphComponent,
+    FormsModule,
   ],
   providers: [],
 })
