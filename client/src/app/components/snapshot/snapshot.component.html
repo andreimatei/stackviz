@@ -55,13 +55,17 @@
         </mat-expansion-panel-header>
 
         <mat-accordion multi>
-          <mat-expansion-panel expanded *ngFor="let v of funcInfo">
+          <mat-expansion-panel expanded *ngFor="let frame of funcInfo">
             <mat-expansion-panel-header>
               <mat-panel-title>
                 Frame info
               </mat-panel-title>
             </mat-expansion-panel-header>
-            {{v}}
+            <ul>
+              <li *ngFor="let v of frame">
+                {{v.Expr}}: {{v.Value}}
+              </li>
+            </ul>
           </mat-expansion-panel>
         </mat-accordion>
       </mat-expansion-panel>

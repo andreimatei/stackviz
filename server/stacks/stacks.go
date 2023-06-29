@@ -14,17 +14,17 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/andreimatei/delve-agent/agentrpc"
 	weightedtree "github.com/google/traceviz/server/go/weighted_tree"
 	pp "github.com/maruel/panicparse/v2/stack"
 	"hash/fnv"
-	"log"
 	"stacksviz/ent"
 	"strconv"
 	"strings"
 )
 
 // goroutineID to frame index to list of variables
-type FramesOfInterest map[int]map[int][]string
+type FramesOfInterest map[int]map[int][]agentrpc.CapturedExpr
 
 // goroutineID to frame index to list of variables
 type FOIS map[int]map[int]ProcessedFOI
@@ -32,7 +32,8 @@ type ProcessedFOI struct {
 	Vars []VarInfo
 }
 type VarInfo struct {
-	Val   string
+	Expr  string
+	Value string
 	Links []Link
 }
 type Link struct {
@@ -76,8 +77,37 @@ func BuildTree(snap *pp.Snapshot, capturedData FOIS) *TreeNode {
 	return root
 }
 
-func FindLinks(v string, snaps []*ent.ProcessSnapshot) []Link {
-	var res []Link
+// !!!
+//func FindLinks(v string, snaps []*ent.ProcessSnapshot) []Link {
+//	var res []Link
+//	for _, s := range snaps {
+//		if s.FramesOfInterest == "" {
+//			continue
+//		}
+//		var fois FramesOfInterest
+//		if err := json.Unmarshal([]byte(s.FramesOfInterest), &fois); err != nil {
+//			panic(err)
+//		}
+//		for gid, m := range fois {
+//			for frameIdx, vars := range m {
+//				for _, vv := range vars {
+//					if vv == v {
+//						res = append(res, Link{
+//							SnapshotID:  s.ID,
+//							GoroutineID: gid,
+//							FrameIdx:    frameIdx,
+//						})
+//					}
+//				}
+//			}
+//		}
+//	}
+//
+//	return res
+//}
+
+func ComputeLinks(snaps []*ent.ProcessSnapshot) map[string][]Link {
+	res := make(map[string][]Link)
 	for _, s := range snaps {
 		if s.FramesOfInterest == "" {
 			continue
@@ -86,21 +116,20 @@ func FindLinks(v string, snaps []*ent.ProcessSnapshot) []Link {
 		if err := json.Unmarshal([]byte(s.FramesOfInterest), &fois); err != nil {
 			panic(err)
 		}
-		for gid, m := range fois {
-			for frameIdx, vars := range m {
-				for _, vv := range vars {
-					if vv == v {
-						res = append(res, Link{
+
+		for gid, frameIdxToVars := range fois {
+			for frameIdx, vars := range frameIdxToVars {
+				for _, v := range vars {
+					res[v.Val] = append(res[v.Val],
+						Link{
 							SnapshotID:  s.ID,
 							GoroutineID: gid,
 							FrameIdx:    frameIdx,
 						})
-					}
 				}
 			}
 		}
 	}
-
 	return res
 }
 
@@ -261,21 +290,22 @@ func (t *TreeNode) MarshalJSON() ([]byte, error) {
 		}
 	*/
 
-	var varsProp []string
-	{
-		var sb strings.Builder
-		for _, frame := range t.Vars {
-			sb.Reset()
-			for _, v := range frame {
-				sb.WriteString(v.Val)
-				sb.WriteRune('\n')
-			}
-			varsProp = append(varsProp, sb.String())
-		}
-	}
-	if len(varsProp) != 0 {
-		log.Printf("!!! found frame with vars: %s - (%d) %+v %q", t.Function.Complete, len(varsProp), varsProp, varsProp[0])
-	}
+	// !!!
+	//var varsProp []string
+	//{
+	//	var sb strings.Builder
+	//	for _, frame := range t.Vars {
+	//		sb.Reset()
+	//		for _, v := range frame {
+	//			sb.WriteString(v.Value)
+	//			sb.WriteRune('\n')
+	//		}
+	//		varsProp = append(varsProp, sb.String())
+	//	}
+	//}
+	//if len(varsProp) != 0 {
+	//	log.Printf("!!! found frame with vars: %s - (%d) %+v %q", t.Function.Complete, len(varsProp), varsProp, varsProp[0])
+	//}
 
 	var sb strings.Builder
 	sb.WriteString("{\n")
@@ -290,7 +320,8 @@ func (t *TreeNode) MarshalJSON() ([]byte, error) {
 	sb.WriteString(",\n\t\"details\": ")
 	sb.WriteString(fmt.Sprintf("%q", t.Function.Complete))
 	sb.WriteString(",\n\t\"vars\": ")
-	varsJSON, err := json.Marshal(varsProp)
+	// !!! varsJSON, err := json.Marshal(varsProp)
+	varsJSON, err := json.Marshal(t.Vars)
 	if err != nil {
 		return nil, err
 	}

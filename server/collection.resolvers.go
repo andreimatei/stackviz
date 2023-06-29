@@ -181,7 +181,8 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 						})
 				}
 				vs = append(vs, &CollectedVar{
-					Value: v.Val,
+					Expr:  v.Expr,
+					Value: v.Value,
 					Links: links,
 				})
 			}

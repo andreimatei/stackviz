@@ -85,6 +85,7 @@ query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
         Line
       }
       Vars {
+        Expr
         Value
         Links {
           SnapshotID
@@ -101,6 +102,7 @@ query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
         Line
       }
       Vars {
+        Expr
         Value
         Links {
           SnapshotID

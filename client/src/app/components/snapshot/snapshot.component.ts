@@ -13,7 +13,11 @@ import { MatDrawer } from "@angular/material/sidenav";
 import { ResizeEvent } from 'angular-resizable-element';
 import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
 import { MatSelect } from "@angular/material/select";
-import { FlamegraphComponent, Frame as FlameFrame } from "../flamegraph/flamegraph.component";
+import {
+  FlamegraphComponent,
+  Frame as FlameFrame,
+  VarInfo
+} from "../flamegraph/flamegraph.component";
 import { debounceTime, distinctUntilChanged, map, merge, Subject } from "rxjs";
 import { StacksComponent } from "../stacks/stacks.component";
 
@@ -58,7 +62,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   // Data about the selected node. Each element is a string containing all the
   // captured variables from one frame (where all frames correspond to the
   // selected node).
-  protected funcInfo?: string[];
+  protected funcInfo?: VarInfo[][];
 
   protected loadingAvailableVars: boolean = false;
 
@@ -176,7 +180,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   }
 
   showDetails(node: FlameFrame): void {
-    console.log("showDetails", node.details);
+    console.log("showDetails. funcInfo:", node.vars);
     this.funcInfo = node.vars;
     this.selectedFrame = new Frame(node.details, node.file, node.line);
     console.log("querying for available vars for func: %s off: %d", node.details, node.pcoff);

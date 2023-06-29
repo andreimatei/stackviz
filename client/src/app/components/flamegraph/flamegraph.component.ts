@@ -19,7 +19,12 @@ export interface Frame {
   file: string;
   line: number;
   pcoff: number;
-  vars: string[];
+  vars: VarInfo[][];
+}
+
+export interface VarInfo {
+  Expr: string;
+  Value: string;
 }
 
 @Component({

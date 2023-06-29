@@ -52,6 +52,7 @@ type ComplexityRoot struct {
 	}
 
 	CollectedVar struct {
+		Expr  func(childComplexity int) int
 		Links func(childComplexity int) int
 		Value func(childComplexity int) int
 	}
@@ -207,6 +208,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CollectSpec.ID(childComplexity), true
+
+	case "CollectedVar.Expr":
+		if e.complexity.CollectedVar.Expr == nil {
+			break
+		}
+
+		return e.complexity.CollectedVar.Expr(childComplexity), true
 
 	case "CollectedVar.Links":
 		if e.complexity.CollectedVar.Links == nil {
@@ -1153,6 +1161,50 @@ func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _CollectedVar_Expr(ctx context.Context, field graphql.CollectedField, obj *CollectedVar) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CollectedVar_Expr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Expr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CollectedVar_Expr(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CollectedVar",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CollectedVar_Value(ctx context.Context, field graphql.CollectedField, obj *CollectedVar) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CollectedVar_Value(ctx, field)
 	if err != nil {
@@ -1919,6 +1971,8 @@ func (ec *executionContext) fieldContext_GoroutineInfo_Vars(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "Expr":
+				return ec.fieldContext_CollectedVar_Expr(ctx, field)
 			case "Value":
 				return ec.fieldContext_CollectedVar_Value(ctx, field)
 			case "Links":
@@ -2065,6 +2119,8 @@ func (ec *executionContext) fieldContext_GoroutinesGroup_Vars(ctx context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "Expr":
+				return ec.fieldContext_CollectedVar_Expr(ctx, field)
 			case "Value":
 				return ec.fieldContext_CollectedVar_Value(ctx, field)
 			case "Links":
@@ -6126,6 +6182,13 @@ func (ec *executionContext) _CollectedVar(ctx context.Context, sel ast.Selection
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("CollectedVar")
+		case "Expr":
+
+			out.Values[i] = ec._CollectedVar_Expr(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "Value":
 
 			out.Values[i] = ec._CollectedVar_Value(ctx, field, obj)

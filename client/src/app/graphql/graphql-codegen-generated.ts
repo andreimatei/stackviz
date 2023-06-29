@@ -28,6 +28,7 @@ export type CollectSpec = Node & {
 
 export type CollectedVar = {
   __typename?: 'CollectedVar';
+  Expr: Scalars['String'];
   Links: Array<Link>;
   Value: Scalars['String'];
 };
@@ -331,7 +332,7 @@ export type GetGoroutinesQueryVariables = Exact<{
 }>;
 
 
-export type GetGoroutinesQuery = { __typename?: 'Query', goroutines: { __typename?: 'SnapshotInfo', Raw: Array<{ __typename?: 'GoroutineInfo', ID: number, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }>, Aggregated: Array<{ __typename?: 'GoroutinesGroup', IDs: Array<number>, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }> } };
+export type GetGoroutinesQuery = { __typename?: 'Query', goroutines: { __typename?: 'SnapshotInfo', Raw: Array<{ __typename?: 'GoroutineInfo', ID: number, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }>, Aggregated: Array<{ __typename?: 'GoroutinesGroup', IDs: Array<number>, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }> } };
 
 export type GetTreeQueryVariables = Exact<{
   colID: Scalars['Int'];
@@ -515,6 +516,7 @@ export const GetGoroutinesDocument = gql`
         Line
       }
       Vars {
+        Expr
         Value
         Links {
           SnapshotID
@@ -531,6 +533,7 @@ export const GetGoroutinesDocument = gql`
         Line
       }
       Vars {
+        Expr
         Value
         Links {
           SnapshotID

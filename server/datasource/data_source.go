@@ -145,6 +145,7 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 	var rawFois stacks.FramesOfInterest
 	if snapRec.FramesOfInterest != "" {
 		if err = json.Unmarshal([]byte(snapRec.FramesOfInterest), &rawFois); err != nil {
+			log.Printf("!!! failed to unmarshal: %s", snapRec.FramesOfInterest)
 			return nil, nil, fmt.Errorf("failed to unmarshal frames of interest: %w", err)
 		}
 	} else {
@@ -156,25 +157,27 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 	if err != nil {
 		return nil, nil, err
 	}
+
+	varToLinks := stacks.ComputeLinks(allSnaps)
 	fois := make(stacks.FOIS)
-	for gid, m := range rawFois {
-		prm := make(map[int]stacks.ProcessedFOI)
-		for idx, vars := range m {
+	for gid, frameIdxToVars := range rawFois {
+		frameIdxToFOI := make(map[int]stacks.ProcessedFOI)
+		for idx, vars := range frameIdxToVars {
 			if len(vars) > 0 {
 				log.Printf("!!! fetcher found vars: %d", gid)
 			}
 			var pf stacks.ProcessedFOI
 			pf.Vars = make([]stacks.VarInfo, len(vars))
 			for i, v := range vars {
-				links := stacks.FindLinks(v, allSnaps)
 				pf.Vars[i] = stacks.VarInfo{
-					Val:   v,
-					Links: links,
+					Expr:  v.Expr,
+					Value: v.Val,
+					Links: varToLinks[v.Val],
 				}
 			}
-			prm[idx] = pf
+			frameIdxToFOI[idx] = pf
 		}
-		fois[gid] = prm
+		fois[gid] = frameIdxToFOI
 	}
 
 	// !!! I've removed the caching for debugging.
@@ -198,7 +201,7 @@ func toWeightedTree(node *weightedtree.SubtreeNode, builder nodeBuilder, colorSp
 	for _, frame := range t.Vars {
 		sb.Reset()
 		for _, v := range frame {
-			sb.WriteString(v.Val)
+			sb.WriteString(v.Value)
 			sb.WriteRune('\n')
 		}
 		varsProp = append(varsProp, sb.String())
@@ -459,7 +462,7 @@ func (ds *DataSource) handleStacksRawQuery(
 					}
 					sb.WriteString(fmt.Sprintf("[snap: %d, goroutine: %d (frame: %d)]", l.SnapshotID, l.GoroutineID, l.FrameIdx))
 				}
-				tab.Row(table.Cell(stackCol, tvutil.String(fmt.Sprintf("var: %s links: %s", v.Val, sb.String()))))
+				tab.Row(table.Cell(stackCol, tvutil.String(fmt.Sprintf("var: %s links: %s", v.Value, sb.String()))))
 			}
 		}
 

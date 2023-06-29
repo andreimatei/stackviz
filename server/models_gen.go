@@ -3,6 +3,7 @@
 package server
 
 type CollectedVar struct {
+	Expr  string  `json:"Expr"`
 	Value string  `json:"Value"`
 	Links []*Link `json:"Links"`
 }

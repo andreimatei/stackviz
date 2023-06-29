@@ -65,6 +65,7 @@ type FrameInfo {
 }
 
 type CollectedVar {
+  Expr: String!
   Value: String!
   Links: [Link!]!
 }
