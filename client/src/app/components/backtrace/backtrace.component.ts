@@ -2,11 +2,12 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from "@angular/material/table";
 import { CollectedVar } from "../../graphql/graphql-codegen-generated";
+import { RouterLink } from "@angular/router";
 
 @Component({
   selector: 'app-backtrace',
   standalone: true,
-  imports: [CommonModule, MatTableModule],
+  imports: [CommonModule, MatTableModule, RouterLink],
   template: `
       <table mat-table [dataSource]="vars" *ngIf="vars && vars.length > 0">
           <ng-container matColumnDef="expr">
@@ -27,9 +28,15 @@ import { CollectedVar } from "../../graphql/graphql-codegen-generated";
                   <div *ngIf="v.Links?.length > 0">
                       <ul>
                           <li *ngFor="let l of v.Links">
-                              <a href="/collections/{{collectionID}}/snap/{{l.SnapshotID}}?filter={{encodeURIComponent('gid=')}}{{l.GoroutineID}}">
-                                  Snapshot: {{l.SnapshotID}} Goroutine: {{l.GoroutineID}}
-                              </a>
+                            <a
+                              [routerLink]="['/collections', collectionID, 'snap',l.SnapshotID]"
+                              [queryParams]="{filter: 'gid=' + l.GoroutineID}"
+                            >
+                              Snapshot: {{l.SnapshotID}} Goroutine: {{l.GoroutineID}}
+                            </a>
+<!--                              <a href="/collections/{{collectionID}}/snap/{{l.SnapshotID}}?filter={{encodeURIComponent('gid=')}}{{l.GoroutineID}}">-->
+<!--                                  Snapshot: {{l.SnapshotID}} Goroutine: {{l.GoroutineID}}-->
+<!--                              </a>-->
                           </li>
                       </ul>
                   </div>

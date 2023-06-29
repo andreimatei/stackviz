@@ -18,7 +18,7 @@ import {
   Frame as FlameFrame,
   VarInfo
 } from "../flamegraph/flamegraph.component";
-import { debounceTime, distinctUntilChanged, map, merge, Subject } from "rxjs";
+import { debounceTime, distinctUntilChanged, map, merge, Subject, tap } from "rxjs";
 import { StacksComponent } from "../stacks/stacks.component";
 
 class Frame {
@@ -38,7 +38,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshotID$ = new Subject<number>();
   private _snapshotID!: number;
   @Input('snapID') set snapshotID(val: number) {
-    console.log("!!! snapshotID being set to:", val);
     this._snapshotID = val;
     this.snapshotID$.next(val);
   }
@@ -47,8 +46,35 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     return this._snapshotID;
   }
 
+  @Input('filter') set filter(val: string) {
+    this.onFilterChange(val, true);
+  }
+
+  onFilterChange(val: string, immediate: boolean) {
+    this.filterVal = val;
+    this.filter$.next(val);
+    if (immediate) {
+      this.filterChangeImmediate$.next(val);
+    }
+  }
+
+
   protected filter$ = new Subject<string>();
-  protected filter?: string;
+  protected filterDebounced$ = this.filter$.pipe(
+    debounceTime(400),
+    distinctUntilChanged(),
+    tap(val => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('filter', val);
+      window.history.replaceState(null, "", url);
+    })
+  );
+  protected filterVal?: string;
+  protected filterChangeImmediate$ = new Subject<string>()
+  protected filterChange$ = merge(
+    this.filterDebounced$,
+    this.filterChangeImmediate$,
+  );
 
   protected collectionName?: string;
   protected snapshots?: Partial<ProcessSnapshot>[];
@@ -82,19 +108,13 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    const filterParam = this.route.snapshot.queryParamMap.get('filter');
-    console.log("filter: ", filterParam);
-    if (filterParam) {
-      this.onFilterChange(filterParam);
-    }
-
     this.getCollectionQuery.fetch({colID: this.collectionID})
       .subscribe(results => {
         this.collectionName = results.data.collectionByID?.name;
         this.snapshots = results.data.collectionByID?.processSnapshots!;
       });
 
-    const parsedFilter = this.filter ? parseFilter(this.filter) : {};
+    const parsedFilter = this.filterVal ? parseFilter(this.filterVal) : {};
     const args = {
       colID: this.collectionID,
       snapID: this.snapshotID,
@@ -102,27 +122,28 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       gID: parsedFilter.gID,
     }
 
-    console.log("!!! watching with args:", args);
     this.treeQuery = this.getTreeQuery.watch(args);
     this.goroutinesQuery = this.getGoroutinesQuery.watch(args);
 
     // Refetch all the data when either the selected snapshot or the filter
     // changes.
     merge(
-      this.filter$.pipe(
-        debounceTime(400),
-        distinctUntilChanged(),
-      ),
+      this.filterChange$,
       this.snapshotID$,
-    ).subscribe(val => {
-      const parsedFilter = this.filter ? parseFilter(this.filter) : {};
+    ).pipe(
+      // Allow a small amount of time to coalesce the filterChange$ and
+      // snapshotID$ signals that are sometimes set together (i.e. by the router
+      // when navigating a link).
+      debounceTime(30)
+    ).subscribe((val) => {
+      const parsedFilter = this.filterVal ? parseFilter(this.filterVal) : {};
       const args = {
         colID: this.collectionID,
         snapID: this.snapshotID,
         filter: parsedFilter.filter,
         gID: parsedFilter.gID,
       };
-      console.log("refetching with filter:", this.filter);
+      console.log(`refetching with snapshot: ${this.snapshotID}, filter ${this.filterVal}`);
       this.treeQuery.refetch(args);
       this.goroutinesQuery.refetch(args);
     });
@@ -151,14 +172,8 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.router.navigateByUrl(`collections/${this.collectionID}/snap/${newSnapshotID}`);
   }
 
-  onFilterChange(val: string) {
-    this.filter = val;
-    this.filter$.next(val);
-  }
-
   checkedChange(ev: CheckedEventArg) {
     if (ev.checked) {
-      console.log("!!! checked: ", this.selectedFrame!.name, ev.expr);
       this.addExpr.mutate({frame: this.selectedFrame!.name, expr: ev.expr}).subscribe({
         next: value => console.log(value.data?.addExprToCollectSpec.frames![0].exprs)
       })
@@ -214,7 +229,7 @@ interface parsedFilter {
   filter?: string;
 }
 
-function parseFilter(filter : string ): parsedFilter {
+function parseFilter(filter: string): parsedFilter {
   const gidPrefix = "gid="
   if (filter.startsWith(gidPrefix)) {
     return {

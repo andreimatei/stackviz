@@ -91,8 +91,8 @@
       <p>
         <mat-form-field class="example-form-field">
           <mat-label>Filter</mat-label>
-          <input matInput type="text" [(ngModel)]="filter" (ngModelChange)="onFilterChange($event)" placeholder="filter by package or function name">
-          <button *ngIf="filter$ | async" matSuffix mat-icon-button (click)="filter=''; onFilterChange('');">
+          <input matInput type="text" [(ngModel)]="filterVal" (ngModelChange)="onFilterChange($event, false)" placeholder="filter by package or function name">
+          <button *ngIf="filter$ | async" matSuffix mat-icon-button (click)="filterVal=''; onFilterChange('', true);">
             <mat-icon>close</mat-icon>
           </button>
         </mat-form-field>
