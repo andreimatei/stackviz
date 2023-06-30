@@ -55,17 +55,20 @@
         </mat-expansion-panel-header>
 
         <mat-accordion multi>
-          <mat-expansion-panel expanded *ngFor="let frame of funcInfo">
+          <mat-expansion-panel expanded *ngFor="let frame of funcInfo! | keyvalue">
             <mat-expansion-panel-header>
               <mat-panel-title>
                 Frame info
               </mat-panel-title>
             </mat-expansion-panel-header>
-            <ul>
-              <li *ngFor="let v of frame">
-                {{v.Expr}}: {{v.Value}}
-              </li>
-            </ul>
+            <app-captured-data
+              [data$]="of([{
+                gid:frame.key,
+                vars:frame.value,
+              }])"
+              [collectionSpec$]="collectSpecQuery$"
+              [collectionID]="collectionID"
+            ></app-captured-data>
           </mat-expansion-panel>
         </mat-accordion>
       </mat-expansion-panel>

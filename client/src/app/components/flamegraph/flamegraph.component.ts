@@ -12,6 +12,7 @@ import * as d3 from 'd3';
 import { FlameGraph, flamegraph } from './flamegraph-lib';
 import { BehaviorSubject, merge, Observable, Subject } from "rxjs";
 import { AngularResizeEventModule, ResizedEvent } from 'angular-resize-event';
+import { Link } from "../../graphql/graphql-codegen-generated";
 
 export interface Frame {
   name: string;
@@ -19,12 +20,13 @@ export interface Frame {
   file: string;
   line: number;
   pcoff: number;
-  vars: VarInfo[][];
+  vars: Map<number, VarInfo[]>;
 }
 
 export interface VarInfo {
   Expr: string;
   Value: string;
+  Links: Link[];
 }
 
 @Component({

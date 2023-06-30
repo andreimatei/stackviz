@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"stacksviz/ent"
+	"stacksviz/graph"
 	"strings"
 
 	"github.com/andreimatei/delve-agent/agentrpc"
@@ -121,8 +122,7 @@ func (r *mutationResolver) getOrCreateCollectSpec(ctx context.Context) *ent.Coll
 	return cis[0]
 }
 
-func (r *queryResolver) getTypeInfoFromDelveAgent(agentAddr string, typeName string) ([]*FieldInfo, error) {
-	log.Printf("!!! getting type info for %s", typeName)
+func (r *queryResolver) getTypeInfoFromDelveAgent(agentAddr string, typeName string) ([]graph.FieldInfo, error) {
 	client, err := rpc.DialHTTP("tcp", agentAddr)
 	if err != nil {
 		log.Fatal("dialing:", err)
@@ -135,9 +135,9 @@ func (r *queryResolver) getTypeInfoFromDelveAgent(agentAddr string, typeName str
 		log.Fatal("call to agent failed: ", err)
 	}
 
-	fields := make([]*FieldInfo, len(res.Fields))
+	fields := make([]graph.FieldInfo, len(res.Fields))
 	for i, f := range res.Fields {
-		fields[i] = &FieldInfo{
+		fields[i] = graph.FieldInfo{
 			Name:     f.Name,
 			Type:     f.TypeName,
 			Embedded: f.Embedded,
@@ -182,5 +182,13 @@ func filterStacks(snap *pp.Snapshot, gid *int, filter *string) *pp.Snapshot {
 		}
 	}
 
+	return res
+}
+
+func flatten[T any](src []*T) []T {
+	res := make([]T, len(src))
+	for i := range src {
+		res[i] = *src[i]
+	}
 	return res
 }

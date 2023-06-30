@@ -257,7 +257,7 @@ export type SnapshotInfo = {
 
 export type TypeInfo = {
   __typename?: 'TypeInfo';
-  Fields?: Maybe<Array<Maybe<FieldInfo>>>;
+  Fields?: Maybe<Array<FieldInfo>>;
   FieldsNotLoaded: Scalars['Boolean'];
   Name: Scalars['String'];
 };
@@ -315,14 +315,14 @@ export type GetAvailableVariablesQueryVariables = Exact<{
 }>;
 
 
-export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars: Array<{ __typename?: 'VarInfo', Name: string, Type: string, FormalParameter: boolean, LoclistAvailable: boolean }>, Types: Array<{ __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean } | null> | null }> }, collectSpec: Array<{ __typename?: 'FrameSpec', exprs: Array<string> }> };
+export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars: Array<{ __typename?: 'VarInfo', Name: string, Type: string, FormalParameter: boolean, LoclistAvailable: boolean }>, Types: Array<{ __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean }> | null }> }, collectSpec: Array<{ __typename?: 'FrameSpec', exprs: Array<string> }> };
 
 export type GetTypeInfoQueryVariables = Exact<{
   name: Scalars['String'];
 }>;
 
 
-export type GetTypeInfoQuery = { __typename?: 'Query', typeInfo: { __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean } | null> | null } };
+export type GetTypeInfoQuery = { __typename?: 'Query', typeInfo: { __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean }> | null } };
 
 export type GetGoroutinesQueryVariables = Exact<{
   colID: Scalars['Int'];

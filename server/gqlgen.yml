@@ -30,3 +30,9 @@ models:
     model:
       - stacksviz/ent.Noder
       - stacksviz/ent/collection.Noder
+
+omit_slice_element_pointers: true
+
+model:
+  filename: graph/models_gen.go
+  package: graph

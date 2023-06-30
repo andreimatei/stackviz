@@ -77,6 +77,12 @@ export class CapturedDataComponent {
   }
 
   ngAfterViewInit() {
+    // Note: I'm doing Promise.resolve().then() to defer the execution after the
+    // change detection cycle finished. Otherwise, I get the error about the
+    // template changing after change detection. We need to set up this pipe in
+    // ngAfterViewInit, though, because we need this.expressionChips to be
+    // populated.
+    Promise.resolve(null).then(() => {
     // Filter the captured vars whenever we load new data or when the chip
     // selection changes.
     this.filteredData$ =
@@ -100,10 +106,11 @@ export class CapturedDataComponent {
           }).filter(gd => gd.vars.length > 0);
         }),
       );
+    })
   }
 }
 
-interface GoroutineData {
+export interface GoroutineData {
   gid: number,
   vars: CollectedVar[],
 }

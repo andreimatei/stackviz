@@ -21,23 +21,31 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []int) ([]ent.Noder, erro
 }
 
 // CollectSpecs is the resolver for the collectSpecs field.
-func (r *queryResolver) CollectSpecs(ctx context.Context) ([]*ent.CollectSpec, error) {
+func (r *queryResolver) CollectSpecs(ctx context.Context) ([]ent.CollectSpec, error) {
 	panic(fmt.Errorf("not implemented: CollectSpecs - collectSpecs"))
 }
 
 // Collections is the resolver for the collections field.
-func (r *queryResolver) Collections(ctx context.Context) ([]*ent.Collection, error) {
-	return r.dbClient.Collection.Query().All(ctx)
+func (r *queryResolver) Collections(ctx context.Context) ([]ent.Collection, error) {
+	results, err := r.dbClient.Collection.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return flatten(results), nil
 }
 
 // FrameSpecs is the resolver for the frameSpecs field.
-func (r *queryResolver) FrameSpecs(ctx context.Context) ([]*ent.FrameSpec, error) {
+func (r *queryResolver) FrameSpecs(ctx context.Context) ([]ent.FrameSpec, error) {
 	panic(fmt.Errorf("not implemented: FrameSpecs - frameSpecs"))
 }
 
 // ProcessSnapshots is the resolver for the processSnapshots field.
-func (r *queryResolver) ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error) {
-	return r.dbClient.ProcessSnapshot.Query().All(ctx)
+func (r *queryResolver) ProcessSnapshots(ctx context.Context) ([]ent.ProcessSnapshot, error) {
+	results, err := r.dbClient.ProcessSnapshot.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return flatten(results), nil
 }
 
 // Query returns QueryResolver implementation.

@@ -13,6 +13,7 @@ import (
 	"stacksviz/ent"
 	"stacksviz/ent/collection"
 	"stacksviz/ent/framespec"
+	"stacksviz/graph"
 	"stacksviz/stacks"
 	"time"
 
@@ -143,7 +144,7 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 }
 
 // Goroutines is the resolver for the goroutines field.
-func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*SnapshotInfo, error) {
+func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error) {
 	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return nil, err
@@ -151,47 +152,34 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 	snap = filterStacks(snap, gID, filter)
 	agg := snap.Aggregate(pp.AnyValue)
 
-	gMap := make(map[int]*GoroutineInfo, len(snap.Goroutines))
+	gMap := make(map[int]graph.GoroutineInfo, len(snap.Goroutines))
 	for _, g := range snap.Goroutines {
-		frames := make([]*FrameInfo, len(g.Stack.Calls))
+		frames := make([]graph.FrameInfo, len(g.Stack.Calls))
 		for j, c := range g.Stack.Calls {
-			frames[j] = &FrameInfo{
+			frames[j] = graph.FrameInfo{
 				Func: c.Func.Complete,
 				File: c.RemoteSrcPath,
 				Line: c.Line,
 			}
 		}
 
-		// Render all the frames of interest for the goroutine, across all the frames.
-		// !!! preprocess an index from variable value to list of links.
-		var vs []*CollectedVar
+		// Flatten all the collected variables, across all the frames.
+		var flatVars []graph.CollectedVar
 		for _, frames := range fois[g.ID] {
-			for _, v := range frames.Vars {
-				links := make([]*Link, 0, len(v.Links))
-				for _, l := range v.Links {
-					if l.GoroutineID == g.ID {
-						// Don't link to ourselves.
-						continue
-					}
-					links = append(links,
-						&Link{
-							SnapshotID:  l.SnapshotID,
-							GoroutineID: l.GoroutineID,
-							FrameIdx:    l.FrameIdx,
-						})
-				}
-				vs = append(vs, &CollectedVar{
-					Expr:  v.Expr,
-					Value: v.Value,
-					Links: links,
-				})
-			}
+			flatVars = append(flatVars, frames.Vars...)
+			// !!!
+			//for _, v := range frames.Vars {
+			//	flatVars = append(flatVars, graph.CollectedVar{
+			//		Expr:  v.Expr,
+			//		Value: v.Value,
+			//		Links: stacks.LinksExcludingSelf(v.Links, g.ID),
+			//	})
+			//}
 		}
-
-		gMap[g.ID] = &GoroutineInfo{
+		gMap[g.ID] = graph.GoroutineInfo{
 			ID:     g.ID,
 			Frames: frames,
-			Vars:   vs,
+			Vars:   flatVars,
 		}
 	}
 
@@ -209,34 +197,34 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 	//	log.Printf("!!! not filtering for a specific goroutine")
 	//}
 
-	allGs := make([]*GoroutineInfo, 0, len(gMap))
+	allGs := make([]graph.GoroutineInfo, 0, len(gMap))
 	for _, gi := range gMap {
 		allGs = append(allGs, gi)
 	}
 
-	groups := make([]*GoroutinesGroup, len(agg.Buckets))
+	groups := make([]graph.GoroutinesGroup, len(agg.Buckets))
 	for i, b := range agg.Buckets {
-		frames := make([]*FrameInfo, len(b.Stack.Calls))
+		frames := make([]graph.FrameInfo, len(b.Stack.Calls))
 		for j, c := range b.Stack.Calls {
-			frames[j] = &FrameInfo{
+			frames[j] = graph.FrameInfo{
 				Func: c.Func.Complete,
 				File: c.RemoteSrcPath,
 				Line: c.Line,
 			}
 		}
-		groups[i] = &GoroutinesGroup{
+		groups[i] = graph.GoroutinesGroup{
 			IDs:    b.IDs,
 			Frames: frames,
 		}
 
 		for _, gID := range b.IDs {
-			if gi := gMap[gID]; gi != nil {
+			if gi, ok := gMap[gID]; ok {
 				groups[i].Vars = append(groups[i].Vars, gi.Vars...)
 			}
 		}
 	}
 
-	si := &SnapshotInfo{
+	si := &graph.SnapshotInfo{
 		Raw:        allGs,
 		Aggregated: groups,
 	}
@@ -244,7 +232,7 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 }
 
 // AvailableVars is the resolver for the availableVars field.
-func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error) {
+func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff int) (*graph.VarsAndTypes, error) {
 	var svcName string
 	for serviceName, _ := range r.conf.Targets {
 		// TODO(andrei): deal with multiple services
@@ -262,24 +250,24 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 	if err != nil {
 		return nil, err
 	}
-	resVars := make([]*VarInfo, len(vars))
+	resVars := make([]graph.VarInfo, len(vars))
 	for i, v := range vars {
-		resVars[i] = &VarInfo{
+		resVars[i] = graph.VarInfo{
 			Name:             v.Name,
 			Type:             v.Type,
 			FormalParameter:  v.FormalParameter,
 			LoclistAvailable: v.LoclistAvailable,
 		}
 	}
-	resTypes := make([]*TypeInfo, len(types))
+	resTypes := make([]graph.TypeInfo, len(types))
 	for i, t := range types {
-		resTypes[i] = &TypeInfo{
+		resTypes[i] = graph.TypeInfo{
 			Name:            t.Name,
 			FieldsNotLoaded: t.FieldsNotLoaded,
 		}
-		resTypes[i].Fields = make([]*FieldInfo, len(t.Fields))
+		resTypes[i].Fields = make([]graph.FieldInfo, len(t.Fields))
 		for j, f := range t.Fields {
-			resTypes[i].Fields[j] = &FieldInfo{
+			resTypes[i].Fields[j] = graph.FieldInfo{
 				Name:     f.Name,
 				Type:     f.TypeName,
 				Embedded: f.Embedded,
@@ -287,7 +275,7 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 		}
 	}
 
-	res := &VarsAndTypes{
+	res := &graph.VarsAndTypes{
 		Vars:  resVars,
 		Types: resTypes,
 	}
@@ -295,26 +283,24 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 }
 
 // FrameInfo is the resolver for the frameInfo field.
-func (r *queryResolver) CollectSpec(ctx context.Context, funcArg *string) ([]*ent.FrameSpec, error) {
+func (r *queryResolver) CollectSpec(ctx context.Context, funcArg *string) ([]ent.FrameSpec, error) {
 	q := r.dbClient.FrameSpec.Query()
 	if funcArg != nil {
 		q = q.Where(framespec.Frame(*funcArg))
 	}
 	res, err := q.All(ctx)
-	// !!!
-	//nfe := &ent.NotFoundError{}
-	//if errors.As(err, &nfe) {
-	//	return nil, nil
-	//}
 	if err != nil {
 		return nil, err
 	}
-	return res, nil
+	flat := make([]ent.FrameSpec, len(res))
+	for i := range res {
+		flat[i] = *res[i]
+	}
+	return flat, nil
 }
 
 // TypeInfo is the resolver for the typeInfo field.
-func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*TypeInfo, error) {
-	log.Printf("!!! TypeInfo query: %s", name)
+func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*graph.TypeInfo, error) {
 	var svcName string
 	for serviceName, _ := range r.conf.Targets {
 		// TODO(andrei): deal with multiple services
@@ -331,7 +317,7 @@ func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*TypeInfo, e
 	if err != nil {
 		return nil, err
 	}
-	return &TypeInfo{
+	return &graph.TypeInfo{
 		Name:            name,
 		Fields:          fields,
 		FieldsNotLoaded: false,
@@ -344,7 +330,6 @@ func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int, gID 
 	if err != nil {
 		return "", err
 	}
-	log.Printf("!!! filtering tree for gid: %v, filter: %v", gID, filter)
 	snap = filterStacks(snap, gID, filter)
 	tree := stacks.BuildTree(snap, fois)
 	return tree.ToJSON(), nil

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"stacksviz/ent"
+	"stacksviz/graph"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -168,15 +169,15 @@ type MutationResolver interface {
 type QueryResolver interface {
 	Node(ctx context.Context, id int) (ent.Noder, error)
 	Nodes(ctx context.Context, ids []int) ([]ent.Noder, error)
-	CollectSpecs(ctx context.Context) ([]*ent.CollectSpec, error)
-	Collections(ctx context.Context) ([]*ent.Collection, error)
-	FrameSpecs(ctx context.Context) ([]*ent.FrameSpec, error)
-	ProcessSnapshots(ctx context.Context) ([]*ent.ProcessSnapshot, error)
+	CollectSpecs(ctx context.Context) ([]ent.CollectSpec, error)
+	Collections(ctx context.Context) ([]ent.Collection, error)
+	FrameSpecs(ctx context.Context) ([]ent.FrameSpec, error)
+	ProcessSnapshots(ctx context.Context) ([]ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
-	Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*SnapshotInfo, error)
-	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
-	CollectSpec(ctx context.Context, funcArg *string) ([]*ent.FrameSpec, error)
-	TypeInfo(ctx context.Context, name string) (*TypeInfo, error)
+	Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error)
+	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*graph.VarsAndTypes, error)
+	CollectSpec(ctx context.Context, funcArg *string) ([]ent.FrameSpec, error)
+	TypeInfo(ctx context.Context, name string) (*graph.TypeInfo, error)
 	GetTree(ctx context.Context, colID int, snapID int, gID *int, filter *string) (string, error)
 }
 
@@ -1161,7 +1162,7 @@ func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _CollectedVar_Expr(ctx context.Context, field graphql.CollectedField, obj *CollectedVar) (ret graphql.Marshaler) {
+func (ec *executionContext) _CollectedVar_Expr(ctx context.Context, field graphql.CollectedField, obj *graph.CollectedVar) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CollectedVar_Expr(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1205,7 +1206,7 @@ func (ec *executionContext) fieldContext_CollectedVar_Expr(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _CollectedVar_Value(ctx context.Context, field graphql.CollectedField, obj *CollectedVar) (ret graphql.Marshaler) {
+func (ec *executionContext) _CollectedVar_Value(ctx context.Context, field graphql.CollectedField, obj *graph.CollectedVar) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CollectedVar_Value(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1249,7 +1250,7 @@ func (ec *executionContext) fieldContext_CollectedVar_Value(ctx context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _CollectedVar_Links(ctx context.Context, field graphql.CollectedField, obj *CollectedVar) (ret graphql.Marshaler) {
+func (ec *executionContext) _CollectedVar_Links(ctx context.Context, field graphql.CollectedField, obj *graph.CollectedVar) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CollectedVar_Links(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1275,9 +1276,9 @@ func (ec *executionContext) _CollectedVar_Links(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*Link)
+	res := resTmp.([]graph.Link)
 	fc.Result = res
-	return ec.marshalNLink2ᚕᚖstacksvizᚐLinkᚄ(ctx, field.Selections, res)
+	return ec.marshalNLink2ᚕstacksvizᚋgraphᚐLinkᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_CollectedVar_Links(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1440,7 +1441,7 @@ func (ec *executionContext) fieldContext_Collection_processSnapshots(ctx context
 	return fc, nil
 }
 
-func (ec *executionContext) _FieldInfo_Name(ctx context.Context, field graphql.CollectedField, obj *FieldInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _FieldInfo_Name(ctx context.Context, field graphql.CollectedField, obj *graph.FieldInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_FieldInfo_Name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1484,7 +1485,7 @@ func (ec *executionContext) fieldContext_FieldInfo_Name(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _FieldInfo_Type(ctx context.Context, field graphql.CollectedField, obj *FieldInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _FieldInfo_Type(ctx context.Context, field graphql.CollectedField, obj *graph.FieldInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_FieldInfo_Type(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1528,7 +1529,7 @@ func (ec *executionContext) fieldContext_FieldInfo_Type(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _FieldInfo_Embedded(ctx context.Context, field graphql.CollectedField, obj *FieldInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _FieldInfo_Embedded(ctx context.Context, field graphql.CollectedField, obj *graph.FieldInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_FieldInfo_Embedded(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1572,7 +1573,7 @@ func (ec *executionContext) fieldContext_FieldInfo_Embedded(ctx context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _FrameInfo_Func(ctx context.Context, field graphql.CollectedField, obj *FrameInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _FrameInfo_Func(ctx context.Context, field graphql.CollectedField, obj *graph.FrameInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_FrameInfo_Func(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1616,7 +1617,7 @@ func (ec *executionContext) fieldContext_FrameInfo_Func(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _FrameInfo_File(ctx context.Context, field graphql.CollectedField, obj *FrameInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _FrameInfo_File(ctx context.Context, field graphql.CollectedField, obj *graph.FrameInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_FrameInfo_File(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1660,7 +1661,7 @@ func (ec *executionContext) fieldContext_FrameInfo_File(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _FrameInfo_Line(ctx context.Context, field graphql.CollectedField, obj *FrameInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _FrameInfo_Line(ctx context.Context, field graphql.CollectedField, obj *graph.FrameInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_FrameInfo_Line(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1836,7 +1837,7 @@ func (ec *executionContext) fieldContext_FrameSpec_exprs(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _GoroutineInfo_ID(ctx context.Context, field graphql.CollectedField, obj *GoroutineInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _GoroutineInfo_ID(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutineInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GoroutineInfo_ID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1880,7 +1881,7 @@ func (ec *executionContext) fieldContext_GoroutineInfo_ID(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _GoroutineInfo_Frames(ctx context.Context, field graphql.CollectedField, obj *GoroutineInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _GoroutineInfo_Frames(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutineInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GoroutineInfo_Frames(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1906,9 +1907,9 @@ func (ec *executionContext) _GoroutineInfo_Frames(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*FrameInfo)
+	res := resTmp.([]graph.FrameInfo)
 	fc.Result = res
-	return ec.marshalNFrameInfo2ᚕᚖstacksvizᚐFrameInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNFrameInfo2ᚕstacksvizᚋgraphᚐFrameInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GoroutineInfo_Frames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1932,7 +1933,7 @@ func (ec *executionContext) fieldContext_GoroutineInfo_Frames(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _GoroutineInfo_Vars(ctx context.Context, field graphql.CollectedField, obj *GoroutineInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _GoroutineInfo_Vars(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutineInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GoroutineInfo_Vars(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1958,9 +1959,9 @@ func (ec *executionContext) _GoroutineInfo_Vars(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*CollectedVar)
+	res := resTmp.([]graph.CollectedVar)
 	fc.Result = res
-	return ec.marshalNCollectedVar2ᚕᚖstacksvizᚐCollectedVarᚄ(ctx, field.Selections, res)
+	return ec.marshalNCollectedVar2ᚕstacksvizᚋgraphᚐCollectedVarᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GoroutineInfo_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1984,7 +1985,7 @@ func (ec *executionContext) fieldContext_GoroutineInfo_Vars(ctx context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _GoroutinesGroup_IDs(ctx context.Context, field graphql.CollectedField, obj *GoroutinesGroup) (ret graphql.Marshaler) {
+func (ec *executionContext) _GoroutinesGroup_IDs(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutinesGroup) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GoroutinesGroup_IDs(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2028,7 +2029,7 @@ func (ec *executionContext) fieldContext_GoroutinesGroup_IDs(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _GoroutinesGroup_Frames(ctx context.Context, field graphql.CollectedField, obj *GoroutinesGroup) (ret graphql.Marshaler) {
+func (ec *executionContext) _GoroutinesGroup_Frames(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutinesGroup) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GoroutinesGroup_Frames(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2054,9 +2055,9 @@ func (ec *executionContext) _GoroutinesGroup_Frames(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*FrameInfo)
+	res := resTmp.([]graph.FrameInfo)
 	fc.Result = res
-	return ec.marshalNFrameInfo2ᚕᚖstacksvizᚐFrameInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNFrameInfo2ᚕstacksvizᚋgraphᚐFrameInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GoroutinesGroup_Frames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2080,7 +2081,7 @@ func (ec *executionContext) fieldContext_GoroutinesGroup_Frames(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _GoroutinesGroup_Vars(ctx context.Context, field graphql.CollectedField, obj *GoroutinesGroup) (ret graphql.Marshaler) {
+func (ec *executionContext) _GoroutinesGroup_Vars(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutinesGroup) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GoroutinesGroup_Vars(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2106,9 +2107,9 @@ func (ec *executionContext) _GoroutinesGroup_Vars(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*CollectedVar)
+	res := resTmp.([]graph.CollectedVar)
 	fc.Result = res
-	return ec.marshalNCollectedVar2ᚕᚖstacksvizᚐCollectedVarᚄ(ctx, field.Selections, res)
+	return ec.marshalNCollectedVar2ᚕstacksvizᚋgraphᚐCollectedVarᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GoroutinesGroup_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2132,7 +2133,7 @@ func (ec *executionContext) fieldContext_GoroutinesGroup_Vars(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Link_SnapshotID(ctx context.Context, field graphql.CollectedField, obj *Link) (ret graphql.Marshaler) {
+func (ec *executionContext) _Link_SnapshotID(ctx context.Context, field graphql.CollectedField, obj *graph.Link) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Link_SnapshotID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2176,7 +2177,7 @@ func (ec *executionContext) fieldContext_Link_SnapshotID(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Link_GoroutineID(ctx context.Context, field graphql.CollectedField, obj *Link) (ret graphql.Marshaler) {
+func (ec *executionContext) _Link_GoroutineID(ctx context.Context, field graphql.CollectedField, obj *graph.Link) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Link_GoroutineID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2220,7 +2221,7 @@ func (ec *executionContext) fieldContext_Link_GoroutineID(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Link_FrameIdx(ctx context.Context, field graphql.CollectedField, obj *Link) (ret graphql.Marshaler) {
+func (ec *executionContext) _Link_FrameIdx(ctx context.Context, field graphql.CollectedField, obj *graph.Link) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Link_FrameIdx(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2971,9 +2972,9 @@ func (ec *executionContext) _Query_collectSpecs(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.CollectSpec)
+	res := resTmp.([]ent.CollectSpec)
 	fc.Result = res
-	return ec.marshalNCollectSpec2ᚕᚖstacksvizᚋentᚐCollectSpecᚄ(ctx, field.Selections, res)
+	return ec.marshalNCollectSpec2ᚕstacksvizᚋentᚐCollectSpecᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_collectSpecs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3021,9 +3022,9 @@ func (ec *executionContext) _Query_collections(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.Collection)
+	res := resTmp.([]ent.Collection)
 	fc.Result = res
-	return ec.marshalNCollection2ᚕᚖstacksvizᚋentᚐCollectionᚄ(ctx, field.Selections, res)
+	return ec.marshalNCollection2ᚕstacksvizᚋentᚐCollectionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_collections(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3073,9 +3074,9 @@ func (ec *executionContext) _Query_frameSpecs(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.FrameSpec)
+	res := resTmp.([]ent.FrameSpec)
 	fc.Result = res
-	return ec.marshalNFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
+	return ec.marshalNFrameSpec2ᚕstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_frameSpecs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3125,9 +3126,9 @@ func (ec *executionContext) _Query_processSnapshots(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.ProcessSnapshot)
+	res := resTmp.([]ent.ProcessSnapshot)
 	fc.Result = res
-	return ec.marshalNProcessSnapshot2ᚕᚖstacksvizᚋentᚐProcessSnapshotᚄ(ctx, field.Selections, res)
+	return ec.marshalNProcessSnapshot2ᚕstacksvizᚋentᚐProcessSnapshotᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_processSnapshots(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3239,9 +3240,9 @@ func (ec *executionContext) _Query_goroutines(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*SnapshotInfo)
+	res := resTmp.(*graph.SnapshotInfo)
 	fc.Result = res
-	return ec.marshalNSnapshotInfo2ᚖstacksvizᚐSnapshotInfo(ctx, field.Selections, res)
+	return ec.marshalNSnapshotInfo2ᚖstacksvizᚋgraphᚐSnapshotInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_goroutines(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3300,9 +3301,9 @@ func (ec *executionContext) _Query_availableVars(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*VarsAndTypes)
+	res := resTmp.(*graph.VarsAndTypes)
 	fc.Result = res
-	return ec.marshalNVarsAndTypes2ᚖstacksvizᚐVarsAndTypes(ctx, field.Selections, res)
+	return ec.marshalNVarsAndTypes2ᚖstacksvizᚋgraphᚐVarsAndTypes(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_availableVars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3361,9 +3362,9 @@ func (ec *executionContext) _Query_collectSpec(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.FrameSpec)
+	res := resTmp.([]ent.FrameSpec)
 	fc.Result = res
-	return ec.marshalNFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
+	return ec.marshalNFrameSpec2ᚕstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_collectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3424,9 +3425,9 @@ func (ec *executionContext) _Query_typeInfo(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*TypeInfo)
+	res := resTmp.(*graph.TypeInfo)
 	fc.Result = res
-	return ec.marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx, field.Selections, res)
+	return ec.marshalNTypeInfo2ᚖstacksvizᚋgraphᚐTypeInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_typeInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3645,7 +3646,7 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _SnapshotInfo_Raw(ctx context.Context, field graphql.CollectedField, obj *SnapshotInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _SnapshotInfo_Raw(ctx context.Context, field graphql.CollectedField, obj *graph.SnapshotInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SnapshotInfo_Raw(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3671,9 +3672,9 @@ func (ec *executionContext) _SnapshotInfo_Raw(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*GoroutineInfo)
+	res := resTmp.([]graph.GoroutineInfo)
 	fc.Result = res
-	return ec.marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNGoroutineInfo2ᚕstacksvizᚋgraphᚐGoroutineInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SnapshotInfo_Raw(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3697,7 +3698,7 @@ func (ec *executionContext) fieldContext_SnapshotInfo_Raw(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _SnapshotInfo_Aggregated(ctx context.Context, field graphql.CollectedField, obj *SnapshotInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _SnapshotInfo_Aggregated(ctx context.Context, field graphql.CollectedField, obj *graph.SnapshotInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SnapshotInfo_Aggregated(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3723,9 +3724,9 @@ func (ec *executionContext) _SnapshotInfo_Aggregated(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*GoroutinesGroup)
+	res := resTmp.([]graph.GoroutinesGroup)
 	fc.Result = res
-	return ec.marshalNGoroutinesGroup2ᚕᚖstacksvizᚐGoroutinesGroupᚄ(ctx, field.Selections, res)
+	return ec.marshalNGoroutinesGroup2ᚕstacksvizᚋgraphᚐGoroutinesGroupᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SnapshotInfo_Aggregated(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3749,7 +3750,7 @@ func (ec *executionContext) fieldContext_SnapshotInfo_Aggregated(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _TypeInfo_Name(ctx context.Context, field graphql.CollectedField, obj *TypeInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _TypeInfo_Name(ctx context.Context, field graphql.CollectedField, obj *graph.TypeInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TypeInfo_Name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3793,7 +3794,7 @@ func (ec *executionContext) fieldContext_TypeInfo_Name(ctx context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _TypeInfo_Fields(ctx context.Context, field graphql.CollectedField, obj *TypeInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _TypeInfo_Fields(ctx context.Context, field graphql.CollectedField, obj *graph.TypeInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TypeInfo_Fields(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3816,9 +3817,9 @@ func (ec *executionContext) _TypeInfo_Fields(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*FieldInfo)
+	res := resTmp.([]graph.FieldInfo)
 	fc.Result = res
-	return ec.marshalOFieldInfo2ᚕᚖstacksvizᚐFieldInfo(ctx, field.Selections, res)
+	return ec.marshalOFieldInfo2ᚕstacksvizᚋgraphᚐFieldInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TypeInfo_Fields(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3842,7 +3843,7 @@ func (ec *executionContext) fieldContext_TypeInfo_Fields(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _TypeInfo_FieldsNotLoaded(ctx context.Context, field graphql.CollectedField, obj *TypeInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _TypeInfo_FieldsNotLoaded(ctx context.Context, field graphql.CollectedField, obj *graph.TypeInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TypeInfo_FieldsNotLoaded(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3886,7 +3887,7 @@ func (ec *executionContext) fieldContext_TypeInfo_FieldsNotLoaded(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _VarInfo_Name(ctx context.Context, field graphql.CollectedField, obj *VarInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _VarInfo_Name(ctx context.Context, field graphql.CollectedField, obj *graph.VarInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VarInfo_Name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3930,7 +3931,7 @@ func (ec *executionContext) fieldContext_VarInfo_Name(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _VarInfo_Type(ctx context.Context, field graphql.CollectedField, obj *VarInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _VarInfo_Type(ctx context.Context, field graphql.CollectedField, obj *graph.VarInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VarInfo_Type(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3974,7 +3975,7 @@ func (ec *executionContext) fieldContext_VarInfo_Type(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _VarInfo_FormalParameter(ctx context.Context, field graphql.CollectedField, obj *VarInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _VarInfo_FormalParameter(ctx context.Context, field graphql.CollectedField, obj *graph.VarInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VarInfo_FormalParameter(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4018,7 +4019,7 @@ func (ec *executionContext) fieldContext_VarInfo_FormalParameter(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _VarInfo_LoclistAvailable(ctx context.Context, field graphql.CollectedField, obj *VarInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _VarInfo_LoclistAvailable(ctx context.Context, field graphql.CollectedField, obj *graph.VarInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VarInfo_LoclistAvailable(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4062,7 +4063,7 @@ func (ec *executionContext) fieldContext_VarInfo_LoclistAvailable(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _VarsAndTypes_Vars(ctx context.Context, field graphql.CollectedField, obj *VarsAndTypes) (ret graphql.Marshaler) {
+func (ec *executionContext) _VarsAndTypes_Vars(ctx context.Context, field graphql.CollectedField, obj *graph.VarsAndTypes) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VarsAndTypes_Vars(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4088,9 +4089,9 @@ func (ec *executionContext) _VarsAndTypes_Vars(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*VarInfo)
+	res := resTmp.([]graph.VarInfo)
 	fc.Result = res
-	return ec.marshalNVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNVarInfo2ᚕstacksvizᚋgraphᚐVarInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_VarsAndTypes_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4116,7 +4117,7 @@ func (ec *executionContext) fieldContext_VarsAndTypes_Vars(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _VarsAndTypes_Types(ctx context.Context, field graphql.CollectedField, obj *VarsAndTypes) (ret graphql.Marshaler) {
+func (ec *executionContext) _VarsAndTypes_Types(ctx context.Context, field graphql.CollectedField, obj *graph.VarsAndTypes) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VarsAndTypes_Types(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4142,9 +4143,9 @@ func (ec *executionContext) _VarsAndTypes_Types(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*TypeInfo)
+	res := resTmp.([]graph.TypeInfo)
 	fc.Result = res
-	return ec.marshalNTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNTypeInfo2ᚕstacksvizᚋgraphᚐTypeInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_VarsAndTypes_Types(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -6177,7 +6178,7 @@ func (ec *executionContext) _CollectSpec(ctx context.Context, sel ast.SelectionS
 
 var collectedVarImplementors = []string{"CollectedVar"}
 
-func (ec *executionContext) _CollectedVar(ctx context.Context, sel ast.SelectionSet, obj *CollectedVar) graphql.Marshaler {
+func (ec *executionContext) _CollectedVar(ctx context.Context, sel ast.SelectionSet, obj *graph.CollectedVar) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, collectedVarImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -6271,7 +6272,7 @@ func (ec *executionContext) _Collection(ctx context.Context, sel ast.SelectionSe
 
 var fieldInfoImplementors = []string{"FieldInfo"}
 
-func (ec *executionContext) _FieldInfo(ctx context.Context, sel ast.SelectionSet, obj *FieldInfo) graphql.Marshaler {
+func (ec *executionContext) _FieldInfo(ctx context.Context, sel ast.SelectionSet, obj *graph.FieldInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, fieldInfoImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -6313,7 +6314,7 @@ func (ec *executionContext) _FieldInfo(ctx context.Context, sel ast.SelectionSet
 
 var frameInfoImplementors = []string{"FrameInfo"}
 
-func (ec *executionContext) _FrameInfo(ctx context.Context, sel ast.SelectionSet, obj *FrameInfo) graphql.Marshaler {
+func (ec *executionContext) _FrameInfo(ctx context.Context, sel ast.SelectionSet, obj *graph.FrameInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, frameInfoImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -6397,7 +6398,7 @@ func (ec *executionContext) _FrameSpec(ctx context.Context, sel ast.SelectionSet
 
 var goroutineInfoImplementors = []string{"GoroutineInfo"}
 
-func (ec *executionContext) _GoroutineInfo(ctx context.Context, sel ast.SelectionSet, obj *GoroutineInfo) graphql.Marshaler {
+func (ec *executionContext) _GoroutineInfo(ctx context.Context, sel ast.SelectionSet, obj *graph.GoroutineInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, goroutineInfoImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -6439,7 +6440,7 @@ func (ec *executionContext) _GoroutineInfo(ctx context.Context, sel ast.Selectio
 
 var goroutinesGroupImplementors = []string{"GoroutinesGroup"}
 
-func (ec *executionContext) _GoroutinesGroup(ctx context.Context, sel ast.SelectionSet, obj *GoroutinesGroup) graphql.Marshaler {
+func (ec *executionContext) _GoroutinesGroup(ctx context.Context, sel ast.SelectionSet, obj *graph.GoroutinesGroup) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, goroutinesGroupImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -6481,7 +6482,7 @@ func (ec *executionContext) _GoroutinesGroup(ctx context.Context, sel ast.Select
 
 var linkImplementors = []string{"Link"}
 
-func (ec *executionContext) _Link(ctx context.Context, sel ast.SelectionSet, obj *Link) graphql.Marshaler {
+func (ec *executionContext) _Link(ctx context.Context, sel ast.SelectionSet, obj *graph.Link) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, linkImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -6984,7 +6985,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 var snapshotInfoImplementors = []string{"SnapshotInfo"}
 
-func (ec *executionContext) _SnapshotInfo(ctx context.Context, sel ast.SelectionSet, obj *SnapshotInfo) graphql.Marshaler {
+func (ec *executionContext) _SnapshotInfo(ctx context.Context, sel ast.SelectionSet, obj *graph.SnapshotInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, snapshotInfoImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -7019,7 +7020,7 @@ func (ec *executionContext) _SnapshotInfo(ctx context.Context, sel ast.Selection
 
 var typeInfoImplementors = []string{"TypeInfo"}
 
-func (ec *executionContext) _TypeInfo(ctx context.Context, sel ast.SelectionSet, obj *TypeInfo) graphql.Marshaler {
+func (ec *executionContext) _TypeInfo(ctx context.Context, sel ast.SelectionSet, obj *graph.TypeInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, typeInfoImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -7058,7 +7059,7 @@ func (ec *executionContext) _TypeInfo(ctx context.Context, sel ast.SelectionSet,
 
 var varInfoImplementors = []string{"VarInfo"}
 
-func (ec *executionContext) _VarInfo(ctx context.Context, sel ast.SelectionSet, obj *VarInfo) graphql.Marshaler {
+func (ec *executionContext) _VarInfo(ctx context.Context, sel ast.SelectionSet, obj *graph.VarInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, varInfoImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -7107,7 +7108,7 @@ func (ec *executionContext) _VarInfo(ctx context.Context, sel ast.SelectionSet, 
 
 var varsAndTypesImplementors = []string{"VarsAndTypes"}
 
-func (ec *executionContext) _VarsAndTypes(ctx context.Context, sel ast.SelectionSet, obj *VarsAndTypes) graphql.Marshaler {
+func (ec *executionContext) _VarsAndTypes(ctx context.Context, sel ast.SelectionSet, obj *graph.VarsAndTypes) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, varsAndTypesImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -7477,7 +7478,7 @@ func (ec *executionContext) marshalNCollectSpec2stacksvizᚋentᚐCollectSpec(ct
 	return ec._CollectSpec(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCollectSpec2ᚕᚖstacksvizᚋentᚐCollectSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.CollectSpec) graphql.Marshaler {
+func (ec *executionContext) marshalNCollectSpec2ᚕstacksvizᚋentᚐCollectSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []ent.CollectSpec) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7501,7 +7502,7 @@ func (ec *executionContext) marshalNCollectSpec2ᚕᚖstacksvizᚋentᚐCollectS
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, sel, v[i])
+			ret[i] = ec.marshalNCollectSpec2stacksvizᚋentᚐCollectSpec(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7531,7 +7532,11 @@ func (ec *executionContext) marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec
 	return ec._CollectSpec(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNCollectedVar2ᚕᚖstacksvizᚐCollectedVarᚄ(ctx context.Context, sel ast.SelectionSet, v []*CollectedVar) graphql.Marshaler {
+func (ec *executionContext) marshalNCollectedVar2stacksvizᚋgraphᚐCollectedVar(ctx context.Context, sel ast.SelectionSet, v graph.CollectedVar) graphql.Marshaler {
+	return ec._CollectedVar(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCollectedVar2ᚕstacksvizᚋgraphᚐCollectedVarᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.CollectedVar) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7555,7 +7560,7 @@ func (ec *executionContext) marshalNCollectedVar2ᚕᚖstacksvizᚐCollectedVar�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCollectedVar2ᚖstacksvizᚐCollectedVar(ctx, sel, v[i])
+			ret[i] = ec.marshalNCollectedVar2stacksvizᚋgraphᚐCollectedVar(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7575,17 +7580,11 @@ func (ec *executionContext) marshalNCollectedVar2ᚕᚖstacksvizᚐCollectedVar�
 	return ret
 }
 
-func (ec *executionContext) marshalNCollectedVar2ᚖstacksvizᚐCollectedVar(ctx context.Context, sel ast.SelectionSet, v *CollectedVar) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._CollectedVar(ctx, sel, v)
+func (ec *executionContext) marshalNCollection2stacksvizᚋentᚐCollection(ctx context.Context, sel ast.SelectionSet, v ent.Collection) graphql.Marshaler {
+	return ec._Collection(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCollection2ᚕᚖstacksvizᚋentᚐCollectionᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Collection) graphql.Marshaler {
+func (ec *executionContext) marshalNCollection2ᚕstacksvizᚋentᚐCollectionᚄ(ctx context.Context, sel ast.SelectionSet, v []ent.Collection) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7609,7 +7608,7 @@ func (ec *executionContext) marshalNCollection2ᚕᚖstacksvizᚋentᚐCollectio
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCollection2ᚖstacksvizᚋentᚐCollection(ctx, sel, v[i])
+			ret[i] = ec.marshalNCollection2stacksvizᚋentᚐCollection(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7629,17 +7628,15 @@ func (ec *executionContext) marshalNCollection2ᚕᚖstacksvizᚋentᚐCollectio
 	return ret
 }
 
-func (ec *executionContext) marshalNCollection2ᚖstacksvizᚋentᚐCollection(ctx context.Context, sel ast.SelectionSet, v *ent.Collection) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Collection(ctx, sel, v)
+func (ec *executionContext) marshalNFieldInfo2stacksvizᚋgraphᚐFieldInfo(ctx context.Context, sel ast.SelectionSet, v graph.FieldInfo) graphql.Marshaler {
+	return ec._FieldInfo(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNFrameInfo2ᚕᚖstacksvizᚐFrameInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*FrameInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNFrameInfo2stacksvizᚋgraphᚐFrameInfo(ctx context.Context, sel ast.SelectionSet, v graph.FrameInfo) graphql.Marshaler {
+	return ec._FrameInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFrameInfo2ᚕstacksvizᚋgraphᚐFrameInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.FrameInfo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7663,7 +7660,7 @@ func (ec *executionContext) marshalNFrameInfo2ᚕᚖstacksvizᚐFrameInfoᚄ(ctx
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNFrameInfo2ᚖstacksvizᚐFrameInfo(ctx, sel, v[i])
+			ret[i] = ec.marshalNFrameInfo2stacksvizᚋgraphᚐFrameInfo(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7683,17 +7680,11 @@ func (ec *executionContext) marshalNFrameInfo2ᚕᚖstacksvizᚐFrameInfoᚄ(ctx
 	return ret
 }
 
-func (ec *executionContext) marshalNFrameInfo2ᚖstacksvizᚐFrameInfo(ctx context.Context, sel ast.SelectionSet, v *FrameInfo) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._FrameInfo(ctx, sel, v)
+func (ec *executionContext) marshalNFrameSpec2stacksvizᚋentᚐFrameSpec(ctx context.Context, sel ast.SelectionSet, v ent.FrameSpec) graphql.Marshaler {
+	return ec._FrameSpec(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameSpec) graphql.Marshaler {
+func (ec *executionContext) marshalNFrameSpec2ᚕstacksvizᚋentᚐFrameSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []ent.FrameSpec) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7717,7 +7708,7 @@ func (ec *executionContext) marshalNFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpec�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx, sel, v[i])
+			ret[i] = ec.marshalNFrameSpec2stacksvizᚋentᚐFrameSpec(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7747,7 +7738,11 @@ func (ec *executionContext) marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx
 	return ec._FrameSpec(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*GoroutineInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNGoroutineInfo2stacksvizᚋgraphᚐGoroutineInfo(ctx context.Context, sel ast.SelectionSet, v graph.GoroutineInfo) graphql.Marshaler {
+	return ec._GoroutineInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGoroutineInfo2ᚕstacksvizᚋgraphᚐGoroutineInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.GoroutineInfo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7771,7 +7766,7 @@ func (ec *executionContext) marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInf
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGoroutineInfo2ᚖstacksvizᚐGoroutineInfo(ctx, sel, v[i])
+			ret[i] = ec.marshalNGoroutineInfo2stacksvizᚋgraphᚐGoroutineInfo(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7791,17 +7786,11 @@ func (ec *executionContext) marshalNGoroutineInfo2ᚕᚖstacksvizᚐGoroutineInf
 	return ret
 }
 
-func (ec *executionContext) marshalNGoroutineInfo2ᚖstacksvizᚐGoroutineInfo(ctx context.Context, sel ast.SelectionSet, v *GoroutineInfo) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._GoroutineInfo(ctx, sel, v)
+func (ec *executionContext) marshalNGoroutinesGroup2stacksvizᚋgraphᚐGoroutinesGroup(ctx context.Context, sel ast.SelectionSet, v graph.GoroutinesGroup) graphql.Marshaler {
+	return ec._GoroutinesGroup(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNGoroutinesGroup2ᚕᚖstacksvizᚐGoroutinesGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*GoroutinesGroup) graphql.Marshaler {
+func (ec *executionContext) marshalNGoroutinesGroup2ᚕstacksvizᚋgraphᚐGoroutinesGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.GoroutinesGroup) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7825,7 +7814,7 @@ func (ec *executionContext) marshalNGoroutinesGroup2ᚕᚖstacksvizᚐGoroutines
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGoroutinesGroup2ᚖstacksvizᚐGoroutinesGroup(ctx, sel, v[i])
+			ret[i] = ec.marshalNGoroutinesGroup2stacksvizᚋgraphᚐGoroutinesGroup(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7843,16 +7832,6 @@ func (ec *executionContext) marshalNGoroutinesGroup2ᚕᚖstacksvizᚐGoroutines
 	}
 
 	return ret
-}
-
-func (ec *executionContext) marshalNGoroutinesGroup2ᚖstacksvizᚐGoroutinesGroup(ctx context.Context, sel ast.SelectionSet, v *GoroutinesGroup) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._GoroutinesGroup(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNID2int(ctx context.Context, v interface{}) (int, error) {
@@ -7949,7 +7928,11 @@ func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.S
 	return ret
 }
 
-func (ec *executionContext) marshalNLink2ᚕᚖstacksvizᚐLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []*Link) graphql.Marshaler {
+func (ec *executionContext) marshalNLink2stacksvizᚋgraphᚐLink(ctx context.Context, sel ast.SelectionSet, v graph.Link) graphql.Marshaler {
+	return ec._Link(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLink2ᚕstacksvizᚋgraphᚐLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.Link) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7973,7 +7956,7 @@ func (ec *executionContext) marshalNLink2ᚕᚖstacksvizᚐLinkᚄ(ctx context.C
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNLink2ᚖstacksvizᚐLink(ctx, sel, v[i])
+			ret[i] = ec.marshalNLink2stacksvizᚋgraphᚐLink(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7991,16 +7974,6 @@ func (ec *executionContext) marshalNLink2ᚕᚖstacksvizᚐLinkᚄ(ctx context.C
 	}
 
 	return ret
-}
-
-func (ec *executionContext) marshalNLink2ᚖstacksvizᚐLink(ctx context.Context, sel ast.SelectionSet, v *Link) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Link(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNode2ᚕstacksvizᚋentᚐNoder(ctx context.Context, sel ast.SelectionSet, v []ent.Noder) graphql.Marshaler {
@@ -8041,7 +8014,11 @@ func (ec *executionContext) marshalNNode2ᚕstacksvizᚋentᚐNoder(ctx context.
 	return ret
 }
 
-func (ec *executionContext) marshalNProcessSnapshot2ᚕᚖstacksvizᚋentᚐProcessSnapshotᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.ProcessSnapshot) graphql.Marshaler {
+func (ec *executionContext) marshalNProcessSnapshot2stacksvizᚋentᚐProcessSnapshot(ctx context.Context, sel ast.SelectionSet, v ent.ProcessSnapshot) graphql.Marshaler {
+	return ec._ProcessSnapshot(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProcessSnapshot2ᚕstacksvizᚋentᚐProcessSnapshotᚄ(ctx context.Context, sel ast.SelectionSet, v []ent.ProcessSnapshot) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -8065,7 +8042,7 @@ func (ec *executionContext) marshalNProcessSnapshot2ᚕᚖstacksvizᚋentᚐProc
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNProcessSnapshot2ᚖstacksvizᚋentᚐProcessSnapshot(ctx, sel, v[i])
+			ret[i] = ec.marshalNProcessSnapshot2stacksvizᚋentᚐProcessSnapshot(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8095,11 +8072,11 @@ func (ec *executionContext) marshalNProcessSnapshot2ᚖstacksvizᚋentᚐProcess
 	return ec._ProcessSnapshot(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSnapshotInfo2stacksvizᚐSnapshotInfo(ctx context.Context, sel ast.SelectionSet, v SnapshotInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNSnapshotInfo2stacksvizᚋgraphᚐSnapshotInfo(ctx context.Context, sel ast.SelectionSet, v graph.SnapshotInfo) graphql.Marshaler {
 	return ec._SnapshotInfo(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSnapshotInfo2ᚖstacksvizᚐSnapshotInfo(ctx context.Context, sel ast.SelectionSet, v *SnapshotInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNSnapshotInfo2ᚖstacksvizᚋgraphᚐSnapshotInfo(ctx context.Context, sel ast.SelectionSet, v *graph.SnapshotInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -8156,11 +8133,11 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	return ret
 }
 
-func (ec *executionContext) marshalNTypeInfo2stacksvizᚐTypeInfo(ctx context.Context, sel ast.SelectionSet, v TypeInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNTypeInfo2stacksvizᚋgraphᚐTypeInfo(ctx context.Context, sel ast.SelectionSet, v graph.TypeInfo) graphql.Marshaler {
 	return ec._TypeInfo(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*TypeInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNTypeInfo2ᚕstacksvizᚋgraphᚐTypeInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.TypeInfo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -8184,7 +8161,7 @@ func (ec *executionContext) marshalNTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx c
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx, sel, v[i])
+			ret[i] = ec.marshalNTypeInfo2stacksvizᚋgraphᚐTypeInfo(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8204,7 +8181,7 @@ func (ec *executionContext) marshalNTypeInfo2ᚕᚖstacksvizᚐTypeInfoᚄ(ctx c
 	return ret
 }
 
-func (ec *executionContext) marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx context.Context, sel ast.SelectionSet, v *TypeInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNTypeInfo2ᚖstacksvizᚋgraphᚐTypeInfo(ctx context.Context, sel ast.SelectionSet, v *graph.TypeInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -8214,7 +8191,11 @@ func (ec *executionContext) marshalNTypeInfo2ᚖstacksvizᚐTypeInfo(ctx context
 	return ec._TypeInfo(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*VarInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNVarInfo2stacksvizᚋgraphᚐVarInfo(ctx context.Context, sel ast.SelectionSet, v graph.VarInfo) graphql.Marshaler {
+	return ec._VarInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNVarInfo2ᚕstacksvizᚋgraphᚐVarInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.VarInfo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -8238,7 +8219,7 @@ func (ec *executionContext) marshalNVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx con
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNVarInfo2ᚖstacksvizᚐVarInfo(ctx, sel, v[i])
+			ret[i] = ec.marshalNVarInfo2stacksvizᚋgraphᚐVarInfo(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8258,21 +8239,11 @@ func (ec *executionContext) marshalNVarInfo2ᚕᚖstacksvizᚐVarInfoᚄ(ctx con
 	return ret
 }
 
-func (ec *executionContext) marshalNVarInfo2ᚖstacksvizᚐVarInfo(ctx context.Context, sel ast.SelectionSet, v *VarInfo) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._VarInfo(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNVarsAndTypes2stacksvizᚐVarsAndTypes(ctx context.Context, sel ast.SelectionSet, v VarsAndTypes) graphql.Marshaler {
+func (ec *executionContext) marshalNVarsAndTypes2stacksvizᚋgraphᚐVarsAndTypes(ctx context.Context, sel ast.SelectionSet, v graph.VarsAndTypes) graphql.Marshaler {
 	return ec._VarsAndTypes(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNVarsAndTypes2ᚖstacksvizᚐVarsAndTypes(ctx context.Context, sel ast.SelectionSet, v *VarsAndTypes) graphql.Marshaler {
+func (ec *executionContext) marshalNVarsAndTypes2ᚖstacksvizᚋgraphᚐVarsAndTypes(ctx context.Context, sel ast.SelectionSet, v *graph.VarsAndTypes) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -8592,7 +8563,7 @@ func (ec *executionContext) marshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCu
 	return v
 }
 
-func (ec *executionContext) marshalOFieldInfo2ᚕᚖstacksvizᚐFieldInfo(ctx context.Context, sel ast.SelectionSet, v []*FieldInfo) graphql.Marshaler {
+func (ec *executionContext) marshalOFieldInfo2ᚕstacksvizᚋgraphᚐFieldInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.FieldInfo) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -8619,7 +8590,7 @@ func (ec *executionContext) marshalOFieldInfo2ᚕᚖstacksvizᚐFieldInfo(ctx co
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOFieldInfo2ᚖstacksvizᚐFieldInfo(ctx, sel, v[i])
+			ret[i] = ec.marshalNFieldInfo2stacksvizᚋgraphᚐFieldInfo(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8630,14 +8601,13 @@ func (ec *executionContext) marshalOFieldInfo2ᚕᚖstacksvizᚐFieldInfo(ctx co
 	}
 	wg.Wait()
 
-	return ret
-}
-
-func (ec *executionContext) marshalOFieldInfo2ᚖstacksvizᚐFieldInfo(ctx context.Context, sel ast.SelectionSet, v *FieldInfo) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
 	}
-	return ec._FieldInfo(ctx, sel, v)
+
+	return ret
 }
 
 func (ec *executionContext) marshalOFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameSpec) graphql.Marshaler {

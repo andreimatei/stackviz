@@ -11,14 +11,12 @@
 package stacks
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"github.com/andreimatei/delve-agent/agentrpc"
-	weightedtree "github.com/google/traceviz/server/go/weighted_tree"
 	pp "github.com/maruel/panicparse/v2/stack"
-	"hash/fnv"
 	"stacksviz/ent"
+	"stacksviz/graph"
 	"strconv"
 	"strings"
 )
@@ -29,21 +27,12 @@ type FramesOfInterest map[int]map[int][]agentrpc.CapturedExpr
 // goroutineID to frame index to list of variables
 type FOIS map[int]map[int]ProcessedFOI
 type ProcessedFOI struct {
-	Vars []VarInfo
-}
-type VarInfo struct {
-	Expr  string
-	Value string
-	Links []Link
-}
-type Link struct {
-	SnapshotID  int
-	GoroutineID int
-	FrameIdx    int
+	Vars []graph.CollectedVar
 }
 type Frame struct {
 	call pp.Call
-	vars []VarInfo
+	// Goroutine ID to captured variables.
+	vars []graph.CollectedVar
 }
 
 // BuildTree builds a trie out of the stack traces in snap.
@@ -56,9 +45,6 @@ func BuildTree(snap *pp.Snapshot, capturedData FOIS) *TreeNode {
 			Complete: "root",
 			Name:     "root",
 		},
-		// The root doesn't have a path, as per weightedtree.TreeNode
-		// convention.
-		path: nil,
 	}
 	for _, s := range snap.Goroutines {
 		// Join the stack trace with the variable data. Also invert the stack; we
@@ -72,42 +58,13 @@ func BuildTree(snap *pp.Snapshot, capturedData FOIS) *TreeNode {
 				vars: myFois[i].Vars,
 			}
 		}
-		root.addStack(stack)
+		root.addStack(s.ID, stack)
 	}
 	return root
 }
 
-// !!!
-//func FindLinks(v string, snaps []*ent.ProcessSnapshot) []Link {
-//	var res []Link
-//	for _, s := range snaps {
-//		if s.FramesOfInterest == "" {
-//			continue
-//		}
-//		var fois FramesOfInterest
-//		if err := json.Unmarshal([]byte(s.FramesOfInterest), &fois); err != nil {
-//			panic(err)
-//		}
-//		for gid, m := range fois {
-//			for frameIdx, vars := range m {
-//				for _, vv := range vars {
-//					if vv == v {
-//						res = append(res, Link{
-//							SnapshotID:  s.ID,
-//							GoroutineID: gid,
-//							FrameIdx:    frameIdx,
-//						})
-//					}
-//				}
-//			}
-//		}
-//	}
-//
-//	return res
-//}
-
-func ComputeLinks(snaps []*ent.ProcessSnapshot) map[string][]Link {
-	res := make(map[string][]Link)
+func ComputeLinks(snaps []*ent.ProcessSnapshot) map[string][]graph.Link {
+	res := make(map[string][]graph.Link)
 	for _, s := range snaps {
 		if s.FramesOfInterest == "" {
 			continue
@@ -121,7 +78,7 @@ func ComputeLinks(snaps []*ent.ProcessSnapshot) map[string][]Link {
 			for frameIdx, vars := range frameIdxToVars {
 				for _, v := range vars {
 					res[v.Val] = append(res[v.Val],
-						Link{
+						graph.Link{
 							SnapshotID:  s.ID,
 							GoroutineID: gid,
 							FrameIdx:    frameIdx,
@@ -129,6 +86,22 @@ func ComputeLinks(snaps []*ent.ProcessSnapshot) map[string][]Link {
 				}
 			}
 		}
+	}
+	return res
+}
+
+func LinksExcludingSelf(links []graph.Link, gid int) []graph.Link {
+	if len(links) == 0 {
+		panic("!!! no links")
+	}
+	res := make([]graph.Link, len(links)-1)
+	i := 0
+	for _, l := range links {
+		if l.GoroutineID == gid {
+			continue
+		}
+		res[i] = l
+		i++
 	}
 	return res
 }
@@ -141,10 +114,8 @@ type TreeNode struct {
 	File     string
 	Line     int
 	PcOffset int64
-	Vars     [][]VarInfo
-	// path is the path from the root to this node, represented by hashes of
-	// each ancestor's Function.
-	path     []weightedtree.ScopeID
+	// Goroutine ID to list of variables captured in that goroutine.
+	Vars     map[int][]graph.CollectedVar
 	children []TreeNode
 	// NumLeafGoroutines counts how many goroutines have this node as their leaf
 	// function. This results in the "self magnitude" of the node when rendered
@@ -152,51 +123,6 @@ type TreeNode struct {
 	// the sum of the children's weights.
 	NumLeafGoroutines int
 	NumGoroutines     int
-}
-
-// scopeID returns the identifier for this node.
-func (t *TreeNode) scopeID() weightedtree.ScopeID {
-	if len(t.path) > 0 {
-		return t.path[len(t.path)-1]
-	}
-	return 0
-}
-
-var _ weightedtree.TreeNode = &TreeNode{}
-
-// Path is part of the weightedtree.TreeNode interface.
-func (t *TreeNode) Path() []weightedtree.ScopeID {
-	return t.path
-}
-
-func (t *TreeNode) pathAsStrings() []string {
-	path := make([]string, len(t.Path()))
-	for i, p := range t.Path() {
-		path[i] = strconv.FormatUint(uint64(p), 10)
-	}
-	return path
-}
-
-// Children is part of the weightedtree.TreeNode interface.
-func (t *TreeNode) Children(ids ...weightedtree.ScopeID) ([]weightedtree.TreeNode, error) {
-	res := make([]weightedtree.TreeNode, 0, len(ids))
-	for i := range t.children {
-		c := &t.children[i]
-		add := false
-		if len(ids) > 0 {
-			for _, id := range ids {
-				if c.scopeID() == id {
-					add = true
-				}
-			}
-		} else {
-			add = true
-		}
-		if add {
-			res = append(res, c)
-		}
-	}
-	return res, nil
 }
 
 func (t *TreeNode) prettyPrint() {
@@ -208,7 +134,7 @@ func (t *TreeNode) prettyPrintInner(indent int) {
 	for i := 0; i < indent; i++ {
 		sb.WriteRune('\t')
 	}
-	fmt.Printf("%s(%d) %s (%s:%d) (%v)\n", sb.String(), t.NumLeafGoroutines, t.Function.Complete, t.File, t.Line, t.path)
+	fmt.Printf("%s(%d) %s (%s:%d)\n", sb.String(), t.NumLeafGoroutines, t.Function.Complete, t.File, t.Line)
 	for i := range t.children {
 		t.children[i].prettyPrintInner(indent + 1)
 	}
@@ -228,7 +154,7 @@ func (t *TreeNode) findChild(file string, line int) *TreeNode {
 
 // addStack adds the stack to the tree rooted at t, creating new nodes for calls
 // that don't yet exist.
-func (t *TreeNode) addStack(stack []Frame) {
+func (t *TreeNode) addStack(gid int, stack []Frame) {
 	t.NumGoroutines++
 	if len(stack) == 0 {
 		// t is a leaf for the stack that we just finished processing.
@@ -238,17 +164,17 @@ func (t *TreeNode) addStack(stack []Frame) {
 	child := t.findChild(stack[0].call.RemoteSrcPath, stack[0].call.Line)
 	if child != nil {
 		if len(stack[0].vars) > 0 {
-			child.Vars = append(child.Vars, stack[0].vars)
+			child.Vars[gid] = stack[0].vars
 		}
-		child.addStack(stack[1:])
+		child.addStack(gid, stack[1:])
 	} else {
-		t.createPath(stack)
+		t.createPath(gid, stack)
 	}
 }
 
 // createPath adds children to t recursively such that the tree gets the path
 // t -> stack[0] -> stack[1] -> ...
-func (t *TreeNode) createPath(stack []Frame) {
+func (t *TreeNode) createPath(gid int, stack []Frame) {
 	t.NumGoroutines++
 	if len(stack) == 0 {
 		// The stack had t as a leaf function.
@@ -256,21 +182,20 @@ func (t *TreeNode) createPath(stack []Frame) {
 		return
 	}
 	call := &stack[0].call
-	var vars [][]VarInfo
+	var vars = make(map[int][]graph.CollectedVar)
 	if len(stack[0].vars) > 0 {
-		vars = [][]VarInfo{stack[0].vars}
+		vars[gid] = stack[0].vars
 	}
 	t.children = append(t.children, TreeNode{
 		Function:          call.Func,
 		File:              call.RemoteSrcPath,
 		Line:              call.Line,
 		PcOffset:          call.PCOffset,
-		path:              append(t.path, ComputeScopeID(call)),
 		children:          nil,
 		NumLeafGoroutines: 0,
 		Vars:              vars,
 	})
-	t.children[len(t.children)-1].createPath(stack[1:])
+	t.children[len(t.children)-1].createPath(gid, stack[1:])
 }
 
 var _ json.Marshaler = &TreeNode{}
@@ -350,30 +275,9 @@ func (t *TreeNode) MarshalJSON() ([]byte, error) {
 }
 
 func (t *TreeNode) ToJSON() string {
-	// !!!
-	//xxx, err := t.MarshalJSON()
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Printf("!!! json: %s", xxx)
-
 	s, err := json.Marshal(t)
 	if err != nil {
 		panic(err)
 	}
 	return string(s)
-}
-
-func ComputeScopeID(call *pp.Call) weightedtree.ScopeID {
-	return computeScopeIDInner(call.Func.Complete, call.RemoteSrcPath, uint32(call.Line))
-}
-
-func computeScopeIDInner(funcName string, file string, line uint32) weightedtree.ScopeID {
-	hash := fnv.New64()
-	hash.Write([]byte(funcName))
-	hash.Write([]byte(file))
-	bs := make([]byte, 4)
-	binary.LittleEndian.PutUint32(bs, line)
-	hash.Write(bs)
-	return weightedtree.ScopeID(hash.Sum64())
 }

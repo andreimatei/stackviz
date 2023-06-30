@@ -1,10 +1,10 @@
 import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
 import {
-  AddExprToCollectSpecGQL, FrameSpec,
+  AddExprToCollectSpecGQL, CollectedVar, FrameInfo, FrameSpec,
   GetAvailableVariablesGQL,
   GetCollectionGQL, GetCollectSpecGQL,
-  GetGoroutinesGQL,
-  GetTreeGQL,
+  GetGoroutinesGQL, GetGoroutinesQuery,
+  GetTreeGQL, GoroutineInfo,
   ProcessSnapshot,
   RemoveExprFromCollectSpecGQL
 } from "../../graphql/graphql-codegen-generated";
@@ -20,15 +20,16 @@ import {
 } from "../flamegraph/flamegraph.component";
 import {
   debounceTime,
-  distinctUntilChanged,
+  distinctUntilChanged, from,
   map,
   merge,
-  Observable,
+  Observable, of,
   pipe,
   Subject,
   tap
 } from "rxjs";
 import { StacksComponent } from "../stacks/stacks.component";
+import { GoroutineData } from "../captured-data/captured-data.component";
 
 class Frame {
   constructor(public name: string, public file: string, public line: number) {
@@ -90,7 +91,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshots?: Partial<ProcessSnapshot>[];
 
 
-  protected capturedData$: any;
+  protected capturedData$!: Observable<GoroutineData[]>;
 
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   @ViewChild(TypeInfoComponent) typeInfo?: TypeInfoComponent;
@@ -102,7 +103,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   // Data about the selected node. Each element is a string containing all the
   // captured variables from one frame (where all frames correspond to the
   // selected node).
-  protected funcInfo?: VarInfo[][];
+  protected funcInfo?: Map<number,VarInfo[]>;
 
   protected loadingAvailableVars: boolean = false;
 
@@ -233,7 +234,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.varsQuery.fetch({func: node.details, pcOff: node.pcoff})
       .subscribe(
         results => {
-          console.log("got results");
+          console.log("got results", results);
           this.loadingAvailableVars = false;
           if (results.error) {
             console.log("err: ", results.error)
@@ -242,7 +243,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
           this.typeInfo!.dataSource.initData(
             results.data.availableVars.Vars,
             results.data.availableVars.Types,
-            results.data.collectSpec ? results.data.collectSpec[0].exprs : [],
+            results.data.collectSpec.length > 0 ? results.data.collectSpec[0].exprs : [],
           )
         })
     this.frameDetailsSidebar.open();
@@ -251,6 +252,9 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   validateResize(event: ResizeEvent): boolean {
     return true;
   }
+
+  protected readonly from = from;
+  protected readonly of = of;
 }
 
 interface parsedFilter {

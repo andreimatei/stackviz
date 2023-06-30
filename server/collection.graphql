@@ -32,7 +32,7 @@ type VarInfo {
 
 type TypeInfo {
   Name: String!
-  Fields: [FieldInfo]
+  Fields: [FieldInfo!]
   FieldsNotLoaded: Boolean!
 }
 
