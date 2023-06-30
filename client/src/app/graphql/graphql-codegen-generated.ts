@@ -187,10 +187,10 @@ export type ProcessSnapshot = Node & {
 export type Query = {
   __typename?: 'Query';
   availableVars: VarsAndTypes;
+  collectSpec: Array<FrameSpec>;
   collectSpecs: Array<CollectSpec>;
   collectionByID?: Maybe<Collection>;
   collections: Array<Collection>;
-  frameInfo?: Maybe<FrameSpec>;
   frameSpecs: Array<FrameSpec>;
   getTree: Scalars['String'];
   goroutines: SnapshotInfo;
@@ -209,13 +209,13 @@ export type QueryAvailableVarsArgs = {
 };
 
 
-export type QueryCollectionByIdArgs = {
-  id: Scalars['ID'];
+export type QueryCollectSpecArgs = {
+  func?: InputMaybe<Scalars['String']>;
 };
 
 
-export type QueryFrameInfoArgs = {
-  func: Scalars['String'];
+export type QueryCollectionByIdArgs = {
+  id: Scalars['ID'];
 };
 
 
@@ -315,7 +315,7 @@ export type GetAvailableVariablesQueryVariables = Exact<{
 }>;
 
 
-export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars: Array<{ __typename?: 'VarInfo', Name: string, Type: string, FormalParameter: boolean, LoclistAvailable: boolean }>, Types: Array<{ __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean } | null> | null }> }, frameInfo?: { __typename?: 'FrameSpec', exprs: Array<string> } | null };
+export type GetAvailableVariablesQuery = { __typename?: 'Query', availableVars: { __typename?: 'VarsAndTypes', Vars: Array<{ __typename?: 'VarInfo', Name: string, Type: string, FormalParameter: boolean, LoclistAvailable: boolean }>, Types: Array<{ __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean } | null> | null }> }, collectSpec: Array<{ __typename?: 'FrameSpec', exprs: Array<string> }> };
 
 export type GetTypeInfoQueryVariables = Exact<{
   name: Scalars['String'];
@@ -343,6 +343,11 @@ export type GetTreeQueryVariables = Exact<{
 
 
 export type GetTreeQuery = { __typename?: 'Query', getTree: string };
+
+export type GetCollectSpecQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetCollectSpecQuery = { __typename?: 'Query', collectSpec: Array<{ __typename?: 'FrameSpec', frame: string, exprs: Array<string> }> };
 
 export const AllCollectionsDocument = gql`
     query AllCollections {
@@ -465,7 +470,7 @@ export const GetAvailableVariablesDocument = gql`
       FieldsNotLoaded
     }
   }
-  frameInfo(func: $func) {
+  collectSpec(func: $func) {
     exprs
   }
 }
@@ -567,6 +572,25 @@ export const GetTreeDocument = gql`
   })
   export class GetTreeGQL extends Apollo.Query<GetTreeQuery, GetTreeQueryVariables> {
     override document = GetTreeDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const GetCollectSpecDocument = gql`
+    query GetCollectSpec {
+  collectSpec {
+    frame
+    exprs
+  }
+}
+    `;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class GetCollectSpecGQL extends Apollo.Query<GetCollectSpecQuery, GetCollectSpecQueryVariables> {
+    override document = GetCollectSpecDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);

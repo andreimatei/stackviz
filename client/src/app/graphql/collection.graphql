@@ -58,7 +58,7 @@ query GetAvailableVariables($func: String!, $pcOff: Int!) {
       FieldsNotLoaded
     }
   }
-  frameInfo(func: $func) {
+  collectSpec(func: $func) {
     exprs
   }
 }
@@ -116,4 +116,11 @@ query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
 
 query GetTree($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
   getTree(colID: $colID, snapID: $snapID, gID: $gID, filter: $filter)
+}
+
+query GetCollectSpec {
+  collectSpec {
+    frame
+    exprs
+  }
 }

@@ -34,9 +34,6 @@ import { RouterLink } from "@angular/router";
                             >
                               Snapshot: {{l.SnapshotID}} Goroutine: {{l.GoroutineID}}
                             </a>
-<!--                              <a href="/collections/{{collectionID}}/snap/{{l.SnapshotID}}?filter={{encodeURIComponent('gid=')}}{{l.GoroutineID}}">-->
-<!--                                  Snapshot: {{l.SnapshotID}} Goroutine: {{l.GoroutineID}}-->
-<!--                              </a>-->
                           </li>
                       </ul>
                   </div>

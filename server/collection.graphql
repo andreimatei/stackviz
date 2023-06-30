@@ -10,7 +10,10 @@ extend type Query {
   collectionByID(id: ID!): Collection
   goroutines(colID: Int!, snapID: Int!, gID: Int, filter: String): SnapshotInfo!
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
-  frameInfo(func: String!): FrameSpec
+  # collectSpec returns the expressions that are to be collected for various
+  # frames. If func is specified, only the expressions for the respective
+  # function are returned.
+  collectSpec(func: String): [FrameSpec!]!
   typeInfo(name: String!): TypeInfo!
   getTree(colID: Int!, snapID: Int!, gID: Int, filter: String): String!
 }

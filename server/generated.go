@@ -122,10 +122,10 @@ type ComplexityRoot struct {
 
 	Query struct {
 		AvailableVars    func(childComplexity int, funcArg string, pcOff int) int
+		CollectSpec      func(childComplexity int, funcArg *string) int
 		CollectSpecs     func(childComplexity int) int
 		CollectionByID   func(childComplexity int, id int) int
 		Collections      func(childComplexity int) int
-		FrameInfo        func(childComplexity int, funcArg string) int
 		FrameSpecs       func(childComplexity int) int
 		GetTree          func(childComplexity int, colID int, snapID int, gID *int, filter *string) int
 		Goroutines       func(childComplexity int, colID int, snapID int, gID *int, filter *string) int
@@ -175,7 +175,7 @@ type QueryResolver interface {
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
 	Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*SnapshotInfo, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*VarsAndTypes, error)
-	FrameInfo(ctx context.Context, funcArg string) (*ent.FrameSpec, error)
+	CollectSpec(ctx context.Context, funcArg *string) ([]*ent.FrameSpec, error)
 	TypeInfo(ctx context.Context, name string) (*TypeInfo, error)
 	GetTree(ctx context.Context, colID int, snapID int, gID *int, filter *string) (string, error)
 }
@@ -488,6 +488,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.AvailableVars(childComplexity, args["func"].(string), args["pcOff"].(int)), true
 
+	case "Query.collectSpec":
+		if e.complexity.Query.CollectSpec == nil {
+			break
+		}
+
+		args, err := ec.field_Query_collectSpec_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CollectSpec(childComplexity, args["func"].(*string)), true
+
 	case "Query.collectSpecs":
 		if e.complexity.Query.CollectSpecs == nil {
 			break
@@ -513,18 +525,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Collections(childComplexity), true
-
-	case "Query.frameInfo":
-		if e.complexity.Query.FrameInfo == nil {
-			break
-		}
-
-		args, err := ec.field_Query_frameInfo_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.FrameInfo(childComplexity, args["func"].(string)), true
 
 	case "Query.frameSpecs":
 		if e.complexity.Query.FrameSpecs == nil {
@@ -871,6 +871,21 @@ func (ec *executionContext) field_Query_availableVars_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_collectSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["func"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("func"))
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["func"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_collectionByID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -883,21 +898,6 @@ func (ec *executionContext) field_Query_collectionByID_args(ctx context.Context,
 		}
 	}
 	args["id"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_frameInfo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["func"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("func"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["func"] = arg0
 	return args, nil
 }
 
@@ -3335,8 +3335,8 @@ func (ec *executionContext) fieldContext_Query_availableVars(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_frameInfo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_frameInfo(ctx, field)
+func (ec *executionContext) _Query_collectSpec(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_collectSpec(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -3349,21 +3349,24 @@ func (ec *executionContext) _Query_frameInfo(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().FrameInfo(rctx, fc.Args["func"].(string))
+		return ec.resolvers.Query().CollectSpec(rctx, fc.Args["func"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.FrameSpec)
+	res := resTmp.([]*ent.FrameSpec)
 	fc.Result = res
-	return ec.marshalOFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx, field.Selections, res)
+	return ec.marshalNFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_frameInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_collectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -3388,7 +3391,7 @@ func (ec *executionContext) fieldContext_Query_frameInfo(ctx context.Context, fi
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_frameInfo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_collectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -6887,7 +6890,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
-		case "frameInfo":
+		case "collectSpec":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -6896,7 +6899,10 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_frameInfo(ctx, field)
+				res = ec._Query_collectSpec(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -8679,13 +8685,6 @@ func (ec *executionContext) marshalOFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpec�
 	}
 
 	return ret
-}
-
-func (ec *executionContext) marshalOFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx context.Context, sel ast.SelectionSet, v *ent.FrameSpec) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._FrameSpec(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOID2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {

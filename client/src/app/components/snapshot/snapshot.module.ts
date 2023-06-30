@@ -22,6 +22,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TypeInfoComponent } from "./type-info.component";
 import { FlamegraphComponent } from "../flamegraph/flamegraph.component";
 import { FormsModule } from "@angular/forms";
+import { MatTabsModule } from "@angular/material/tabs";
+import { CapturedDataComponent } from "../captured-data/captured-data.component";
 
 
 @NgModule({
@@ -51,6 +53,8 @@ import { FormsModule } from "@angular/forms";
     StacksComponent,
     FlamegraphComponent,
     FormsModule,
+    MatTabsModule,
+    CapturedDataComponent,
   ],
   providers: [],
 })

@@ -1,8 +1,8 @@
 import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
 import {
-  AddExprToCollectSpecGQL,
+  AddExprToCollectSpecGQL, FrameSpec,
   GetAvailableVariablesGQL,
-  GetCollectionGQL,
+  GetCollectionGQL, GetCollectSpecGQL,
   GetGoroutinesGQL,
   GetTreeGQL,
   ProcessSnapshot,
@@ -18,7 +18,16 @@ import {
   Frame as FlameFrame,
   VarInfo
 } from "../flamegraph/flamegraph.component";
-import { debounceTime, distinctUntilChanged, map, merge, Subject, tap } from "rxjs";
+import {
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  merge,
+  Observable,
+  pipe,
+  Subject,
+  tap
+} from "rxjs";
 import { StacksComponent } from "../stacks/stacks.component";
 
 class Frame {
@@ -38,6 +47,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected snapshotID$ = new Subject<number>();
   private _snapshotID!: number;
   @Input('snapID') set snapshotID(val: number) {
+    console.log("snapshot set to", val);
     this._snapshotID = val;
     this.snapshotID$.next(val);
   }
@@ -78,6 +88,10 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   protected collectionName?: string;
   protected snapshots?: Partial<ProcessSnapshot>[];
+
+
+  protected capturedData$: any;
+
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
   @ViewChild(TypeInfoComponent) typeInfo?: TypeInfoComponent;
   @ViewChild('snapshotsSelect') snapSelect!: MatSelect;
@@ -94,6 +108,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
   private treeQuery!: ReturnType<GetTreeGQL["watch"]>;
   private goroutinesQuery!: ReturnType<GetGoroutinesGQL["watch"]>;
+  protected readonly collectSpecQuery$!: Observable<Partial<FrameSpec>[]>;
 
   constructor(
     private readonly getCollectionQuery: GetCollectionGQL,
@@ -102,9 +117,13 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly getTreeQuery: GetTreeGQL,
     private readonly addExpr: AddExprToCollectSpecGQL,
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
+    private readonly collectSpec: GetCollectSpecGQL,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
   ) {
+    this.collectSpecQuery$ = collectSpec.watch().valueChanges.pipe(
+      map(val => val.data.collectSpec),
+    );
   }
 
   ngOnInit(): void {
@@ -147,6 +166,15 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       this.treeQuery.refetch(args);
       this.goroutinesQuery.refetch(args);
     });
+
+    this.capturedData$ = this.goroutinesQuery.valueChanges.pipe(
+      map(res =>
+        res.data.goroutines.Raw
+          .filter(g => g.Vars && g.Vars.length > 0)
+          .map(g => ({gid: g.ID, vars: g.Vars}))
+      ),
+      tap(v => console.log("!!! captured data update:", v)),
+    );
   }
 
   ngAfterViewInit() {
@@ -157,6 +185,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.stacks.data$ = this.goroutinesQuery.valueChanges.pipe(
       map(res => res.data.goroutines)
     );
+
     // TODO(andrei): update the sidebar in response to snapshotID changes
   }
 
@@ -213,7 +242,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
           this.typeInfo!.dataSource.initData(
             results.data.availableVars.Vars,
             results.data.availableVars.Types,
-            results.data.frameInfo ? results.data.frameInfo.exprs : [],
+            results.data.collectSpec ? results.data.collectSpec[0].exprs : [],
           )
         })
     this.frameDetailsSidebar.open();

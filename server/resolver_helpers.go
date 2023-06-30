@@ -97,8 +97,27 @@ func (r *mutationResolver) getOrCreateCollectSpec(ctx context.Context) *ent.Coll
 	}
 	// If there isn't a CollectSpec already, create one.
 	if len(cis) == 0 {
-		return r.dbClient.CollectSpec.Create().SaveX(ctx)
+		cs := r.dbClient.CollectSpec.Create().SaveX(ctx)
+
+		for _, f := range []struct {
+			frame string
+			exprs []string
+		}{
+			{
+				frame: "google.golang.org/grpc.(*csAttempt).recvMsg",
+				exprs: []string{"a.s.id"},
+			},
+			{
+				frame: "google.golang.org/grpc.(*Server).processUnaryRPC",
+				exprs: []string{"stream.id"},
+			},
+		} {
+			fi := r.dbClient.FrameSpec.Create().SetFrame(f.frame).SetExprs(f.exprs).SaveX(ctx)
+			cs = cs.Update().AddFrames(fi).SaveX(ctx)
+		}
+		return cs
 	}
+
 	return cis[0]
 }
 

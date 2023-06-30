@@ -295,16 +295,21 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 }
 
 // FrameInfo is the resolver for the frameInfo field.
-func (r *queryResolver) FrameInfo(ctx context.Context, funcArg string) (*ent.FrameSpec, error) {
-	fi, err := r.dbClient.FrameSpec.Query().Where(framespec.Frame(funcArg)).Only(ctx)
-	nfe := &ent.NotFoundError{}
-	if errors.As(err, &nfe) {
-		return nil, nil
+func (r *queryResolver) CollectSpec(ctx context.Context, funcArg *string) ([]*ent.FrameSpec, error) {
+	q := r.dbClient.FrameSpec.Query()
+	if funcArg != nil {
+		q = q.Where(framespec.Frame(*funcArg))
 	}
+	res, err := q.All(ctx)
+	// !!!
+	//nfe := &ent.NotFoundError{}
+	//if errors.As(err, &nfe) {
+	//	return nil, nil
+	//}
 	if err != nil {
 		return nil, err
 	}
-	return fi, nil
+	return res, nil
 }
 
 // TypeInfo is the resolver for the typeInfo field.
