@@ -26,7 +26,11 @@ import { MatChipListbox, MatChipsModule } from "@angular/material/chips";
     <mat-expansion-panel expanded *ngFor="let goroutine of (filteredData$ | async)">
       <mat-expansion-panel-header>
         <mat-panel-title class="header">
-          Data for goroutine {{goroutine.gid}}
+          Captured data for&nbsp;
+          <a
+            [routerLink]="['/collections', collectionID, 'snap', snapshotID]"
+            [queryParams]="{filter: 'gid=' + goroutine.gid}"
+          >goroutine {{goroutine.gid}}</a>
         </mat-panel-title>
       </mat-expansion-panel-header>
       <table mat-table [dataSource]="goroutine.vars">
@@ -72,6 +76,7 @@ export class CapturedDataComponent {
   @ViewChild('expressionChips') expressionChips!: MatChipListbox;
   protected filteredData$!: Observable<GoroutineData[]>;
   @Input({required: true}) collectionID!: number;
+  @Input({required: true}) snapshotID!: number;
 
   constructor() {
   }

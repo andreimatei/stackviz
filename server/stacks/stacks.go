@@ -94,13 +94,13 @@ func LinksExcludingSelf(links []graph.Link, gid int) []graph.Link {
 	if len(links) == 0 {
 		panic("!!! no links")
 	}
-	res := make([]graph.Link, len(links)-1)
+	res := make([]graph.Link, 0, len(links)-1)
 	i := 0
 	for _, l := range links {
 		if l.GoroutineID == gid {
 			continue
 		}
-		res[i] = l
+		res = append(res, l)
 		i++
 	}
 	return res
