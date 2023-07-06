@@ -25,6 +25,7 @@ GraphQL queries and mutations defined in the `.graphql` files get a generated
 ./cockroach start-single-node --insecure --logtostderr
 ./workload workload run kv --read-percent=100 --concurrency=10
 [sudo sh -c " echo 0 > /proc/sys/kernel/yama/ptrace_scope"]
+[/home/andrei/src/github.com/go-delve/delve]
 ./dlv attach --accept-multiclient `pidof cockroach` --listen=127.0.0.1:45689 --headless --log
 
 [/home/andrei/src/github.com/andreimatei/delve-agent]
