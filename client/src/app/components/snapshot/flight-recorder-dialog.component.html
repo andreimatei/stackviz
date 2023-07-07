@@ -1,0 +1,16 @@
+<div mat-dialog-content>
+  <label id="radio-group-label">Recording key options</label>
+  <mat-radio-group class="key-opt-radio-group" [(ngModel)]="keyOption">
+    <mat-radio-button class="key-opt-radio-button" value="goroutineID" [checked]="true">
+      Key by goroutine ID
+    </mat-radio-button>
+    <mat-radio-button class="key-opt-radio-button" value="custom">
+      <input [(ngModel)]="customKeyExpr" placeholder="Custom key expression">
+    </mat-radio-button>
+  </mat-radio-group>
+</div>
+<div mat-dialog-actions>
+  <!--TODO(andrei): validate that the custom expr is not empty when the respective radio is selected-->
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-button (click)="onOk()" cdkFocusInitial>Ok</button>
+</div>

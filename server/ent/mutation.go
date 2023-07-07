@@ -811,16 +811,20 @@ func (m *CollectionMutation) ResetEdge(name string) error {
 // FrameSpecMutation represents an operation that mutates the FrameSpec nodes in the graph.
 type FrameSpecMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	frame         *string
-	exprs         *[]string
-	appendexprs   []string
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*FrameSpec, error)
-	predicates    []predicate.FrameSpec
+	op                           Op
+	typ                          string
+	id                           *int
+	frame                        *string
+	collect_expressions          *[]string
+	appendcollect_expressions    []string
+	flight_recorder_events       *[]string
+	appendflight_recorder_events []string
+	clearedFields                map[string]struct{}
+	collect_spec_ref             *int
+	clearedcollect_spec_ref      bool
+	done                         bool
+	oldValue                     func(context.Context) (*FrameSpec, error)
+	predicates                   []predicate.FrameSpec
 }
 
 var _ ent.Mutation = (*FrameSpecMutation)(nil)
@@ -957,55 +961,181 @@ func (m *FrameSpecMutation) ResetFrame() {
 	m.frame = nil
 }
 
-// SetExprs sets the "exprs" field.
-func (m *FrameSpecMutation) SetExprs(s []string) {
-	m.exprs = &s
-	m.appendexprs = nil
+// SetCollectSpec sets the "collect_spec" field.
+func (m *FrameSpecMutation) SetCollectSpec(i int) {
+	m.collect_spec_ref = &i
 }
 
-// Exprs returns the value of the "exprs" field in the mutation.
-func (m *FrameSpecMutation) Exprs() (r []string, exists bool) {
-	v := m.exprs
+// CollectSpec returns the value of the "collect_spec" field in the mutation.
+func (m *FrameSpecMutation) CollectSpec() (r int, exists bool) {
+	v := m.collect_spec_ref
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldExprs returns the old "exprs" field's value of the FrameSpec entity.
+// OldCollectSpec returns the old "collect_spec" field's value of the FrameSpec entity.
 // If the FrameSpec object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *FrameSpecMutation) OldExprs(ctx context.Context) (v []string, err error) {
+func (m *FrameSpecMutation) OldCollectSpec(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldExprs is only allowed on UpdateOne operations")
+		return v, errors.New("OldCollectSpec is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldExprs requires an ID field in the mutation")
+		return v, errors.New("OldCollectSpec requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldExprs: %w", err)
+		return v, fmt.Errorf("querying old value for OldCollectSpec: %w", err)
 	}
-	return oldValue.Exprs, nil
+	return oldValue.CollectSpec, nil
 }
 
-// AppendExprs adds s to the "exprs" field.
-func (m *FrameSpecMutation) AppendExprs(s []string) {
-	m.appendexprs = append(m.appendexprs, s...)
+// ResetCollectSpec resets all changes to the "collect_spec" field.
+func (m *FrameSpecMutation) ResetCollectSpec() {
+	m.collect_spec_ref = nil
 }
 
-// AppendedExprs returns the list of values that were appended to the "exprs" field in this mutation.
-func (m *FrameSpecMutation) AppendedExprs() ([]string, bool) {
-	if len(m.appendexprs) == 0 {
+// SetCollectExpressions sets the "collect_expressions" field.
+func (m *FrameSpecMutation) SetCollectExpressions(s []string) {
+	m.collect_expressions = &s
+	m.appendcollect_expressions = nil
+}
+
+// CollectExpressions returns the value of the "collect_expressions" field in the mutation.
+func (m *FrameSpecMutation) CollectExpressions() (r []string, exists bool) {
+	v := m.collect_expressions
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCollectExpressions returns the old "collect_expressions" field's value of the FrameSpec entity.
+// If the FrameSpec object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FrameSpecMutation) OldCollectExpressions(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCollectExpressions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCollectExpressions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCollectExpressions: %w", err)
+	}
+	return oldValue.CollectExpressions, nil
+}
+
+// AppendCollectExpressions adds s to the "collect_expressions" field.
+func (m *FrameSpecMutation) AppendCollectExpressions(s []string) {
+	m.appendcollect_expressions = append(m.appendcollect_expressions, s...)
+}
+
+// AppendedCollectExpressions returns the list of values that were appended to the "collect_expressions" field in this mutation.
+func (m *FrameSpecMutation) AppendedCollectExpressions() ([]string, bool) {
+	if len(m.appendcollect_expressions) == 0 {
 		return nil, false
 	}
-	return m.appendexprs, true
+	return m.appendcollect_expressions, true
 }
 
-// ResetExprs resets all changes to the "exprs" field.
-func (m *FrameSpecMutation) ResetExprs() {
-	m.exprs = nil
-	m.appendexprs = nil
+// ResetCollectExpressions resets all changes to the "collect_expressions" field.
+func (m *FrameSpecMutation) ResetCollectExpressions() {
+	m.collect_expressions = nil
+	m.appendcollect_expressions = nil
+}
+
+// SetFlightRecorderEvents sets the "flight_recorder_events" field.
+func (m *FrameSpecMutation) SetFlightRecorderEvents(s []string) {
+	m.flight_recorder_events = &s
+	m.appendflight_recorder_events = nil
+}
+
+// FlightRecorderEvents returns the value of the "flight_recorder_events" field in the mutation.
+func (m *FrameSpecMutation) FlightRecorderEvents() (r []string, exists bool) {
+	v := m.flight_recorder_events
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFlightRecorderEvents returns the old "flight_recorder_events" field's value of the FrameSpec entity.
+// If the FrameSpec object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FrameSpecMutation) OldFlightRecorderEvents(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFlightRecorderEvents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFlightRecorderEvents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFlightRecorderEvents: %w", err)
+	}
+	return oldValue.FlightRecorderEvents, nil
+}
+
+// AppendFlightRecorderEvents adds s to the "flight_recorder_events" field.
+func (m *FrameSpecMutation) AppendFlightRecorderEvents(s []string) {
+	m.appendflight_recorder_events = append(m.appendflight_recorder_events, s...)
+}
+
+// AppendedFlightRecorderEvents returns the list of values that were appended to the "flight_recorder_events" field in this mutation.
+func (m *FrameSpecMutation) AppendedFlightRecorderEvents() ([]string, bool) {
+	if len(m.appendflight_recorder_events) == 0 {
+		return nil, false
+	}
+	return m.appendflight_recorder_events, true
+}
+
+// ResetFlightRecorderEvents resets all changes to the "flight_recorder_events" field.
+func (m *FrameSpecMutation) ResetFlightRecorderEvents() {
+	m.flight_recorder_events = nil
+	m.appendflight_recorder_events = nil
+}
+
+// SetCollectSpecRefID sets the "collect_spec_ref" edge to the CollectSpec entity by id.
+func (m *FrameSpecMutation) SetCollectSpecRefID(id int) {
+	m.collect_spec_ref = &id
+}
+
+// ClearCollectSpecRef clears the "collect_spec_ref" edge to the CollectSpec entity.
+func (m *FrameSpecMutation) ClearCollectSpecRef() {
+	m.clearedcollect_spec_ref = true
+}
+
+// CollectSpecRefCleared reports if the "collect_spec_ref" edge to the CollectSpec entity was cleared.
+func (m *FrameSpecMutation) CollectSpecRefCleared() bool {
+	return m.clearedcollect_spec_ref
+}
+
+// CollectSpecRefID returns the "collect_spec_ref" edge ID in the mutation.
+func (m *FrameSpecMutation) CollectSpecRefID() (id int, exists bool) {
+	if m.collect_spec_ref != nil {
+		return *m.collect_spec_ref, true
+	}
+	return
+}
+
+// CollectSpecRefIDs returns the "collect_spec_ref" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CollectSpecRefID instead. It exists only for internal usage by the builders.
+func (m *FrameSpecMutation) CollectSpecRefIDs() (ids []int) {
+	if id := m.collect_spec_ref; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCollectSpecRef resets all changes to the "collect_spec_ref" edge.
+func (m *FrameSpecMutation) ResetCollectSpecRef() {
+	m.collect_spec_ref = nil
+	m.clearedcollect_spec_ref = false
 }
 
 // Where appends a list predicates to the FrameSpecMutation builder.
@@ -1042,12 +1172,18 @@ func (m *FrameSpecMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *FrameSpecMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 4)
 	if m.frame != nil {
 		fields = append(fields, framespec.FieldFrame)
 	}
-	if m.exprs != nil {
-		fields = append(fields, framespec.FieldExprs)
+	if m.collect_spec_ref != nil {
+		fields = append(fields, framespec.FieldCollectSpec)
+	}
+	if m.collect_expressions != nil {
+		fields = append(fields, framespec.FieldCollectExpressions)
+	}
+	if m.flight_recorder_events != nil {
+		fields = append(fields, framespec.FieldFlightRecorderEvents)
 	}
 	return fields
 }
@@ -1059,8 +1195,12 @@ func (m *FrameSpecMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case framespec.FieldFrame:
 		return m.Frame()
-	case framespec.FieldExprs:
-		return m.Exprs()
+	case framespec.FieldCollectSpec:
+		return m.CollectSpec()
+	case framespec.FieldCollectExpressions:
+		return m.CollectExpressions()
+	case framespec.FieldFlightRecorderEvents:
+		return m.FlightRecorderEvents()
 	}
 	return nil, false
 }
@@ -1072,8 +1212,12 @@ func (m *FrameSpecMutation) OldField(ctx context.Context, name string) (ent.Valu
 	switch name {
 	case framespec.FieldFrame:
 		return m.OldFrame(ctx)
-	case framespec.FieldExprs:
-		return m.OldExprs(ctx)
+	case framespec.FieldCollectSpec:
+		return m.OldCollectSpec(ctx)
+	case framespec.FieldCollectExpressions:
+		return m.OldCollectExpressions(ctx)
+	case framespec.FieldFlightRecorderEvents:
+		return m.OldFlightRecorderEvents(ctx)
 	}
 	return nil, fmt.Errorf("unknown FrameSpec field %s", name)
 }
@@ -1090,12 +1234,26 @@ func (m *FrameSpecMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFrame(v)
 		return nil
-	case framespec.FieldExprs:
+	case framespec.FieldCollectSpec:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCollectSpec(v)
+		return nil
+	case framespec.FieldCollectExpressions:
 		v, ok := value.([]string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetExprs(v)
+		m.SetCollectExpressions(v)
+		return nil
+	case framespec.FieldFlightRecorderEvents:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFlightRecorderEvents(v)
 		return nil
 	}
 	return fmt.Errorf("unknown FrameSpec field %s", name)
@@ -1104,13 +1262,16 @@ func (m *FrameSpecMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *FrameSpecMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *FrameSpecMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
 	return nil, false
 }
 
@@ -1149,8 +1310,14 @@ func (m *FrameSpecMutation) ResetField(name string) error {
 	case framespec.FieldFrame:
 		m.ResetFrame()
 		return nil
-	case framespec.FieldExprs:
-		m.ResetExprs()
+	case framespec.FieldCollectSpec:
+		m.ResetCollectSpec()
+		return nil
+	case framespec.FieldCollectExpressions:
+		m.ResetCollectExpressions()
+		return nil
+	case framespec.FieldFlightRecorderEvents:
+		m.ResetFlightRecorderEvents()
 		return nil
 	}
 	return fmt.Errorf("unknown FrameSpec field %s", name)
@@ -1158,19 +1325,28 @@ func (m *FrameSpecMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *FrameSpecMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.collect_spec_ref != nil {
+		edges = append(edges, framespec.EdgeCollectSpecRef)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *FrameSpecMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case framespec.EdgeCollectSpecRef:
+		if id := m.collect_spec_ref; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *FrameSpecMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -1182,25 +1358,42 @@ func (m *FrameSpecMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *FrameSpecMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedcollect_spec_ref {
+		edges = append(edges, framespec.EdgeCollectSpecRef)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *FrameSpecMutation) EdgeCleared(name string) bool {
+	switch name {
+	case framespec.EdgeCollectSpecRef:
+		return m.clearedcollect_spec_ref
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *FrameSpecMutation) ClearEdge(name string) error {
+	switch name {
+	case framespec.EdgeCollectSpecRef:
+		m.ClearCollectSpecRef()
+		return nil
+	}
 	return fmt.Errorf("unknown FrameSpec unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *FrameSpecMutation) ResetEdge(name string) error {
+	switch name {
+	case framespec.EdgeCollectSpecRef:
+		m.ResetCollectSpecRef()
+		return nil
+	}
 	return fmt.Errorf("unknown FrameSpec edge %s", name)
 }
 

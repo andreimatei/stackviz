@@ -1,0 +1,10 @@
+.key-opt-radio-group {
+  display: flex;
+  flex-direction: column;
+  margin: 15px 0;
+  align-items: flex-start;
+}
+
+.key-opt-radio-button {
+  margin: 5px;
+}

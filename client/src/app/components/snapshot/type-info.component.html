@@ -4,6 +4,7 @@
     <mat-checkbox (change)="onCheckedChange($event, node)" checked={{node.checked}}>
     </mat-checkbox>
     <!-- The padding compensates for the absence of the expansion button. -->
+    <button *ngIf="node.formalParam" mat-raised-button (click)="openFlightRecorderDialog(node.Name)">Flight recorder</button>
     <div style="padding-left: 58px" [style.color]="node.color"
          [style.fontWeight]="node.fontWeight">
       {{node.name}}:{{node.type}}
@@ -14,17 +15,18 @@
   <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild">
     <div class="mat-tree-node">
       <mat-checkbox (change)="onCheckedChange($event, node)" checked={{node.checked}}>
-        <div style="white-space: nowrap">
+        <div>
           <button mat-icon-button matTreeNodeToggle>
             <mat-icon class="mat-icon-rtl-mirror">
               {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
             </mat-icon>
           </button>
-          <span [style.color]="node.color" [style.fontWeight]="node.fontWeight">
-                    {{node.name}}:{{node.type}}
-                  </span>
         </div>
       </mat-checkbox>
+      <button *ngIf="node.formalParam" mat-raised-button (click)="openFlightRecorderDialog(node.Name)">Flight recorder</button>
+      <span [style.color]="node.color" [style.fontWeight]="node.fontWeight" style="white-space: nowrap">
+                    {{node.name}}:{{node.type}}
+      </span>
       <mat-progress-bar mode="indeterminate" *ngIf="node.isLoading"></mat-progress-bar>
     </div>
     <!-- There is inline padding applied to this div using styles.

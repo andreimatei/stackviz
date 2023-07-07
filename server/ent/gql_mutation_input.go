@@ -42,16 +42,22 @@ func (c *CollectionCreate) SetInput(i CreateCollectionInput) *CollectionCreate {
 
 // CreateFrameSpecInput represents a mutation input for creating framespecs.
 type CreateFrameSpecInput struct {
-	Frame string
-	Exprs []string
+	Frame                string
+	CollectExpressions   []string
+	FlightRecorderEvents []string
+	CollectSpecRefID     int
 }
 
 // Mutate applies the CreateFrameSpecInput on the FrameSpecMutation builder.
 func (i *CreateFrameSpecInput) Mutate(m *FrameSpecMutation) {
 	m.SetFrame(i.Frame)
-	if v := i.Exprs; v != nil {
-		m.SetExprs(v)
+	if v := i.CollectExpressions; v != nil {
+		m.SetCollectExpressions(v)
 	}
+	if v := i.FlightRecorderEvents; v != nil {
+		m.SetFlightRecorderEvents(v)
+	}
+	m.SetCollectSpecRefID(i.CollectSpecRefID)
 }
 
 // SetInput applies the change-set in the CreateFrameSpecInput on the FrameSpecCreate builder.

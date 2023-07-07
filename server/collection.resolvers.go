@@ -21,11 +21,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// CreateCollection is the resolver for the createCollection field.
-func (r *mutationResolver) CreateCollection(ctx context.Context, input *ent.CreateCollectionInput) (*ent.Collection, error) {
-	return r.dbClient.Collection.Create().SetInput(*input).Save(ctx)
-}
-
 // CollectCollection is the resolver for the collectCollection field.
 func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collection, error) {
 	i := 0
@@ -43,7 +38,7 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 	}
 
 	var g errgroup.Group
-	spec := r.getOrCreateCollectSpec(ctx)
+	spec := getOrCreateCollectSpec(ctx, r.dbClient)
 	for processName, url := range r.conf.Targets[svcName] {
 		i++
 		processName := processName
@@ -57,8 +52,8 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 			}
 			log.Printf("!!! delve agent returned")
 			var framesOfInterest string
-			if len(snap.Frames_of_interest) > 0 {
-				b, err := json.Marshal(snap.Frames_of_interest)
+			if len(snap.FramesOfInterest) > 0 {
+				b, err := json.Marshal(snap.FramesOfInterest)
 				if err != nil {
 					return err
 				}
@@ -94,53 +89,110 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 
 // AddExprToCollectSpec is the resolver for the addExprToCollectSpec mutation.
 func (r *mutationResolver) AddExprToCollectSpec(ctx context.Context, frame string, expr string) (*ent.CollectSpec, error) {
-	// TODO(andrei): use transactions
-	ci := r.getOrCreateCollectSpec(ctx)
+	tx, err := r.dbClient.Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	collectSpec := getOrCreateCollectSpec(ctx, tx.Client())
 	// Create of update the frame info.
-	fi, err := ci.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
+	fi, err := collectSpec.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
-		fi = r.dbClient.FrameSpec.Create().SetFrame(frame).SetExprs([]string{expr}).SaveX(ctx)
-		ci = ci.Update().AddFrames(fi).SaveX(ctx)
-		return ci, nil
+		fi = r.dbClient.FrameSpec.Create().SetFrame(frame).SetCollectExpressions([]string{expr}).SaveX(ctx)
+		collectSpec = collectSpec.Update().AddFrames(fi).SaveX(ctx)
+		return collectSpec, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	for _, e := range fi.Exprs {
+	for _, e := range fi.CollectExpressions {
 		if e == expr {
-			return ci, nil
+			return collectSpec, nil
 		}
 	}
-	fi.Update().SetExprs(append(fi.Exprs, expr)).SaveX(ctx)
-	return ci, nil
+	fi.Update().SetCollectExpressions(append(fi.CollectExpressions, expr)).SaveX(ctx)
+	return collectSpec, nil
 }
 
 // RemoveExprFromCollectSpec is the resolver for the removeExprFromCollectSpec field.
 func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr string, frame string) (*ent.CollectSpec, error) {
-	ci := r.getOrCreateCollectSpec(ctx)
-	fi, err := ci.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
+	collectSpec := getOrCreateCollectSpec(ctx, r.dbClient)
+	fi, err := collectSpec.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
-		return ci, nil
+		return collectSpec, nil
 	}
 	foundIndex := -1
-	for i, e := range fi.Exprs {
+	for i, e := range fi.CollectExpressions {
 		if e == expr {
 			foundIndex = i
 			break
 		}
 	}
 	if foundIndex != -1 {
-		fi.Update().SetExprs(append(fi.Exprs[:foundIndex], fi.Exprs[foundIndex+1:]...)).SaveX(ctx)
+		fi.Update().SetCollectExpressions(append(fi.CollectExpressions[:foundIndex], fi.CollectExpressions[foundIndex+1:]...)).SaveX(ctx)
 	}
-	return ci, nil
+	return collectSpec, nil
+}
+
+// AddFlightRecorderEventToCollectSpec is the resolver for the addFlightRecorderEventToCollectSpec field.
+func (r *mutationResolver) AddFlightRecorderEventToCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error) {
+	tx, err := r.dbClient.Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	collectSpec := getOrCreateCollectSpec(ctx, tx.Client())
+	// Create of update the frame info.
+	fi, err := collectSpec.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
+	nfe := &ent.NotFoundError{}
+	if errors.As(err, &nfe) {
+		fi = tx.FrameSpec.Create().SetFrame(frame).SetFlightRecorderEvents([]string{spec}).SaveX(ctx)
+		collectSpec = collectSpec.Update().AddFrames(fi).SaveX(ctx)
+		return collectSpec, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range fi.FlightRecorderEvents {
+		if e == spec {
+			return collectSpec, nil
+		}
+	}
+	fi.Update().SetFlightRecorderEvents(append(fi.FlightRecorderEvents, spec)).SaveX(ctx)
+	return collectSpec, nil
+}
+
+// RemoveFlightRecorderEventFromCollectSpec is the resolver for the removeFlightRecorderEventFromCollectSpec field.
+func (r *mutationResolver) RemoveFlightRecorderEventFromCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error) {
+	collectSpec := getOrCreateCollectSpec(ctx, r.dbClient)
+	fi, err := collectSpec.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
+	nfe := &ent.NotFoundError{}
+	if errors.As(err, &nfe) {
+		return collectSpec, nil
+	}
+	foundIndex := -1
+	for i, e := range fi.FlightRecorderEvents {
+		if e == spec {
+			foundIndex = i
+			break
+		}
+	}
+	if foundIndex != -1 {
+		fi.Update().SetFlightRecorderEvents(
+			append(fi.CollectExpressions[:foundIndex], fi.CollectExpressions[foundIndex+1:]...),
+		).SaveX(ctx)
+	}
+	return collectSpec, nil
 }
 
 // CollectionByID is the resolver for the collectionByID field.
 func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collection, error) {
 	log.Printf("!!! querying collection by ID: %d", id)
-	return r.dbClient.Debug().Collection.Query().Where(collection.ID(id)).Only(ctx)
+	return r.dbClient.Collection.Query().Where(collection.ID(id)).Only(ctx)
 }
 
 // Goroutines is the resolver for the goroutines field.
@@ -282,21 +334,22 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 	return res, nil
 }
 
-// FrameInfo is the resolver for the frameInfo field.
-func (r *queryResolver) CollectSpec(ctx context.Context, funcArg *string) ([]ent.FrameSpec, error) {
-	q := r.dbClient.FrameSpec.Query()
-	if funcArg != nil {
-		q = q.Where(framespec.Frame(*funcArg))
-	}
-	res, err := q.All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	flat := make([]ent.FrameSpec, len(res))
-	for i := range res {
-		flat[i] = *res[i]
-	}
-	return flat, nil
+// CollectSpec is the resolver for the collectSpec field.
+func (r *queryResolver) CollectSpec(ctx context.Context) (*ent.CollectSpec, error) {
+	return r.dbClient.CollectSpec.Query().Only(ctx)
+	//q := r.dbClient.FrameSpec.Query()
+	//if funcArg != nil {
+	//	q = q.Where(framespec.Frame(*funcArg))
+	//}
+	//res, err := q.All(ctx)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//flat := make([]ent.FrameSpec, len(res))
+	//for i := range res {
+	//	flat[i] = *res[i]
+	//}
+	//return flat, nil
 }
 
 // TypeInfo is the resolver for the typeInfo field.

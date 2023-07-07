@@ -46,10 +46,6 @@ func main() {
 		log.Fatalf("failed creating schema resources: %v", err)
 	}
 
-	if _, err := CreateCollection(ctx, client); err != nil {
-		log.Fatal(err)
-	}
-
 	stacksFetcher := datasource.NewStacksFetcher(client)
 	// !!!
 	//service, err := service.New(*resourceRoot, stacksFetcher)
@@ -70,34 +66,4 @@ func main() {
 	fmt.Printf("Serving on port %d. Go to http://localhost:7410 for the app "+
 		"and http://localhost:7410/playground for a GraphQL playground.\n", *port)
 	http.ListenAndServe(fmt.Sprintf(":%d", *port), mux)
-}
-
-func CreateCollection(ctx context.Context, client *ent.Client) (*ent.Collection, error) {
-	stacks, err := os.ReadFile(path.Join(*stacksDir, "cockroachdb_example_snapshot.txt"))
-	if err != nil {
-		return nil, fmt.Errorf("failed reading file: %w", err)
-	}
-
-	var snaps []*ent.ProcessSnapshot
-	for i := 1; i <= 2; i++ {
-		s, err := client.ProcessSnapshot.Create().
-			SetProcessID(fmt.Sprintf("node-%d", i)).
-			SetSnapshot(string(stacks)).
-			Save(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed creating snapshot: %w", err)
-		}
-		snaps = append(snaps, s)
-	}
-
-	c, err := client.Collection.Create().
-		SetName("crdb-20230516-155400").
-		AddProcessSnapshots(snaps...).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed creating collection: %w", err)
-	}
-	log.Println("collection was created: ", c)
-
-	return c, nil
 }

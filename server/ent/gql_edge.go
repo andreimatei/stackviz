@@ -8,16 +8,24 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 )
 
-func (cs *CollectSpec) Frames(ctx context.Context) (result []*FrameSpec, err error) {
-	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
-		result, err = cs.NamedFrames(graphql.GetFieldContext(ctx).Field.Alias)
-	} else {
-		result, err = cs.Edges.FramesOrErr()
+func (cs *CollectSpec) Frames(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, where *FrameSpecWhereInput,
+) (*FrameSpecConnection, error) {
+	opts := []FrameSpecPaginateOption{
+		WithFrameSpecFilter(where.Filter),
 	}
-	if IsNotLoaded(err) {
-		result, err = cs.QueryFrames().All(ctx)
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := cs.Edges.totalCount[0][alias]
+	if nodes, err := cs.NamedFrames(alias); err == nil || hasTotalCount {
+		pager, err := newFrameSpecPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &FrameSpecConnection{Edges: []*FrameSpecEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
 	}
-	return result, err
+	return cs.QueryFrames().Paginate(ctx, after, first, before, last, opts...)
 }
 
 func (c *Collection) ProcessSnapshots(ctx context.Context) (result []*ProcessSnapshot, err error) {
@@ -28,6 +36,14 @@ func (c *Collection) ProcessSnapshots(ctx context.Context) (result []*ProcessSna
 	}
 	if IsNotLoaded(err) {
 		result, err = c.QueryProcessSnapshots().All(ctx)
+	}
+	return result, err
+}
+
+func (fs *FrameSpec) CollectSpecRef(ctx context.Context) (*CollectSpec, error) {
+	result, err := fs.Edges.CollectSpecRefOrErr()
+	if IsNotLoaded(err) {
+		result, err = fs.QueryCollectSpecRef().Only(ctx)
 	}
 	return result, err
 }

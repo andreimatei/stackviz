@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"stacksviz/ent"
+
+	"entgo.io/contrib/entgql"
 )
 
 // Node is the resolver for the node field.
@@ -35,7 +37,7 @@ func (r *queryResolver) Collections(ctx context.Context) ([]ent.Collection, erro
 }
 
 // FrameSpecs is the resolver for the frameSpecs field.
-func (r *queryResolver) FrameSpecs(ctx context.Context) ([]ent.FrameSpec, error) {
+func (r *queryResolver) FrameSpecs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.FrameSpecWhereInput) (*ent.FrameSpecConnection, error) {
 	panic(fmt.Errorf("not implemented: FrameSpecs - frameSpecs"))
 }
 

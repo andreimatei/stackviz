@@ -4,7 +4,10 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
+	"fmt"
 	"stacksviz/ent/collection"
+	"stacksviz/ent/collectspec"
 	"stacksviz/ent/framespec"
 	"stacksviz/ent/processsnapshot"
 
@@ -34,8 +37,80 @@ func (cs *CollectSpecQuery) collectField(ctx context.Context, opCtx *graphql.Ope
 				path  = append(path, alias)
 				query = (&FrameSpecClient{config: cs.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, framespecImplementors)...); err != nil {
+			args := newFrameSpecPaginateArgs(fieldArgs(ctx, new(FrameSpecWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newFrameSpecPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
 				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					cs.loadTotal = append(cs.loadTotal, func(ctx context.Context, nodes []*CollectSpec) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"collect_spec"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(collectspec.FramesColumn), ids...))
+						})
+						if err := query.GroupBy(collectspec.FramesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[0] == nil {
+								nodes[i].Edges.totalCount[0] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[0][alias] = n
+						}
+						return nil
+					})
+				} else {
+					cs.loadTotal = append(cs.loadTotal, func(_ context.Context, nodes []*CollectSpec) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Frames)
+							if nodes[i].Edges.totalCount[0] == nil {
+								nodes[i].Edges.totalCount[0] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[0][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, opCtx, *field, path, mayAddCondition(satisfies, framespecImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				modify := limitRows(collectspec.FramesColumn, limit, pager.orderExpr(query))
+				query.modifiers = append(query.modifiers, modify)
+			} else {
+				query = pager.applyOrder(query)
 			}
 			cs.WithNamedFrames(alias, func(wq *FrameSpecQuery) {
 				*wq = *query
@@ -67,6 +142,9 @@ func newCollectSpecPaginateArgs(rv map[string]any) *collectspecPaginateArgs {
 	}
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*CollectSpecWhereInput); ok {
+		args.opts = append(args.opts, WithCollectSpecFilter(v.Filter))
 	}
 	return args
 }
@@ -144,6 +222,9 @@ func newCollectionPaginateArgs(rv map[string]any) *collectionPaginateArgs {
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
 	}
+	if v, ok := rv[whereField].(*CollectionWhereInput); ok {
+		args.opts = append(args.opts, WithCollectionFilter(v.Filter))
+	}
 	return args
 }
 
@@ -168,15 +249,39 @@ func (fs *FrameSpecQuery) collectField(ctx context.Context, opCtx *graphql.Opera
 	)
 	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
+		case "collectSpecRef":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&CollectSpecClient{config: fs.config}).Query()
+			)
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, collectspecImplementors)...); err != nil {
+				return err
+			}
+			fs.withCollectSpecRef = query
+			if _, ok := fieldSeen[framespec.FieldCollectSpec]; !ok {
+				selectedFields = append(selectedFields, framespec.FieldCollectSpec)
+				fieldSeen[framespec.FieldCollectSpec] = struct{}{}
+			}
 		case "frame":
 			if _, ok := fieldSeen[framespec.FieldFrame]; !ok {
 				selectedFields = append(selectedFields, framespec.FieldFrame)
 				fieldSeen[framespec.FieldFrame] = struct{}{}
 			}
-		case "exprs":
-			if _, ok := fieldSeen[framespec.FieldExprs]; !ok {
-				selectedFields = append(selectedFields, framespec.FieldExprs)
-				fieldSeen[framespec.FieldExprs] = struct{}{}
+		case "collectSpec":
+			if _, ok := fieldSeen[framespec.FieldCollectSpec]; !ok {
+				selectedFields = append(selectedFields, framespec.FieldCollectSpec)
+				fieldSeen[framespec.FieldCollectSpec] = struct{}{}
+			}
+		case "collectExpressions":
+			if _, ok := fieldSeen[framespec.FieldCollectExpressions]; !ok {
+				selectedFields = append(selectedFields, framespec.FieldCollectExpressions)
+				fieldSeen[framespec.FieldCollectExpressions] = struct{}{}
+			}
+		case "flightRecorderEvents":
+			if _, ok := fieldSeen[framespec.FieldFlightRecorderEvents]; !ok {
+				selectedFields = append(selectedFields, framespec.FieldFlightRecorderEvents)
+				fieldSeen[framespec.FieldFlightRecorderEvents] = struct{}{}
 			}
 		case "id":
 		case "__typename":
@@ -212,6 +317,9 @@ func newFrameSpecPaginateArgs(rv map[string]any) *framespecPaginateArgs {
 	}
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*FrameSpecWhereInput); ok {
+		args.opts = append(args.opts, WithFrameSpecFilter(v.Filter))
 	}
 	return args
 }
@@ -286,6 +394,9 @@ func newProcessSnapshotPaginateArgs(rv map[string]any) *processsnapshotPaginateA
 	}
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*ProcessSnapshotWhereInput); ok {
+		args.opts = append(args.opts, WithProcessSnapshotFilter(v.Filter))
 	}
 	return args
 }

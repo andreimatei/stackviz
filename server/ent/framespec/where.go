@@ -6,6 +6,7 @@ import (
 	"stacksviz/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // ID filters vertices based on their ID field.
@@ -56,6 +57,11 @@ func IDLTE(id int) predicate.FrameSpec {
 // Frame applies equality check predicate on the "frame" field. It's identical to FrameEQ.
 func Frame(v string) predicate.FrameSpec {
 	return predicate.FrameSpec(sql.FieldEQ(FieldFrame, v))
+}
+
+// CollectSpec applies equality check predicate on the "collect_spec" field. It's identical to CollectSpecEQ.
+func CollectSpec(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldEQ(FieldCollectSpec, v))
 }
 
 // FrameEQ applies the EQ predicate on the "frame" field.
@@ -121,6 +127,49 @@ func FrameEqualFold(v string) predicate.FrameSpec {
 // FrameContainsFold applies the ContainsFold predicate on the "frame" field.
 func FrameContainsFold(v string) predicate.FrameSpec {
 	return predicate.FrameSpec(sql.FieldContainsFold(FieldFrame, v))
+}
+
+// CollectSpecEQ applies the EQ predicate on the "collect_spec" field.
+func CollectSpecEQ(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldEQ(FieldCollectSpec, v))
+}
+
+// CollectSpecNEQ applies the NEQ predicate on the "collect_spec" field.
+func CollectSpecNEQ(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldNEQ(FieldCollectSpec, v))
+}
+
+// CollectSpecIn applies the In predicate on the "collect_spec" field.
+func CollectSpecIn(vs ...int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldIn(FieldCollectSpec, vs...))
+}
+
+// CollectSpecNotIn applies the NotIn predicate on the "collect_spec" field.
+func CollectSpecNotIn(vs ...int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldNotIn(FieldCollectSpec, vs...))
+}
+
+// HasCollectSpecRef applies the HasEdge predicate on the "collect_spec_ref" edge.
+func HasCollectSpecRef() predicate.FrameSpec {
+	return predicate.FrameSpec(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, CollectSpecRefTable, CollectSpecRefColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCollectSpecRefWith applies the HasEdge predicate on the "collect_spec_ref" edge with a given conditions (other predicates).
+func HasCollectSpecRefWith(preds ...predicate.CollectSpec) predicate.FrameSpec {
+	return predicate.FrameSpec(func(s *sql.Selector) {
+		step := newCollectSpecRefStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

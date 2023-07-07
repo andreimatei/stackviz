@@ -22,7 +22,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "framespec" package.
 	FramesInverseTable = "frame_specs"
 	// FramesColumn is the table column denoting the frames relation/edge.
-	FramesColumn = "collect_spec_frames"
+	FramesColumn = "collect_spec"
 )
 
 // Columns holds all SQL columns for collectspec fields.

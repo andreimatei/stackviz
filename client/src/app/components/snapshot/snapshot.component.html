@@ -41,7 +41,7 @@
         </mat-expansion-panel-header>
 
         <mat-progress-bar mode="indeterminate" *ngIf="loadingAvailableVars"></mat-progress-bar>
-        <type-info (checkedChange)="checkedChange($event)"/>
+        <type-info (checkedChange)="checkedChange($event)" (flightRecorderChange)="flightRecorderChange($event)"/>
       </mat-expansion-panel>
 
       <mat-expansion-panel expanded style="margin-left: 5px">

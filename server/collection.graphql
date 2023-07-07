@@ -1,19 +1,19 @@
 type Mutation {
-  createCollection(input: CreateCollectionInput): Collection
   # collect snapshots from all the nodes
   collectCollection: Collection
   addExprToCollectSpec(frame: String!, expr: String!): CollectSpec!
   removeExprFromCollectSpec(expr: String!, frame: String!): CollectSpec!
+  addFlightRecorderEventToCollectSpec(frame: String!, spec: String!): CollectSpec!
+  removeFlightRecorderEventFromCollectSpec(frame: String!, spec: String!): CollectSpec!
 }
 
 extend type Query {
   collectionByID(id: ID!): Collection
   goroutines(colID: Int!, snapID: Int!, gID: Int, filter: String): SnapshotInfo!
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
-  # collectSpec returns the expressions that are to be collected for various
-  # frames. If func is specified, only the expressions for the respective
-  # function are returned.
-  collectSpec(func: String): [FrameSpec!]!
+  # collectSpec returns the specification of what is being collected. If func is
+  # specified, only the expressions for the respective function are returned.
+  collectSpec: CollectSpec!
   typeInfo(name: String!): TypeInfo!
   getTree(colID: Int!, snapID: Int!, gID: Int, filter: String): String!
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"stacksviz/ent/collectspec"
 	"stacksviz/ent/framespec"
 	"stacksviz/ent/predicate"
 
@@ -34,21 +35,56 @@ func (fsu *FrameSpecUpdate) SetFrame(s string) *FrameSpecUpdate {
 	return fsu
 }
 
-// SetExprs sets the "exprs" field.
-func (fsu *FrameSpecUpdate) SetExprs(s []string) *FrameSpecUpdate {
-	fsu.mutation.SetExprs(s)
+// SetCollectSpec sets the "collect_spec" field.
+func (fsu *FrameSpecUpdate) SetCollectSpec(i int) *FrameSpecUpdate {
+	fsu.mutation.SetCollectSpec(i)
 	return fsu
 }
 
-// AppendExprs appends s to the "exprs" field.
-func (fsu *FrameSpecUpdate) AppendExprs(s []string) *FrameSpecUpdate {
-	fsu.mutation.AppendExprs(s)
+// SetCollectExpressions sets the "collect_expressions" field.
+func (fsu *FrameSpecUpdate) SetCollectExpressions(s []string) *FrameSpecUpdate {
+	fsu.mutation.SetCollectExpressions(s)
 	return fsu
+}
+
+// AppendCollectExpressions appends s to the "collect_expressions" field.
+func (fsu *FrameSpecUpdate) AppendCollectExpressions(s []string) *FrameSpecUpdate {
+	fsu.mutation.AppendCollectExpressions(s)
+	return fsu
+}
+
+// SetFlightRecorderEvents sets the "flight_recorder_events" field.
+func (fsu *FrameSpecUpdate) SetFlightRecorderEvents(s []string) *FrameSpecUpdate {
+	fsu.mutation.SetFlightRecorderEvents(s)
+	return fsu
+}
+
+// AppendFlightRecorderEvents appends s to the "flight_recorder_events" field.
+func (fsu *FrameSpecUpdate) AppendFlightRecorderEvents(s []string) *FrameSpecUpdate {
+	fsu.mutation.AppendFlightRecorderEvents(s)
+	return fsu
+}
+
+// SetCollectSpecRefID sets the "collect_spec_ref" edge to the CollectSpec entity by ID.
+func (fsu *FrameSpecUpdate) SetCollectSpecRefID(id int) *FrameSpecUpdate {
+	fsu.mutation.SetCollectSpecRefID(id)
+	return fsu
+}
+
+// SetCollectSpecRef sets the "collect_spec_ref" edge to the CollectSpec entity.
+func (fsu *FrameSpecUpdate) SetCollectSpecRef(c *CollectSpec) *FrameSpecUpdate {
+	return fsu.SetCollectSpecRefID(c.ID)
 }
 
 // Mutation returns the FrameSpecMutation object of the builder.
 func (fsu *FrameSpecUpdate) Mutation() *FrameSpecMutation {
 	return fsu.mutation
+}
+
+// ClearCollectSpecRef clears the "collect_spec_ref" edge to the CollectSpec entity.
+func (fsu *FrameSpecUpdate) ClearCollectSpecRef() *FrameSpecUpdate {
+	fsu.mutation.ClearCollectSpecRef()
+	return fsu
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -78,7 +114,18 @@ func (fsu *FrameSpecUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (fsu *FrameSpecUpdate) check() error {
+	if _, ok := fsu.mutation.CollectSpecRefID(); fsu.mutation.CollectSpecRefCleared() && !ok {
+		return errors.New(`ent: clearing a required unique edge "FrameSpec.collect_spec_ref"`)
+	}
+	return nil
+}
+
 func (fsu *FrameSpecUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := fsu.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(framespec.Table, framespec.Columns, sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt))
 	if ps := fsu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -90,13 +137,50 @@ func (fsu *FrameSpecUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := fsu.mutation.Frame(); ok {
 		_spec.SetField(framespec.FieldFrame, field.TypeString, value)
 	}
-	if value, ok := fsu.mutation.Exprs(); ok {
-		_spec.SetField(framespec.FieldExprs, field.TypeJSON, value)
+	if value, ok := fsu.mutation.CollectExpressions(); ok {
+		_spec.SetField(framespec.FieldCollectExpressions, field.TypeJSON, value)
 	}
-	if value, ok := fsu.mutation.AppendedExprs(); ok {
+	if value, ok := fsu.mutation.AppendedCollectExpressions(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, framespec.FieldExprs, value)
+			sqljson.Append(u, framespec.FieldCollectExpressions, value)
 		})
+	}
+	if value, ok := fsu.mutation.FlightRecorderEvents(); ok {
+		_spec.SetField(framespec.FieldFlightRecorderEvents, field.TypeJSON, value)
+	}
+	if value, ok := fsu.mutation.AppendedFlightRecorderEvents(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, framespec.FieldFlightRecorderEvents, value)
+		})
+	}
+	if fsu.mutation.CollectSpecRefCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   framespec.CollectSpecRefTable,
+			Columns: []string{framespec.CollectSpecRefColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := fsu.mutation.CollectSpecRefIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   framespec.CollectSpecRefTable,
+			Columns: []string{framespec.CollectSpecRefColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, fsu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -124,21 +208,56 @@ func (fsuo *FrameSpecUpdateOne) SetFrame(s string) *FrameSpecUpdateOne {
 	return fsuo
 }
 
-// SetExprs sets the "exprs" field.
-func (fsuo *FrameSpecUpdateOne) SetExprs(s []string) *FrameSpecUpdateOne {
-	fsuo.mutation.SetExprs(s)
+// SetCollectSpec sets the "collect_spec" field.
+func (fsuo *FrameSpecUpdateOne) SetCollectSpec(i int) *FrameSpecUpdateOne {
+	fsuo.mutation.SetCollectSpec(i)
 	return fsuo
 }
 
-// AppendExprs appends s to the "exprs" field.
-func (fsuo *FrameSpecUpdateOne) AppendExprs(s []string) *FrameSpecUpdateOne {
-	fsuo.mutation.AppendExprs(s)
+// SetCollectExpressions sets the "collect_expressions" field.
+func (fsuo *FrameSpecUpdateOne) SetCollectExpressions(s []string) *FrameSpecUpdateOne {
+	fsuo.mutation.SetCollectExpressions(s)
 	return fsuo
+}
+
+// AppendCollectExpressions appends s to the "collect_expressions" field.
+func (fsuo *FrameSpecUpdateOne) AppendCollectExpressions(s []string) *FrameSpecUpdateOne {
+	fsuo.mutation.AppendCollectExpressions(s)
+	return fsuo
+}
+
+// SetFlightRecorderEvents sets the "flight_recorder_events" field.
+func (fsuo *FrameSpecUpdateOne) SetFlightRecorderEvents(s []string) *FrameSpecUpdateOne {
+	fsuo.mutation.SetFlightRecorderEvents(s)
+	return fsuo
+}
+
+// AppendFlightRecorderEvents appends s to the "flight_recorder_events" field.
+func (fsuo *FrameSpecUpdateOne) AppendFlightRecorderEvents(s []string) *FrameSpecUpdateOne {
+	fsuo.mutation.AppendFlightRecorderEvents(s)
+	return fsuo
+}
+
+// SetCollectSpecRefID sets the "collect_spec_ref" edge to the CollectSpec entity by ID.
+func (fsuo *FrameSpecUpdateOne) SetCollectSpecRefID(id int) *FrameSpecUpdateOne {
+	fsuo.mutation.SetCollectSpecRefID(id)
+	return fsuo
+}
+
+// SetCollectSpecRef sets the "collect_spec_ref" edge to the CollectSpec entity.
+func (fsuo *FrameSpecUpdateOne) SetCollectSpecRef(c *CollectSpec) *FrameSpecUpdateOne {
+	return fsuo.SetCollectSpecRefID(c.ID)
 }
 
 // Mutation returns the FrameSpecMutation object of the builder.
 func (fsuo *FrameSpecUpdateOne) Mutation() *FrameSpecMutation {
 	return fsuo.mutation
+}
+
+// ClearCollectSpecRef clears the "collect_spec_ref" edge to the CollectSpec entity.
+func (fsuo *FrameSpecUpdateOne) ClearCollectSpecRef() *FrameSpecUpdateOne {
+	fsuo.mutation.ClearCollectSpecRef()
+	return fsuo
 }
 
 // Where appends a list predicates to the FrameSpecUpdate builder.
@@ -181,7 +300,18 @@ func (fsuo *FrameSpecUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (fsuo *FrameSpecUpdateOne) check() error {
+	if _, ok := fsuo.mutation.CollectSpecRefID(); fsuo.mutation.CollectSpecRefCleared() && !ok {
+		return errors.New(`ent: clearing a required unique edge "FrameSpec.collect_spec_ref"`)
+	}
+	return nil
+}
+
 func (fsuo *FrameSpecUpdateOne) sqlSave(ctx context.Context) (_node *FrameSpec, err error) {
+	if err := fsuo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(framespec.Table, framespec.Columns, sqlgraph.NewFieldSpec(framespec.FieldID, field.TypeInt))
 	id, ok := fsuo.mutation.ID()
 	if !ok {
@@ -210,13 +340,50 @@ func (fsuo *FrameSpecUpdateOne) sqlSave(ctx context.Context) (_node *FrameSpec, 
 	if value, ok := fsuo.mutation.Frame(); ok {
 		_spec.SetField(framespec.FieldFrame, field.TypeString, value)
 	}
-	if value, ok := fsuo.mutation.Exprs(); ok {
-		_spec.SetField(framespec.FieldExprs, field.TypeJSON, value)
+	if value, ok := fsuo.mutation.CollectExpressions(); ok {
+		_spec.SetField(framespec.FieldCollectExpressions, field.TypeJSON, value)
 	}
-	if value, ok := fsuo.mutation.AppendedExprs(); ok {
+	if value, ok := fsuo.mutation.AppendedCollectExpressions(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, framespec.FieldExprs, value)
+			sqljson.Append(u, framespec.FieldCollectExpressions, value)
 		})
+	}
+	if value, ok := fsuo.mutation.FlightRecorderEvents(); ok {
+		_spec.SetField(framespec.FieldFlightRecorderEvents, field.TypeJSON, value)
+	}
+	if value, ok := fsuo.mutation.AppendedFlightRecorderEvents(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, framespec.FieldFlightRecorderEvents, value)
+		})
+	}
+	if fsuo.mutation.CollectSpecRefCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   framespec.CollectSpecRefTable,
+			Columns: []string{framespec.CollectSpecRefColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := fsuo.mutation.CollectSpecRefIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   framespec.CollectSpecRefTable,
+			Columns: []string{framespec.CollectSpecRefColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &FrameSpec{config: fsuo.config}
 	_spec.Assign = _node.assignValues

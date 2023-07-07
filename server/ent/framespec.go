@@ -5,6 +5,7 @@ package ent
 import (
 	"encoding/json"
 	"fmt"
+	"stacksviz/ent/collectspec"
 	"stacksviz/ent/framespec"
 	"strings"
 
@@ -19,10 +20,40 @@ type FrameSpec struct {
 	ID int `json:"id,omitempty"`
 	// Frame holds the value of the "frame" field.
 	Frame string `json:"frame,omitempty"`
-	// Exprs holds the value of the "exprs" field.
-	Exprs               []string `json:"exprs,omitempty"`
-	collect_spec_frames *int
-	selectValues        sql.SelectValues
+	// The parent collection spec
+	CollectSpec int `json:"collect_spec,omitempty"`
+	// CollectExpressions holds the value of the "collect_expressions" field.
+	CollectExpressions []string `json:"collect_expressions,omitempty"`
+	// FlightRecorderEvents holds the value of the "flight_recorder_events" field.
+	FlightRecorderEvents []string `json:"flight_recorder_events,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the FrameSpecQuery when eager-loading is set.
+	Edges        FrameSpecEdges `json:"edges"`
+	selectValues sql.SelectValues
+}
+
+// FrameSpecEdges holds the relations/edges for other nodes in the graph.
+type FrameSpecEdges struct {
+	// CollectSpecRef holds the value of the collect_spec_ref edge.
+	CollectSpecRef *CollectSpec `json:"collect_spec_ref,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+	// totalCount holds the count of the edges above.
+	totalCount [1]map[string]int
+}
+
+// CollectSpecRefOrErr returns the CollectSpecRef value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e FrameSpecEdges) CollectSpecRefOrErr() (*CollectSpec, error) {
+	if e.loadedTypes[0] {
+		if e.CollectSpecRef == nil {
+			// Edge was loaded but was not found.
+			return nil, &NotFoundError{label: collectspec.Label}
+		}
+		return e.CollectSpecRef, nil
+	}
+	return nil, &NotLoadedError{edge: "collect_spec_ref"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -30,14 +61,12 @@ func (*FrameSpec) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case framespec.FieldExprs:
+		case framespec.FieldCollectExpressions, framespec.FieldFlightRecorderEvents:
 			values[i] = new([]byte)
-		case framespec.FieldID:
+		case framespec.FieldID, framespec.FieldCollectSpec:
 			values[i] = new(sql.NullInt64)
 		case framespec.FieldFrame:
 			values[i] = new(sql.NullString)
-		case framespec.ForeignKeys[0]: // collect_spec_frames
-			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -65,20 +94,27 @@ func (fs *FrameSpec) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				fs.Frame = value.String
 			}
-		case framespec.FieldExprs:
+		case framespec.FieldCollectSpec:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field collect_spec", values[i])
+			} else if value.Valid {
+				fs.CollectSpec = int(value.Int64)
+			}
+		case framespec.FieldCollectExpressions:
 			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field exprs", values[i])
+				return fmt.Errorf("unexpected type %T for field collect_expressions", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &fs.Exprs); err != nil {
-					return fmt.Errorf("unmarshal field exprs: %w", err)
+				if err := json.Unmarshal(*value, &fs.CollectExpressions); err != nil {
+					return fmt.Errorf("unmarshal field collect_expressions: %w", err)
 				}
 			}
-		case framespec.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field collect_spec_frames", value)
-			} else if value.Valid {
-				fs.collect_spec_frames = new(int)
-				*fs.collect_spec_frames = int(value.Int64)
+		case framespec.FieldFlightRecorderEvents:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field flight_recorder_events", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &fs.FlightRecorderEvents); err != nil {
+					return fmt.Errorf("unmarshal field flight_recorder_events: %w", err)
+				}
 			}
 		default:
 			fs.selectValues.Set(columns[i], values[i])
@@ -91,6 +127,11 @@ func (fs *FrameSpec) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (fs *FrameSpec) Value(name string) (ent.Value, error) {
 	return fs.selectValues.Get(name)
+}
+
+// QueryCollectSpecRef queries the "collect_spec_ref" edge of the FrameSpec entity.
+func (fs *FrameSpec) QueryCollectSpecRef() *CollectSpecQuery {
+	return NewFrameSpecClient(fs.config).QueryCollectSpecRef(fs)
 }
 
 // Update returns a builder for updating this FrameSpec.
@@ -119,8 +160,14 @@ func (fs *FrameSpec) String() string {
 	builder.WriteString("frame=")
 	builder.WriteString(fs.Frame)
 	builder.WriteString(", ")
-	builder.WriteString("exprs=")
-	builder.WriteString(fmt.Sprintf("%v", fs.Exprs))
+	builder.WriteString("collect_spec=")
+	builder.WriteString(fmt.Sprintf("%v", fs.CollectSpec))
+	builder.WriteString(", ")
+	builder.WriteString("collect_expressions=")
+	builder.WriteString(fmt.Sprintf("%v", fs.CollectExpressions))
+	builder.WriteString(", ")
+	builder.WriteString("flight_recorder_events=")
+	builder.WriteString(fmt.Sprintf("%v", fs.FlightRecorderEvents))
 	builder.WriteByte(')')
 	return builder.String()
 }

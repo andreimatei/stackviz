@@ -582,6 +582,22 @@ func (c *FrameSpecClient) GetX(ctx context.Context, id int) *FrameSpec {
 	return obj
 }
 
+// QueryCollectSpecRef queries the collect_spec_ref edge of a FrameSpec.
+func (c *FrameSpecClient) QueryCollectSpecRef(fs *FrameSpec) *CollectSpecQuery {
+	query := (&CollectSpecClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := fs.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(framespec.Table, framespec.FieldID, id),
+			sqlgraph.To(collectspec.Table, collectspec.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, framespec.CollectSpecRefTable, framespec.CollectSpecRefColumn),
+		)
+		fromV = sqlgraph.Neighbors(fs.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *FrameSpecClient) Hooks() []Hook {
 	return c.hooks.FrameSpec

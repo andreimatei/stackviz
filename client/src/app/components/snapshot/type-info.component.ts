@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from "@angular/core";
+import { Component, EventEmitter, Inject, Input, Output } from "@angular/core";
 import { NestedTreeControl } from "@angular/cdk/tree";
 import { GetTypeInfoGQL, TypeInfo, VarInfo } from "../../graphql/graphql-codegen-generated";
 import { CollectionViewer, DataSource, SelectionChange } from "@angular/cdk/collections";
@@ -9,41 +9,64 @@ import { NgIf } from "@angular/common";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTreeModule } from "@angular/material/tree";
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef
+} from "@angular/material/dialog";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { FormsModule } from "@angular/forms";
+import { MatRadioModule } from "@angular/material/radio";
+
+interface FlightRecorderEventSpec {
+  expr: string;
+  keyExpr: string;
+}
 
 @Component({
-    selector: 'type-info',
-    templateUrl: './type-info.component.html',
-    styleUrls: ['type-info.component.css'],
-    standalone: true,
-    imports: [
-        MatTreeModule,
-        MatCheckboxModule,
-        MatButtonModule,
-        MatIconModule,
-        NgIf,
-        MatProgressBarModule,
-    ],
+  selector: 'type-info',
+  templateUrl: './type-info.component.html',
+  styleUrls: ['type-info.component.css'],
+  standalone: true,
+  imports: [
+    MatTreeModule,
+    MatCheckboxModule,
+    MatButtonModule,
+    MatIconModule,
+    NgIf,
+    MatProgressBarModule,
+    MatDialogModule,
+  ],
 })
 export class TypeInfoComponent {
   dataSource: TypesDataSource;
   treeControl: NestedTreeControl<TreeNode>;
 
-  _exprs: string[] = [];
+  @Input()
+  public flightRecorderEventSpecs!: FlightRecorderEventSpec[];
 
-  get exprs(): string[] {
-    return this._exprs;
-  }
-
-  set exprs(val) {
-    this.dataSource.exprs = val;
-    this._exprs = val;
-  }
+  // !!!
+  // _exprs: string[] = [];
+  //
+  // get exprs(): string[] {
+  //   return this._exprs;
+  // }
+  //
+  // set exprs(val) {
+  //   this.dataSource.exprs = val;
+  //   this._exprs = val;
+  // }
 
   @Output()
-  checkedChange = new EventEmitter<CheckedEventArg>();
+  checkedChange = new EventEmitter<CheckedEvent>();
+  @Output()
+  flightRecorderChange = new EventEmitter<FlightRecorderEvent>();
 
   constructor(
     private readonly typeQuery: GetTypeInfoGQL,
+    public dialog: MatDialog,
   ) {
     this.treeControl = new NestedTreeControl<TreeNode>(node => node.children);
     this.dataSource = new TypesDataSource(this.treeControl, typeQuery);
@@ -52,13 +75,39 @@ export class TypeInfoComponent {
   hasChild = (_: number, node: TreeNode) => node.expandable;
 
   onCheckedChange(ev: MatCheckboxChange, node: TreeNode) {
-    const cev = new CheckedEventArg(node.expr, ev.checked);
+    const cev = new CheckedEvent(node.expr, ev.checked);
     this.checkedChange.emit(cev);
+  }
+
+  openFlightRecorderDialog(varName: string): void {
+    const dialogRef = this.dialog.open(
+      FlightRecorderDialog, {
+        data: {
+          varName: varName,
+          // TODO(andrei): Can there be multiple event specs for the same
+          // variable (with different key expressions)? I guess the UI doesn't
+          // allow creating them.
+          existingSpec: this.flightRecorderEventSpecs.find(
+            s => s.expr == varName),
+        },
+      });
+    dialogRef.afterClosed().subscribe(result => {
+      const ev = result as FlightRecorderEvent;
+      console.log('The dialog was closed with result:', ev);
+      this.flightRecorderChange.emit(ev);
+    });
   }
 }
 
-export class CheckedEventArg {
+export class CheckedEvent {
   constructor(public expr: string, public checked: boolean) {
+  }
+}
+
+const goroutineIDKey = Symbol('goroutineID');
+
+export class FlightRecorderEvent {
+  constructor(public expr: string, public deleted: boolean, public key: string | typeof goroutineIDKey) {
   }
 }
 
@@ -74,19 +123,15 @@ export class TreeNode {
     readonly type: string,
     public expandable: boolean,
     readonly checked: boolean,
-    color?: string, fontWeight?: string,
+    // formalParam indicates whether this node corresponds to a formal parameter
+    // of the function. Parameters are shown in bold and get a flight-recorder
+    // button.
+    readonly formalParam: boolean,
+    readonly loclistAvailable: boolean,
   ) {
+    this.color = loclistAvailable ? 'black' : 'gray';
+    this.fontWeight = formalParam ? 'bold' : 'normal';
     this.children = [];
-    if (typeof color !== 'undefined') {
-      this.color = color;
-    } else {
-      this.color = "black";
-    }
-    if (typeof fontWeight !== 'undefined') {
-      this.fontWeight = fontWeight;
-    } else {
-      this.fontWeight = "normal";
-    }
   }
 }
 
@@ -133,8 +178,8 @@ export class TypesDataSource implements DataSource<TreeNode> {
         v.Name, v.Name /* expr */, v.Type,
         expandable,
         checked,
-        v.LoclistAvailable ? 'black' : 'gray',
-        v.FormalParameter ? 'bold' : 'normal',
+        v.FormalParameter,
+        v.LoclistAvailable,
       );
       return n
     })
@@ -168,12 +213,6 @@ export class TypesDataSource implements DataSource<TreeNode> {
 
         const ti = this.types.get(node.type);
         console.log("expanding: ti:", node.type, ti)
-        // if (!ti) {
-        //   // We failed to find the type. Make the node a leaf so that we don't
-        //   // attempt to load it again.
-        //   node.expandable = false;
-        //   return;
-        // }
         if (!ti || ti.FieldsNotLoaded) {
           console.log("loading children for %s...", node.type);
           node.isLoading = true;
@@ -188,7 +227,7 @@ export class TypesDataSource implements DataSource<TreeNode> {
               if (!res.data.typeInfo.Fields) {
                 return;
               }
-              node.children = this.typeInfoToTreeNodes(res.data.typeInfo, node.expr, this.exprs);
+              node.children = this.typeInfoToTreeNodes(node, res.data.typeInfo, node.expr, this.exprs);
               node.expandable = node.children.length > 0;
               console.log("new children: ", node.children)
             })
@@ -198,7 +237,7 @@ export class TypesDataSource implements DataSource<TreeNode> {
             node.isLoading = false;
           })
         } else {
-          node.children = this.typeInfoToTreeNodes(ti, node.expr, this.exprs);
+          node.children = this.typeInfoToTreeNodes(node, ti, node.expr, this.exprs);
           node.expandable = node.children.length > 0;
           // notify the change
           this.updateData(this.data);
@@ -207,15 +246,9 @@ export class TypesDataSource implements DataSource<TreeNode> {
     }
   }
 
-  // !!!
-  // getType(typename: string): TypeInfo {
-  //   const ti = this.types.get(node.type);
-  //   if (ti) {
-  //     return ti;
-  //   }
-  // }
-
-  typeInfoToTreeNodes(ti: TypeInfo, path: string, exprs: string[]): TreeNode[] {
+  typeInfoToTreeNodes(
+    parent: TreeNode, ti: TypeInfo, path: string, exprs: string[],
+  ): TreeNode[] {
     if (ti.FieldsNotLoaded) {
       console.log("unexpected fields not loaded")
       return []
@@ -227,9 +260,48 @@ export class TypesDataSource implements DataSource<TreeNode> {
       const cti = this.types.get(f.Type)
       const expandable = !cti || (cti.FieldsNotLoaded || cti.Fields!.length > 0);
       const checked = exprs.includes(expr);
-      const n: TreeNode = new TreeNode(f.Name, expr, f.Type, expandable, checked);
+      const n: TreeNode = new TreeNode(
+        f.Name, expr, f.Type, expandable, checked,
+        false, // formalParam - subfields are not function params
+        parent.loclistAvailable // if the parent is available, so is its field
+      );
       res.push(n);
     }
     return res;
+  }
+}
+
+@Component({
+  selector: 'flight-recorder-dialog',
+  templateUrl: 'flight-recorder-dialog.component.html',
+  styleUrls: ['flight-recorder-dialog.component.css'],
+  standalone: true,
+  imports: [MatDialogModule, MatFormFieldModule, MatInputModule, FormsModule, MatButtonModule, MatRadioModule],
+})
+export class FlightRecorderDialog {
+  keyOption: string = "goroutineID";
+  customKeyExpr: string = "";
+
+  constructor(
+    public dialogRef: MatDialogRef<FlightRecorderDialog>,
+    @Inject(MAT_DIALOG_DATA) public data: {
+      varName: string,
+      existingSpec?: FlightRecorderEventSpec,
+    },
+  ) {
+    console.log("creating dialog with existing spec:", data);
+  }
+
+  onCancel(): void {
+    this.dialogRef.close();
+  }
+
+  onOk(): void {
+    this.dialogRef.close(new FlightRecorderEvent(
+      this.data.varName,
+      // TODO(andrei): add delete button
+      false,
+      this.keyOption == 'goroutineID' ? goroutineIDKey : this.customKeyExpr,
+    ));
   }
 }

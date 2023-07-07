@@ -33,8 +33,9 @@ var (
 	FrameSpecsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "frame", Type: field.TypeString},
-		{Name: "exprs", Type: field.TypeJSON},
-		{Name: "collect_spec_frames", Type: field.TypeInt, Nullable: true},
+		{Name: "collect_expressions", Type: field.TypeJSON},
+		{Name: "flight_recorder_events", Type: field.TypeJSON},
+		{Name: "collect_spec", Type: field.TypeInt},
 	}
 	// FrameSpecsTable holds the schema information for the "frame_specs" table.
 	FrameSpecsTable = &schema.Table{
@@ -44,9 +45,9 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "frame_specs_collect_specs_frames",
-				Columns:    []*schema.Column{FrameSpecsColumns[3]},
+				Columns:    []*schema.Column{FrameSpecsColumns[4]},
 				RefColumns: []*schema.Column{CollectSpecsColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}

@@ -48,7 +48,7 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	CollectSpec struct {
-		Frames func(childComplexity int) int
+		Frames func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.FrameSpecWhereInput) int
 		ID     func(childComplexity int) int
 	}
 
@@ -77,9 +77,23 @@ type ComplexityRoot struct {
 	}
 
 	FrameSpec struct {
-		Exprs func(childComplexity int) int
-		Frame func(childComplexity int) int
-		ID    func(childComplexity int) int
+		CollectExpressions   func(childComplexity int) int
+		CollectSpec          func(childComplexity int) int
+		CollectSpecRef       func(childComplexity int) int
+		FlightRecorderEvents func(childComplexity int) int
+		Frame                func(childComplexity int) int
+		ID                   func(childComplexity int) int
+	}
+
+	FrameSpecConnection struct {
+		Edges      func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	FrameSpecEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
 	}
 
 	GoroutineInfo struct {
@@ -101,10 +115,11 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddExprToCollectSpec      func(childComplexity int, frame string, expr string) int
-		CollectCollection         func(childComplexity int) int
-		CreateCollection          func(childComplexity int, input *ent.CreateCollectionInput) int
-		RemoveExprFromCollectSpec func(childComplexity int, expr string, frame string) int
+		AddExprToCollectSpec                     func(childComplexity int, frame string, expr string) int
+		AddFlightRecorderEventToCollectSpec      func(childComplexity int, frame string, spec string) int
+		CollectCollection                        func(childComplexity int) int
+		RemoveExprFromCollectSpec                func(childComplexity int, expr string, frame string) int
+		RemoveFlightRecorderEventFromCollectSpec func(childComplexity int, frame string, spec string) int
 	}
 
 	PageInfo struct {
@@ -123,11 +138,11 @@ type ComplexityRoot struct {
 
 	Query struct {
 		AvailableVars    func(childComplexity int, funcArg string, pcOff int) int
-		CollectSpec      func(childComplexity int, funcArg *string) int
+		CollectSpec      func(childComplexity int) int
 		CollectSpecs     func(childComplexity int) int
 		CollectionByID   func(childComplexity int, id int) int
 		Collections      func(childComplexity int) int
-		FrameSpecs       func(childComplexity int) int
+		FrameSpecs       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.FrameSpecWhereInput) int
 		GetTree          func(childComplexity int, colID int, snapID int, gID *int, filter *string) int
 		Goroutines       func(childComplexity int, colID int, snapID int, gID *int, filter *string) int
 		Node             func(childComplexity int, id int) int
@@ -161,22 +176,23 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CreateCollection(ctx context.Context, input *ent.CreateCollectionInput) (*ent.Collection, error)
 	CollectCollection(ctx context.Context) (*ent.Collection, error)
 	AddExprToCollectSpec(ctx context.Context, frame string, expr string) (*ent.CollectSpec, error)
 	RemoveExprFromCollectSpec(ctx context.Context, expr string, frame string) (*ent.CollectSpec, error)
+	AddFlightRecorderEventToCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error)
+	RemoveFlightRecorderEventFromCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id int) (ent.Noder, error)
 	Nodes(ctx context.Context, ids []int) ([]ent.Noder, error)
 	CollectSpecs(ctx context.Context) ([]ent.CollectSpec, error)
 	Collections(ctx context.Context) ([]ent.Collection, error)
-	FrameSpecs(ctx context.Context) ([]ent.FrameSpec, error)
+	FrameSpecs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.FrameSpecWhereInput) (*ent.FrameSpecConnection, error)
 	ProcessSnapshots(ctx context.Context) ([]ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
 	Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*graph.VarsAndTypes, error)
-	CollectSpec(ctx context.Context, funcArg *string) ([]ent.FrameSpec, error)
+	CollectSpec(ctx context.Context) (*ent.CollectSpec, error)
 	TypeInfo(ctx context.Context, name string) (*graph.TypeInfo, error)
 	GetTree(ctx context.Context, colID int, snapID int, gID *int, filter *string) (string, error)
 }
@@ -201,7 +217,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.CollectSpec.Frames(childComplexity), true
+		args, err := ec.field_CollectSpec_frames_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.CollectSpec.Frames(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["where"].(*ent.FrameSpecWhereInput)), true
 
 	case "CollectSpec.id":
 		if e.complexity.CollectSpec.ID == nil {
@@ -294,12 +315,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.FrameInfo.Line(childComplexity), true
 
-	case "FrameSpec.exprs":
-		if e.complexity.FrameSpec.Exprs == nil {
+	case "FrameSpec.collectExpressions":
+		if e.complexity.FrameSpec.CollectExpressions == nil {
 			break
 		}
 
-		return e.complexity.FrameSpec.Exprs(childComplexity), true
+		return e.complexity.FrameSpec.CollectExpressions(childComplexity), true
+
+	case "FrameSpec.collectSpec":
+		if e.complexity.FrameSpec.CollectSpec == nil {
+			break
+		}
+
+		return e.complexity.FrameSpec.CollectSpec(childComplexity), true
+
+	case "FrameSpec.collectSpecRef":
+		if e.complexity.FrameSpec.CollectSpecRef == nil {
+			break
+		}
+
+		return e.complexity.FrameSpec.CollectSpecRef(childComplexity), true
+
+	case "FrameSpec.flightRecorderEvents":
+		if e.complexity.FrameSpec.FlightRecorderEvents == nil {
+			break
+		}
+
+		return e.complexity.FrameSpec.FlightRecorderEvents(childComplexity), true
 
 	case "FrameSpec.frame":
 		if e.complexity.FrameSpec.Frame == nil {
@@ -314,6 +356,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FrameSpec.ID(childComplexity), true
+
+	case "FrameSpecConnection.edges":
+		if e.complexity.FrameSpecConnection.Edges == nil {
+			break
+		}
+
+		return e.complexity.FrameSpecConnection.Edges(childComplexity), true
+
+	case "FrameSpecConnection.pageInfo":
+		if e.complexity.FrameSpecConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.FrameSpecConnection.PageInfo(childComplexity), true
+
+	case "FrameSpecConnection.totalCount":
+		if e.complexity.FrameSpecConnection.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.FrameSpecConnection.TotalCount(childComplexity), true
+
+	case "FrameSpecEdge.cursor":
+		if e.complexity.FrameSpecEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.FrameSpecEdge.Cursor(childComplexity), true
+
+	case "FrameSpecEdge.node":
+		if e.complexity.FrameSpecEdge.Node == nil {
+			break
+		}
+
+		return e.complexity.FrameSpecEdge.Node(childComplexity), true
 
 	case "GoroutineInfo.Frames":
 		if e.complexity.GoroutineInfo.Frames == nil {
@@ -390,24 +467,24 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddExprToCollectSpec(childComplexity, args["frame"].(string), args["expr"].(string)), true
 
+	case "Mutation.addFlightRecorderEventToCollectSpec":
+		if e.complexity.Mutation.AddFlightRecorderEventToCollectSpec == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addFlightRecorderEventToCollectSpec_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddFlightRecorderEventToCollectSpec(childComplexity, args["frame"].(string), args["spec"].(string)), true
+
 	case "Mutation.collectCollection":
 		if e.complexity.Mutation.CollectCollection == nil {
 			break
 		}
 
 		return e.complexity.Mutation.CollectCollection(childComplexity), true
-
-	case "Mutation.createCollection":
-		if e.complexity.Mutation.CreateCollection == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_createCollection_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.CreateCollection(childComplexity, args["input"].(*ent.CreateCollectionInput)), true
 
 	case "Mutation.removeExprFromCollectSpec":
 		if e.complexity.Mutation.RemoveExprFromCollectSpec == nil {
@@ -420,6 +497,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveExprFromCollectSpec(childComplexity, args["expr"].(string), args["frame"].(string)), true
+
+	case "Mutation.removeFlightRecorderEventFromCollectSpec":
+		if e.complexity.Mutation.RemoveFlightRecorderEventFromCollectSpec == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeFlightRecorderEventFromCollectSpec_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveFlightRecorderEventFromCollectSpec(childComplexity, args["frame"].(string), args["spec"].(string)), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -494,12 +583,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_collectSpec_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.CollectSpec(childComplexity, args["func"].(*string)), true
+		return e.complexity.Query.CollectSpec(childComplexity), true
 
 	case "Query.collectSpecs":
 		if e.complexity.Query.CollectSpecs == nil {
@@ -532,7 +616,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.FrameSpecs(childComplexity), true
+		args, err := ec.field_Query_frameSpecs_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FrameSpecs(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["where"].(*ent.FrameSpecWhereInput)), true
 
 	case "Query.getTree":
 		if e.complexity.Query.GetTree == nil {
@@ -686,10 +775,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputCollectSpecWhereInput,
+		ec.unmarshalInputCollectionWhereInput,
 		ec.unmarshalInputCreateCollectSpecInput,
 		ec.unmarshalInputCreateCollectionInput,
 		ec.unmarshalInputCreateFrameSpecInput,
 		ec.unmarshalInputCreateProcessSnapshotInput,
+		ec.unmarshalInputFrameSpecWhereInput,
+		ec.unmarshalInputProcessSnapshotWhereInput,
 	)
 	first := true
 
@@ -770,6 +863,57 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) field_CollectSpec_frames_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *entgql.Cursor[int]
+	if tmp, ok := rawArgs["after"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
+		arg0, err = ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["after"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg1
+	var arg2 *entgql.Cursor[int]
+	if tmp, ok := rawArgs["before"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+		arg2, err = ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["before"] = arg2
+	var arg3 *int
+	if tmp, ok := rawArgs["last"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["last"] = arg3
+	var arg4 *ent.FrameSpecWhereInput
+	if tmp, ok := rawArgs["where"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
+		arg4, err = ec.unmarshalOFrameSpecWhereInput2ᚖstacksvizᚋentᚐFrameSpecWhereInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["where"] = arg4
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addExprToCollectSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -794,18 +938,27 @@ func (ec *executionContext) field_Mutation_addExprToCollectSpec_args(ctx context
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_createCollection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_addFlightRecorderEventToCollectSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *ent.CreateCollectionInput
-	if tmp, ok := rawArgs["input"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalOCreateCollectionInput2ᚖstacksvizᚋentᚐCreateCollectionInput(ctx, tmp)
+	var arg0 string
+	if tmp, ok := rawArgs["frame"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frame"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["input"] = arg0
+	args["frame"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["spec"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spec"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["spec"] = arg1
 	return args, nil
 }
 
@@ -830,6 +983,30 @@ func (ec *executionContext) field_Mutation_removeExprFromCollectSpec_args(ctx co
 		}
 	}
 	args["frame"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeFlightRecorderEventFromCollectSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["frame"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frame"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["frame"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["spec"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spec"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["spec"] = arg1
 	return args, nil
 }
 
@@ -872,21 +1049,6 @@ func (ec *executionContext) field_Query_availableVars_args(ctx context.Context, 
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_collectSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["func"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("func"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["func"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_collectionByID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -899,6 +1061,57 @@ func (ec *executionContext) field_Query_collectionByID_args(ctx context.Context,
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_frameSpecs_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *entgql.Cursor[int]
+	if tmp, ok := rawArgs["after"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
+		arg0, err = ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["after"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg1
+	var arg2 *entgql.Cursor[int]
+	if tmp, ok := rawArgs["before"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+		arg2, err = ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["before"] = arg2
+	var arg3 *int
+	if tmp, ok := rawArgs["last"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["last"] = arg3
+	var arg4 *ent.FrameSpecWhereInput
+	if tmp, ok := rawArgs["where"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
+		arg4, err = ec.unmarshalOFrameSpecWhereInput2ᚖstacksvizᚋentᚐFrameSpecWhereInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["where"] = arg4
 	return args, nil
 }
 
@@ -1127,18 +1340,21 @@ func (ec *executionContext) _CollectSpec_frames(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Frames(ctx)
+		return obj.Frames(ctx, fc.Args["after"].(*entgql.Cursor[int]), fc.Args["first"].(*int), fc.Args["before"].(*entgql.Cursor[int]), fc.Args["last"].(*int), fc.Args["where"].(*ent.FrameSpecWhereInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.FrameSpec)
+	res := resTmp.(*ent.FrameSpecConnection)
 	fc.Result = res
-	return ec.marshalOFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
+	return ec.marshalNFrameSpecConnection2ᚖstacksvizᚋentᚐFrameSpecConnection(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1149,15 +1365,26 @@ func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_FrameSpec_id(ctx, field)
-			case "frame":
-				return ec.fieldContext_FrameSpec_frame(ctx, field)
-			case "exprs":
-				return ec.fieldContext_FrameSpec_exprs(ctx, field)
+			case "edges":
+				return ec.fieldContext_FrameSpecConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_FrameSpecConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_FrameSpecConnection_totalCount(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type FrameSpec", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type FrameSpecConnection", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_CollectSpec_frames_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
@@ -1793,8 +2020,8 @@ func (ec *executionContext) fieldContext_FrameSpec_frame(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _FrameSpec_exprs(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_FrameSpec_exprs(ctx, field)
+func (ec *executionContext) _FrameSpec_collectSpec(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpec_collectSpec(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1807,7 +2034,51 @@ func (ec *executionContext) _FrameSpec_exprs(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Exprs, nil
+		return obj.CollectSpec, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNID2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameSpec_collectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameSpec",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpec_collectExpressions(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpec_collectExpressions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CollectExpressions, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1824,7 +2095,7 @@ func (ec *executionContext) _FrameSpec_exprs(ctx context.Context, field graphql.
 	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_FrameSpec_exprs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_FrameSpec_collectExpressions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "FrameSpec",
 		Field:      field,
@@ -1832,6 +2103,344 @@ func (ec *executionContext) fieldContext_FrameSpec_exprs(ctx context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpec_flightRecorderEvents(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpec_flightRecorderEvents(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FlightRecorderEvents, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameSpec_flightRecorderEvents(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameSpec",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpec_collectSpecRef(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpec_collectSpecRef(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CollectSpecRef(ctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CollectSpec)
+	fc.Result = res
+	return ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameSpec_collectSpecRef(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameSpec",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CollectSpec_id(ctx, field)
+			case "frames":
+				return ec.fieldContext_CollectSpec_frames(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectSpec", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpecConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpecConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpecConnection_edges(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Edges, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.FrameSpecEdge)
+	fc.Result = res
+	return ec.marshalOFrameSpecEdge2ᚕᚖstacksvizᚋentᚐFrameSpecEdge(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameSpecConnection_edges(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameSpecConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "node":
+				return ec.fieldContext_FrameSpecEdge_node(ctx, field)
+			case "cursor":
+				return ec.fieldContext_FrameSpecEdge_cursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FrameSpecEdge", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpecConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpecConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpecConnection_pageInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PageInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(entgql.PageInfo[int])
+	fc.Result = res
+	return ec.marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameSpecConnection_pageInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameSpecConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasNextPage":
+				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
+			case "hasPreviousPage":
+				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
+			case "startCursor":
+				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "endCursor":
+				return ec.fieldContext_PageInfo_endCursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpecConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpecConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpecConnection_totalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameSpecConnection_totalCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameSpecConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpecEdge_node(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpecEdge) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpecEdge_node(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Node, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.FrameSpec)
+	fc.Result = res
+	return ec.marshalOFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameSpecEdge_node(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameSpecEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_FrameSpec_id(ctx, field)
+			case "frame":
+				return ec.fieldContext_FrameSpec_frame(ctx, field)
+			case "collectSpec":
+				return ec.fieldContext_FrameSpec_collectSpec(ctx, field)
+			case "collectExpressions":
+				return ec.fieldContext_FrameSpec_collectExpressions(ctx, field)
+			case "flightRecorderEvents":
+				return ec.fieldContext_FrameSpec_flightRecorderEvents(ctx, field)
+			case "collectSpecRef":
+				return ec.fieldContext_FrameSpec_collectSpecRef(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FrameSpec", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrameSpecEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpecEdge) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpecEdge_cursor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cursor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(entgql.Cursor[int])
+	fc.Result = res
+	return ec.marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FrameSpecEdge_cursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrameSpecEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Cursor does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2265,66 +2874,6 @@ func (ec *executionContext) fieldContext_Link_FrameIdx(ctx context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_createCollection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_createCollection(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateCollection(rctx, fc.Args["input"].(*ent.CreateCollectionInput))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*ent.Collection)
-	fc.Result = res
-	return ec.marshalOCollection2ᚖstacksvizᚋentᚐCollection(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_createCollection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Collection_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Collection_name(ctx, field)
-			case "processSnapshots":
-				return ec.fieldContext_Collection_processSnapshots(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Collection", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createCollection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_collectCollection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_collectCollection(ctx, field)
 	if err != nil {
@@ -2490,6 +3039,128 @@ func (ec *executionContext) fieldContext_Mutation_removeExprFromCollectSpec(ctx 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeExprFromCollectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addFlightRecorderEventToCollectSpec(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addFlightRecorderEventToCollectSpec(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddFlightRecorderEventToCollectSpec(rctx, fc.Args["frame"].(string), fc.Args["spec"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CollectSpec)
+	fc.Result = res
+	return ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addFlightRecorderEventToCollectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CollectSpec_id(ctx, field)
+			case "frames":
+				return ec.fieldContext_CollectSpec_frames(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectSpec", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addFlightRecorderEventToCollectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeFlightRecorderEventFromCollectSpec(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeFlightRecorderEventFromCollectSpec(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveFlightRecorderEventFromCollectSpec(rctx, fc.Args["frame"].(string), fc.Args["spec"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CollectSpec)
+	fc.Result = res
+	return ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeFlightRecorderEventFromCollectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CollectSpec_id(ctx, field)
+			case "frames":
+				return ec.fieldContext_CollectSpec_frames(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectSpec", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeFlightRecorderEventFromCollectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -3062,7 +3733,7 @@ func (ec *executionContext) _Query_frameSpecs(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().FrameSpecs(rctx)
+		return ec.resolvers.Query().FrameSpecs(rctx, fc.Args["after"].(*entgql.Cursor[int]), fc.Args["first"].(*int), fc.Args["before"].(*entgql.Cursor[int]), fc.Args["last"].(*int), fc.Args["where"].(*ent.FrameSpecWhereInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3074,9 +3745,9 @@ func (ec *executionContext) _Query_frameSpecs(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]ent.FrameSpec)
+	res := resTmp.(*ent.FrameSpecConnection)
 	fc.Result = res
-	return ec.marshalNFrameSpec2ᚕstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
+	return ec.marshalNFrameSpecConnection2ᚖstacksvizᚋentᚐFrameSpecConnection(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_frameSpecs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3087,15 +3758,26 @@ func (ec *executionContext) fieldContext_Query_frameSpecs(ctx context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_FrameSpec_id(ctx, field)
-			case "frame":
-				return ec.fieldContext_FrameSpec_frame(ctx, field)
-			case "exprs":
-				return ec.fieldContext_FrameSpec_exprs(ctx, field)
+			case "edges":
+				return ec.fieldContext_FrameSpecConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_FrameSpecConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_FrameSpecConnection_totalCount(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type FrameSpec", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type FrameSpecConnection", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_frameSpecs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
@@ -3350,7 +4032,7 @@ func (ec *executionContext) _Query_collectSpec(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CollectSpec(rctx, fc.Args["func"].(*string))
+		return ec.resolvers.Query().CollectSpec(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3362,9 +4044,9 @@ func (ec *executionContext) _Query_collectSpec(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]ent.FrameSpec)
+	res := resTmp.(*ent.CollectSpec)
 	fc.Result = res
-	return ec.marshalNFrameSpec2ᚕstacksvizᚋentᚐFrameSpecᚄ(ctx, field.Selections, res)
+	return ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_collectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3376,25 +4058,12 @@ func (ec *executionContext) fieldContext_Query_collectSpec(ctx context.Context, 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_FrameSpec_id(ctx, field)
-			case "frame":
-				return ec.fieldContext_FrameSpec_frame(ctx, field)
-			case "exprs":
-				return ec.fieldContext_FrameSpec_exprs(ctx, field)
+				return ec.fieldContext_CollectSpec_id(ctx, field)
+			case "frames":
+				return ec.fieldContext_CollectSpec_frames(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type FrameSpec", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CollectSpec", field.Name)
 		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_collectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
 	}
 	return fc, nil
 }
@@ -5942,6 +6611,397 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCollectSpecWhereInput(ctx context.Context, obj interface{}) (ent.CollectSpecWhereInput, error) {
+	var it ent.CollectSpecWhereInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "hasFrames", "hasFramesWith"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "not":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
+			data, err := ec.unmarshalOCollectSpecWhereInput2ᚖstacksvizᚋentᚐCollectSpecWhereInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Not = data
+		case "and":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
+			data, err := ec.unmarshalOCollectSpecWhereInput2ᚕᚖstacksvizᚋentᚐCollectSpecWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.And = data
+		case "or":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			data, err := ec.unmarshalOCollectSpecWhereInput2ᚕᚖstacksvizᚋentᚐCollectSpecWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Or = data
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "idNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDNEQ = data
+		case "idIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDIn = data
+		case "idNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDNotIn = data
+		case "idGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDGT = data
+		case "idGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDGTE = data
+		case "idLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDLT = data
+		case "idLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDLTE = data
+		case "hasFrames":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasFrames"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasFrames = data
+		case "hasFramesWith":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasFramesWith"))
+			data, err := ec.unmarshalOFrameSpecWhereInput2ᚕᚖstacksvizᚋentᚐFrameSpecWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasFramesWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCollectionWhereInput(ctx context.Context, obj interface{}) (ent.CollectionWhereInput, error) {
+	var it ent.CollectionWhereInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "hasProcessSnapshots", "hasProcessSnapshotsWith"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "not":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
+			data, err := ec.unmarshalOCollectionWhereInput2ᚖstacksvizᚋentᚐCollectionWhereInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Not = data
+		case "and":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
+			data, err := ec.unmarshalOCollectionWhereInput2ᚕᚖstacksvizᚋentᚐCollectionWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.And = data
+		case "or":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			data, err := ec.unmarshalOCollectionWhereInput2ᚕᚖstacksvizᚋentᚐCollectionWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Or = data
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "idNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDNEQ = data
+		case "idIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDIn = data
+		case "idNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDNotIn = data
+		case "idGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDGT = data
+		case "idGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDGTE = data
+		case "idLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDLT = data
+		case "idLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDLTE = data
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "nameNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameNEQ = data
+		case "nameIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameIn = data
+		case "nameNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameNotIn = data
+		case "nameGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameGT = data
+		case "nameGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameGTE = data
+		case "nameLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameLT = data
+		case "nameLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameLTE = data
+		case "nameContains":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameContains = data
+		case "nameHasPrefix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameHasPrefix = data
+		case "nameHasSuffix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameHasSuffix = data
+		case "nameEqualFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameEqualFold = data
+		case "nameContainsFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameContainsFold = data
+		case "hasProcessSnapshots":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasProcessSnapshots"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasProcessSnapshots = data
+		case "hasProcessSnapshotsWith":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasProcessSnapshotsWith"))
+			data, err := ec.unmarshalOProcessSnapshotWhereInput2ᚕᚖstacksvizᚋentᚐProcessSnapshotWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasProcessSnapshotsWith = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateCollectSpecInput(ctx context.Context, obj interface{}) (ent.CreateCollectSpecInput, error) {
 	var it ent.CreateCollectSpecInput
 	asMap := map[string]interface{}{}
@@ -6016,7 +7076,7 @@ func (ec *executionContext) unmarshalInputCreateFrameSpecInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"frame", "exprs"}
+	fieldsInOrder := [...]string{"frame", "collectExpressions", "flightRecorderEvents", "collectSpecRefID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -6032,15 +7092,33 @@ func (ec *executionContext) unmarshalInputCreateFrameSpecInput(ctx context.Conte
 				return it, err
 			}
 			it.Frame = data
-		case "exprs":
+		case "collectExpressions":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exprs"))
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectExpressions"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Exprs = data
+			it.CollectExpressions = data
+		case "flightRecorderEvents":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("flightRecorderEvents"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FlightRecorderEvents = data
+		case "collectSpecRefID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecRefID"))
+			data, err := ec.unmarshalNID2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CollectSpecRefID = data
 		}
 	}
 
@@ -6088,6 +7166,784 @@ func (ec *executionContext) unmarshalInputCreateProcessSnapshotInput(ctx context
 				return it, err
 			}
 			it.FramesOfInterest = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputFrameSpecWhereInput(ctx context.Context, obj interface{}) (ent.FrameSpecWhereInput, error) {
+	var it ent.FrameSpecWhereInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "frame", "frameNEQ", "frameIn", "frameNotIn", "frameGT", "frameGTE", "frameLT", "frameLTE", "frameContains", "frameHasPrefix", "frameHasSuffix", "frameEqualFold", "frameContainsFold", "collectSpec", "collectSpecNEQ", "collectSpecIn", "collectSpecNotIn", "hasCollectSpecRef", "hasCollectSpecRefWith"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "not":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
+			data, err := ec.unmarshalOFrameSpecWhereInput2ᚖstacksvizᚋentᚐFrameSpecWhereInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Not = data
+		case "and":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
+			data, err := ec.unmarshalOFrameSpecWhereInput2ᚕᚖstacksvizᚋentᚐFrameSpecWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.And = data
+		case "or":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			data, err := ec.unmarshalOFrameSpecWhereInput2ᚕᚖstacksvizᚋentᚐFrameSpecWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Or = data
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "idNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDNEQ = data
+		case "idIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDIn = data
+		case "idNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDNotIn = data
+		case "idGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDGT = data
+		case "idGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDGTE = data
+		case "idLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDLT = data
+		case "idLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDLTE = data
+		case "frame":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frame"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Frame = data
+		case "frameNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameNEQ = data
+		case "frameIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameIn = data
+		case "frameNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameNotIn = data
+		case "frameGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameGT = data
+		case "frameGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameGTE = data
+		case "frameLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameLT = data
+		case "frameLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameLTE = data
+		case "frameContains":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameContains = data
+		case "frameHasPrefix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameHasPrefix = data
+		case "frameHasSuffix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameHasSuffix = data
+		case "frameEqualFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameEqualFold = data
+		case "frameContainsFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frameContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FrameContainsFold = data
+		case "collectSpec":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpec"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CollectSpec = data
+		case "collectSpecNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecNEQ"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CollectSpecNEQ = data
+		case "collectSpecIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CollectSpecIn = data
+		case "collectSpecNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecNotIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CollectSpecNotIn = data
+		case "hasCollectSpecRef":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCollectSpecRef"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasCollectSpecRef = data
+		case "hasCollectSpecRefWith":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCollectSpecRefWith"))
+			data, err := ec.unmarshalOCollectSpecWhereInput2ᚕᚖstacksvizᚋentᚐCollectSpecWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasCollectSpecRefWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputProcessSnapshotWhereInput(ctx context.Context, obj interface{}) (ent.ProcessSnapshotWhereInput, error) {
+	var it ent.ProcessSnapshotWhereInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "processID", "processIDNEQ", "processIDIn", "processIDNotIn", "processIDGT", "processIDGTE", "processIDLT", "processIDLTE", "processIDContains", "processIDHasPrefix", "processIDHasSuffix", "processIDEqualFold", "processIDContainsFold", "snapshot", "snapshotNEQ", "snapshotIn", "snapshotNotIn", "snapshotGT", "snapshotGTE", "snapshotLT", "snapshotLTE", "snapshotContains", "snapshotHasPrefix", "snapshotHasSuffix", "snapshotEqualFold", "snapshotContainsFold", "framesOfInterest", "framesOfInterestNEQ", "framesOfInterestIn", "framesOfInterestNotIn", "framesOfInterestGT", "framesOfInterestGTE", "framesOfInterestLT", "framesOfInterestLTE", "framesOfInterestContains", "framesOfInterestHasPrefix", "framesOfInterestHasSuffix", "framesOfInterestIsNil", "framesOfInterestNotNil", "framesOfInterestEqualFold", "framesOfInterestContainsFold"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "not":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
+			data, err := ec.unmarshalOProcessSnapshotWhereInput2ᚖstacksvizᚋentᚐProcessSnapshotWhereInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Not = data
+		case "and":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
+			data, err := ec.unmarshalOProcessSnapshotWhereInput2ᚕᚖstacksvizᚋentᚐProcessSnapshotWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.And = data
+		case "or":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			data, err := ec.unmarshalOProcessSnapshotWhereInput2ᚕᚖstacksvizᚋentᚐProcessSnapshotWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Or = data
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "idNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDNEQ = data
+		case "idIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDIn = data
+		case "idNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDNotIn = data
+		case "idGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDGT = data
+		case "idGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDGTE = data
+		case "idLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDLT = data
+		case "idLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
+			data, err := ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IDLTE = data
+		case "processID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessID = data
+		case "processIDNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDNEQ = data
+		case "processIDIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDIn = data
+		case "processIDNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDNotIn = data
+		case "processIDGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDGT = data
+		case "processIDGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDGTE = data
+		case "processIDLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDLT = data
+		case "processIDLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDLTE = data
+		case "processIDContains":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDContains = data
+		case "processIDHasPrefix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDHasPrefix = data
+		case "processIDHasSuffix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDHasSuffix = data
+		case "processIDEqualFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDEqualFold = data
+		case "processIDContainsFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("processIDContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProcessIDContainsFold = data
+		case "snapshot":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshot"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Snapshot = data
+		case "snapshotNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotNEQ = data
+		case "snapshotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotIn = data
+		case "snapshotNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotNotIn = data
+		case "snapshotGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotGT = data
+		case "snapshotGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotGTE = data
+		case "snapshotLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotLT = data
+		case "snapshotLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotLTE = data
+		case "snapshotContains":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotContains = data
+		case "snapshotHasPrefix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotHasPrefix = data
+		case "snapshotHasSuffix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotHasSuffix = data
+		case "snapshotEqualFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotEqualFold = data
+		case "snapshotContainsFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("snapshotContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SnapshotContainsFold = data
+		case "framesOfInterest":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterest"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterest = data
+		case "framesOfInterestNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestNEQ = data
+		case "framesOfInterestIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestIn = data
+		case "framesOfInterestNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestNotIn = data
+		case "framesOfInterestGT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestGT = data
+		case "framesOfInterestGTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestGTE = data
+		case "framesOfInterestLT":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestLT = data
+		case "framesOfInterestLTE":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestLTE = data
+		case "framesOfInterestContains":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestContains = data
+		case "framesOfInterestHasPrefix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestHasPrefix = data
+		case "framesOfInterestHasSuffix":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestHasSuffix = data
+		case "framesOfInterestIsNil":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestIsNil = data
+		case "framesOfInterestNotNil":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestNotNil = data
+		case "framesOfInterestEqualFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestEqualFold = data
+		case "framesOfInterestContainsFold":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framesOfInterestContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FramesOfInterestContainsFold = data
 		}
 	}
 
@@ -6158,6 +8014,9 @@ func (ec *executionContext) _CollectSpec(ctx context.Context, sel ast.SelectionS
 					}
 				}()
 				res = ec._CollectSpec_frames(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -6369,18 +8228,123 @@ func (ec *executionContext) _FrameSpec(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._FrameSpec_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "frame":
 
 			out.Values[i] = ec._FrameSpec_frame(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "collectSpec":
+
+			out.Values[i] = ec._FrameSpec_collectSpec(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "collectExpressions":
+
+			out.Values[i] = ec._FrameSpec_collectExpressions(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "flightRecorderEvents":
+
+			out.Values[i] = ec._FrameSpec_flightRecorderEvents(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "collectSpecRef":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._FrameSpec_collectSpecRef(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var frameSpecConnectionImplementors = []string{"FrameSpecConnection"}
+
+func (ec *executionContext) _FrameSpecConnection(ctx context.Context, sel ast.SelectionSet, obj *ent.FrameSpecConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, frameSpecConnectionImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FrameSpecConnection")
+		case "edges":
+
+			out.Values[i] = ec._FrameSpecConnection_edges(ctx, field, obj)
+
+		case "pageInfo":
+
+			out.Values[i] = ec._FrameSpecConnection_pageInfo(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "exprs":
+		case "totalCount":
 
-			out.Values[i] = ec._FrameSpec_exprs(ctx, field, obj)
+			out.Values[i] = ec._FrameSpecConnection_totalCount(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var frameSpecEdgeImplementors = []string{"FrameSpecEdge"}
+
+func (ec *executionContext) _FrameSpecEdge(ctx context.Context, sel ast.SelectionSet, obj *ent.FrameSpecEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, frameSpecEdgeImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FrameSpecEdge")
+		case "node":
+
+			out.Values[i] = ec._FrameSpecEdge_node(ctx, field, obj)
+
+		case "cursor":
+
+			out.Values[i] = ec._FrameSpecEdge_cursor(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -6541,12 +8505,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
-		case "createCollection":
-
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createCollection(ctx, field)
-			})
-
 		case "collectCollection":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -6566,6 +8524,24 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeExprFromCollectSpec(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "addFlightRecorderEventToCollectSpec":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addFlightRecorderEventToCollectSpec(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "removeFlightRecorderEventFromCollectSpec":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeFlightRecorderEventFromCollectSpec(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -7532,6 +9508,11 @@ func (ec *executionContext) marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec
 	return ec._CollectSpec(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNCollectSpecWhereInput2ᚖstacksvizᚋentᚐCollectSpecWhereInput(ctx context.Context, v interface{}) (*ent.CollectSpecWhereInput, error) {
+	res, err := ec.unmarshalInputCollectSpecWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNCollectedVar2stacksvizᚋgraphᚐCollectedVar(ctx context.Context, sel ast.SelectionSet, v graph.CollectedVar) graphql.Marshaler {
 	return ec._CollectedVar(ctx, sel, &v)
 }
@@ -7628,6 +9609,21 @@ func (ec *executionContext) marshalNCollection2ᚕstacksvizᚋentᚐCollection�
 	return ret
 }
 
+func (ec *executionContext) unmarshalNCollectionWhereInput2ᚖstacksvizᚋentᚐCollectionWhereInput(ctx context.Context, v interface{}) (*ent.CollectionWhereInput, error) {
+	res, err := ec.unmarshalInputCollectionWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, v interface{}) (entgql.Cursor[int], error) {
+	var res entgql.Cursor[int]
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, sel ast.SelectionSet, v entgql.Cursor[int]) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNFieldInfo2stacksvizᚋgraphᚐFieldInfo(ctx context.Context, sel ast.SelectionSet, v graph.FieldInfo) graphql.Marshaler {
 	return ec._FieldInfo(ctx, sel, &v)
 }
@@ -7680,62 +9676,23 @@ func (ec *executionContext) marshalNFrameInfo2ᚕstacksvizᚋgraphᚐFrameInfo�
 	return ret
 }
 
-func (ec *executionContext) marshalNFrameSpec2stacksvizᚋentᚐFrameSpec(ctx context.Context, sel ast.SelectionSet, v ent.FrameSpec) graphql.Marshaler {
-	return ec._FrameSpec(ctx, sel, &v)
+func (ec *executionContext) marshalNFrameSpecConnection2stacksvizᚋentᚐFrameSpecConnection(ctx context.Context, sel ast.SelectionSet, v ent.FrameSpecConnection) graphql.Marshaler {
+	return ec._FrameSpecConnection(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNFrameSpec2ᚕstacksvizᚋentᚐFrameSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []ent.FrameSpec) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNFrameSpec2stacksvizᚋentᚐFrameSpec(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx context.Context, sel ast.SelectionSet, v *ent.FrameSpec) graphql.Marshaler {
+func (ec *executionContext) marshalNFrameSpecConnection2ᚖstacksvizᚋentᚐFrameSpecConnection(ctx context.Context, sel ast.SelectionSet, v *ent.FrameSpecConnection) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._FrameSpec(ctx, sel, v)
+	return ec._FrameSpecConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNFrameSpecWhereInput2ᚖstacksvizᚋentᚐFrameSpecWhereInput(ctx context.Context, v interface{}) (*ent.FrameSpecWhereInput, error) {
+	res, err := ec.unmarshalInputFrameSpecWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNGoroutineInfo2stacksvizᚋgraphᚐGoroutineInfo(ctx context.Context, sel ast.SelectionSet, v graph.GoroutineInfo) graphql.Marshaler {
@@ -8014,6 +9971,10 @@ func (ec *executionContext) marshalNNode2ᚕstacksvizᚋentᚐNoder(ctx context.
 	return ret
 }
 
+func (ec *executionContext) marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v entgql.PageInfo[int]) graphql.Marshaler {
+	return ec._PageInfo(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNProcessSnapshot2stacksvizᚋentᚐProcessSnapshot(ctx context.Context, sel ast.SelectionSet, v ent.ProcessSnapshot) graphql.Marshaler {
 	return ec._ProcessSnapshot(ctx, sel, &v)
 }
@@ -8070,6 +10031,11 @@ func (ec *executionContext) marshalNProcessSnapshot2ᚖstacksvizᚋentᚐProcess
 		return graphql.Null
 	}
 	return ec._ProcessSnapshot(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNProcessSnapshotWhereInput2ᚖstacksvizᚋentᚐProcessSnapshotWhereInput(ctx context.Context, v interface{}) (*ent.ProcessSnapshotWhereInput, error) {
+	res, err := ec.unmarshalInputProcessSnapshotWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSnapshotInfo2stacksvizᚋgraphᚐSnapshotInfo(ctx context.Context, sel ast.SelectionSet, v graph.SnapshotInfo) graphql.Marshaler {
@@ -8532,6 +10498,34 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOCollectSpecWhereInput2ᚕᚖstacksvizᚋentᚐCollectSpecWhereInputᚄ(ctx context.Context, v interface{}) ([]*ent.CollectSpecWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*ent.CollectSpecWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNCollectSpecWhereInput2ᚖstacksvizᚋentᚐCollectSpecWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOCollectSpecWhereInput2ᚖstacksvizᚋentᚐCollectSpecWhereInput(ctx context.Context, v interface{}) (*ent.CollectSpecWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputCollectSpecWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOCollection2ᚖstacksvizᚋentᚐCollection(ctx context.Context, sel ast.SelectionSet, v *ent.Collection) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -8539,11 +10533,31 @@ func (ec *executionContext) marshalOCollection2ᚖstacksvizᚋentᚐCollection(c
 	return ec._Collection(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOCreateCollectionInput2ᚖstacksvizᚋentᚐCreateCollectionInput(ctx context.Context, v interface{}) (*ent.CreateCollectionInput, error) {
+func (ec *executionContext) unmarshalOCollectionWhereInput2ᚕᚖstacksvizᚋentᚐCollectionWhereInputᚄ(ctx context.Context, v interface{}) ([]*ent.CollectionWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputCreateCollectionInput(ctx, v)
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*ent.CollectionWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNCollectionWhereInput2ᚖstacksvizᚋentᚐCollectionWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOCollectionWhereInput2ᚖstacksvizᚋentᚐCollectionWhereInput(ctx context.Context, v interface{}) (*ent.CollectionWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputCollectionWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -8610,7 +10624,14 @@ func (ec *executionContext) marshalOFieldInfo2ᚕstacksvizᚋgraphᚐFieldInfo�
 	return ret
 }
 
-func (ec *executionContext) marshalOFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpecᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameSpec) graphql.Marshaler {
+func (ec *executionContext) marshalOFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx context.Context, sel ast.SelectionSet, v *ent.FrameSpec) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FrameSpec(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOFrameSpecEdge2ᚕᚖstacksvizᚋentᚐFrameSpecEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.FrameSpecEdge) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -8637,7 +10658,7 @@ func (ec *executionContext) marshalOFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpec�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx, sel, v[i])
+			ret[i] = ec.marshalOFrameSpecEdge2ᚖstacksvizᚋentᚐFrameSpecEdge(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -8648,13 +10669,42 @@ func (ec *executionContext) marshalOFrameSpec2ᚕᚖstacksvizᚋentᚐFrameSpec�
 	}
 	wg.Wait()
 
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
+	return ret
+}
+
+func (ec *executionContext) marshalOFrameSpecEdge2ᚖstacksvizᚋentᚐFrameSpecEdge(ctx context.Context, sel ast.SelectionSet, v *ent.FrameSpecEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FrameSpecEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOFrameSpecWhereInput2ᚕᚖstacksvizᚋentᚐFrameSpecWhereInputᚄ(ctx context.Context, v interface{}) ([]*ent.FrameSpecWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*ent.FrameSpecWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNFrameSpecWhereInput2ᚖstacksvizᚋentᚐFrameSpecWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
 		}
 	}
+	return res, nil
+}
 
-	return ret
+func (ec *executionContext) unmarshalOFrameSpecWhereInput2ᚖstacksvizᚋentᚐFrameSpecWhereInput(ctx context.Context, v interface{}) (*ent.FrameSpecWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputFrameSpecWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOID2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {
@@ -8693,6 +10743,22 @@ func (ec *executionContext) marshalOID2ᚕintᚄ(ctx context.Context, sel ast.Se
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOID2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalIntID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalIntID(*v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
@@ -8763,6 +10829,34 @@ func (ec *executionContext) marshalOProcessSnapshot2ᚕᚖstacksvizᚋentᚐProc
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOProcessSnapshotWhereInput2ᚕᚖstacksvizᚋentᚐProcessSnapshotWhereInputᚄ(ctx context.Context, v interface{}) ([]*ent.ProcessSnapshotWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*ent.ProcessSnapshotWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNProcessSnapshotWhereInput2ᚖstacksvizᚋentᚐProcessSnapshotWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOProcessSnapshotWhereInput2ᚖstacksvizᚋentᚐProcessSnapshotWhereInput(ctx context.Context, v interface{}) (*ent.ProcessSnapshotWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputProcessSnapshotWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

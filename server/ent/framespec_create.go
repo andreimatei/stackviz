@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"stacksviz/ent/collectspec"
 	"stacksviz/ent/framespec"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -25,10 +26,33 @@ func (fsc *FrameSpecCreate) SetFrame(s string) *FrameSpecCreate {
 	return fsc
 }
 
-// SetExprs sets the "exprs" field.
-func (fsc *FrameSpecCreate) SetExprs(s []string) *FrameSpecCreate {
-	fsc.mutation.SetExprs(s)
+// SetCollectSpec sets the "collect_spec" field.
+func (fsc *FrameSpecCreate) SetCollectSpec(i int) *FrameSpecCreate {
+	fsc.mutation.SetCollectSpec(i)
 	return fsc
+}
+
+// SetCollectExpressions sets the "collect_expressions" field.
+func (fsc *FrameSpecCreate) SetCollectExpressions(s []string) *FrameSpecCreate {
+	fsc.mutation.SetCollectExpressions(s)
+	return fsc
+}
+
+// SetFlightRecorderEvents sets the "flight_recorder_events" field.
+func (fsc *FrameSpecCreate) SetFlightRecorderEvents(s []string) *FrameSpecCreate {
+	fsc.mutation.SetFlightRecorderEvents(s)
+	return fsc
+}
+
+// SetCollectSpecRefID sets the "collect_spec_ref" edge to the CollectSpec entity by ID.
+func (fsc *FrameSpecCreate) SetCollectSpecRefID(id int) *FrameSpecCreate {
+	fsc.mutation.SetCollectSpecRefID(id)
+	return fsc
+}
+
+// SetCollectSpecRef sets the "collect_spec_ref" edge to the CollectSpec entity.
+func (fsc *FrameSpecCreate) SetCollectSpecRef(c *CollectSpec) *FrameSpecCreate {
+	return fsc.SetCollectSpecRefID(c.ID)
 }
 
 // Mutation returns the FrameSpecMutation object of the builder.
@@ -68,8 +92,17 @@ func (fsc *FrameSpecCreate) check() error {
 	if _, ok := fsc.mutation.Frame(); !ok {
 		return &ValidationError{Name: "frame", err: errors.New(`ent: missing required field "FrameSpec.frame"`)}
 	}
-	if _, ok := fsc.mutation.Exprs(); !ok {
-		return &ValidationError{Name: "exprs", err: errors.New(`ent: missing required field "FrameSpec.exprs"`)}
+	if _, ok := fsc.mutation.CollectSpec(); !ok {
+		return &ValidationError{Name: "collect_spec", err: errors.New(`ent: missing required field "FrameSpec.collect_spec"`)}
+	}
+	if _, ok := fsc.mutation.CollectExpressions(); !ok {
+		return &ValidationError{Name: "collect_expressions", err: errors.New(`ent: missing required field "FrameSpec.collect_expressions"`)}
+	}
+	if _, ok := fsc.mutation.FlightRecorderEvents(); !ok {
+		return &ValidationError{Name: "flight_recorder_events", err: errors.New(`ent: missing required field "FrameSpec.flight_recorder_events"`)}
+	}
+	if _, ok := fsc.mutation.CollectSpecRefID(); !ok {
+		return &ValidationError{Name: "collect_spec_ref", err: errors.New(`ent: missing required edge "FrameSpec.collect_spec_ref"`)}
 	}
 	return nil
 }
@@ -101,9 +134,30 @@ func (fsc *FrameSpecCreate) createSpec() (*FrameSpec, *sqlgraph.CreateSpec) {
 		_spec.SetField(framespec.FieldFrame, field.TypeString, value)
 		_node.Frame = value
 	}
-	if value, ok := fsc.mutation.Exprs(); ok {
-		_spec.SetField(framespec.FieldExprs, field.TypeJSON, value)
-		_node.Exprs = value
+	if value, ok := fsc.mutation.CollectExpressions(); ok {
+		_spec.SetField(framespec.FieldCollectExpressions, field.TypeJSON, value)
+		_node.CollectExpressions = value
+	}
+	if value, ok := fsc.mutation.FlightRecorderEvents(); ok {
+		_spec.SetField(framespec.FieldFlightRecorderEvents, field.TypeJSON, value)
+		_node.FlightRecorderEvents = value
+	}
+	if nodes := fsc.mutation.CollectSpecRefIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   framespec.CollectSpecRefTable,
+			Columns: []string{framespec.CollectSpecRefColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.CollectSpec = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

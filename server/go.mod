@@ -8,7 +8,6 @@ require (
 	github.com/99designs/gqlgen v0.17.31
 	github.com/andreimatei/delve-agent v0.1.0
 	github.com/go-delve/delve v1.20.2
-	github.com/google/traceviz/server/go v0.0.0-20230428161057-a446b048e906
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/kr/pretty v0.2.1

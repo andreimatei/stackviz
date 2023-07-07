@@ -4,6 +4,7 @@ package framespec
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -13,34 +14,38 @@ const (
 	FieldID = "id"
 	// FieldFrame holds the string denoting the frame field in the database.
 	FieldFrame = "frame"
-	// FieldExprs holds the string denoting the exprs field in the database.
-	FieldExprs = "exprs"
+	// FieldCollectSpec holds the string denoting the collect_spec field in the database.
+	FieldCollectSpec = "collect_spec"
+	// FieldCollectExpressions holds the string denoting the collect_expressions field in the database.
+	FieldCollectExpressions = "collect_expressions"
+	// FieldFlightRecorderEvents holds the string denoting the flight_recorder_events field in the database.
+	FieldFlightRecorderEvents = "flight_recorder_events"
+	// EdgeCollectSpecRef holds the string denoting the collect_spec_ref edge name in mutations.
+	EdgeCollectSpecRef = "collect_spec_ref"
 	// Table holds the table name of the framespec in the database.
 	Table = "frame_specs"
+	// CollectSpecRefTable is the table that holds the collect_spec_ref relation/edge.
+	CollectSpecRefTable = "frame_specs"
+	// CollectSpecRefInverseTable is the table name for the CollectSpec entity.
+	// It exists in this package in order to avoid circular dependency with the "collectspec" package.
+	CollectSpecRefInverseTable = "collect_specs"
+	// CollectSpecRefColumn is the table column denoting the collect_spec_ref relation/edge.
+	CollectSpecRefColumn = "collect_spec"
 )
 
 // Columns holds all SQL columns for framespec fields.
 var Columns = []string{
 	FieldID,
 	FieldFrame,
-	FieldExprs,
-}
-
-// ForeignKeys holds the SQL foreign-keys that are owned by the "frame_specs"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"collect_spec_frames",
+	FieldCollectSpec,
+	FieldCollectExpressions,
+	FieldFlightRecorderEvents,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -58,4 +63,23 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByFrame orders the results by the frame field.
 func ByFrame(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFrame, opts...).ToFunc()
+}
+
+// ByCollectSpec orders the results by the collect_spec field.
+func ByCollectSpec(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCollectSpec, opts...).ToFunc()
+}
+
+// ByCollectSpecRefField orders the results by collect_spec_ref field.
+func ByCollectSpecRefField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCollectSpecRefStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newCollectSpecRefStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CollectSpecRefInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, CollectSpecRefTable, CollectSpecRefColumn),
+	)
 }

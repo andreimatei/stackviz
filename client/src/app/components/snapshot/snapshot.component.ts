@@ -1,17 +1,19 @@
 import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
 import {
-  AddExprToCollectSpecGQL, CollectedVar, FrameInfo, FrameSpec,
+  AddExprToCollectSpecGQL,
+  FrameSpec,
   GetAvailableVariablesGQL,
-  GetCollectionGQL, GetCollectSpecGQL,
-  GetGoroutinesGQL, GetGoroutinesQuery,
-  GetTreeGQL, GoroutineInfo,
+  GetCollectionGQL,
+  GetCollectSpecGQL,
+  GetGoroutinesGQL,
+  GetTreeGQL,
   ProcessSnapshot,
   RemoveExprFromCollectSpecGQL
 } from "../../graphql/graphql-codegen-generated";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { MatDrawer, MatSidenavModule } from "@angular/material/sidenav";
-import { ResizeEvent, ResizableModule } from 'angular-resizable-element';
-import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
+import { ResizableModule, ResizeEvent } from 'angular-resizable-element';
+import { CheckedEvent, FlightRecorderEvent, TypeInfoComponent } from "./type-info.component";
 import { MatSelect, MatSelectModule } from "@angular/material/select";
 import {
   FlamegraphComponent,
@@ -20,18 +22,19 @@ import {
 } from "../flamegraph/flamegraph.component";
 import {
   debounceTime,
-  distinctUntilChanged, from,
+  distinctUntilChanged,
+  from,
   map,
   merge,
-  Observable, of,
-  pipe,
+  Observable,
+  of,
   Subject,
   tap
 } from "rxjs";
 import { StacksComponent } from "../stacks/stacks.component";
-import { GoroutineData, CapturedDataComponent } from "../captured-data/captured-data.component";
+import { CapturedDataComponent, GoroutineData } from "../captured-data/captured-data.component";
 import { MatTabsModule } from '@angular/material/tabs';
-import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -39,7 +42,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { NgStyle, NgIf, NgFor, AsyncPipe, KeyValuePipe } from '@angular/common';
+import { AsyncPipe, KeyValuePipe, NgFor, NgIf, NgStyle } from '@angular/common';
 
 class Frame {
   constructor(public name: string, public file: string, public line: number) {
@@ -47,35 +50,35 @@ class Frame {
 }
 
 @Component({
-    selector: 'snapshot',
-    templateUrl: './snapshot.component.html',
-    styleUrls: ['snapshot.component.css'],
-    standalone: true,
-    imports: [
-        MatSidenavModule,
-        ResizableModule,
-        NgStyle,
-        MatButtonModule,
-        MatIconModule,
-        MatExpansionModule,
-        NgIf,
-        MatProgressBarModule,
-        TypeInfoComponent,
-        NgFor,
-        CapturedDataComponent,
-        RouterLink,
-        MatFormFieldModule,
-        MatSelectModule,
-        MatOptionModule,
-        MatInputModule,
-        ReactiveFormsModule,
-        FormsModule,
-        FlamegraphComponent,
-        MatTabsModule,
-        StacksComponent,
-        AsyncPipe,
-        KeyValuePipe,
-    ],
+  selector: 'snapshot',
+  templateUrl: './snapshot.component.html',
+  styleUrls: ['snapshot.component.css'],
+  standalone: true,
+  imports: [
+    MatSidenavModule,
+    ResizableModule,
+    NgStyle,
+    MatButtonModule,
+    MatIconModule,
+    MatExpansionModule,
+    NgIf,
+    MatProgressBarModule,
+    TypeInfoComponent,
+    NgFor,
+    CapturedDataComponent,
+    RouterLink,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatInputModule,
+    ReactiveFormsModule,
+    FormsModule,
+    FlamegraphComponent,
+    MatTabsModule,
+    StacksComponent,
+    AsyncPipe,
+    KeyValuePipe,
+  ],
 })
 export class SnapshotComponent implements OnInit, AfterViewInit {
   // collectionID and snapshotID input properties are set by the router.
@@ -130,7 +133,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected capturedData$!: Observable<GoroutineData[]>;
 
   @ViewChild('functionDrawer') frameDetailsSidebar!: MatDrawer;
-  @ViewChild(TypeInfoComponent) typeInfo?: TypeInfoComponent;
+  @ViewChild(TypeInfoComponent) typeInfo!: TypeInfoComponent;
   @ViewChild('snapshotsSelect') snapSelect!: MatSelect;
   @ViewChild(FlamegraphComponent) flamegraph!: FlamegraphComponent;
   @ViewChild(StacksComponent) stacks!: StacksComponent;
@@ -139,7 +142,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   // Data about the selected node. Each element is a string containing all the
   // captured variables from one frame (where all frames correspond to the
   // selected node).
-  protected funcInfo?: Map<number,VarInfo[]>;
+  protected funcInfo?: Map<number, VarInfo[]>;
 
   protected loadingAvailableVars: boolean = false;
 
@@ -238,7 +241,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.router.navigateByUrl(`collections/${this.collectionID}/snap/${newSnapshotID}`);
   }
 
-  checkedChange(ev: CheckedEventArg) {
+  checkedChange(ev: CheckedEvent) {
     if (ev.checked) {
       this.addExpr.mutate({frame: this.selectedFrame!.name, expr: ev.expr}).subscribe({
         next: value => console.log(value.data?.addExprToCollectSpec.frames![0].exprs)
@@ -247,6 +250,13 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       this.removeExpr.mutate({frame: this.selectedFrame!.name, expr: ev.expr}).subscribe({
         next: value => console.log(value.data?.removeExprFromCollectSpec.frames![0].exprs)
       })
+    }
+  }
+
+  flightRecorderChange(ev: FlightRecorderEvent) {
+    console.log("!!! got event: ", ev);
+    if (ev.deleted) {
+
     }
   }
 
@@ -266,7 +276,8 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.selectedFrame = new Frame(node.details, node.file, node.line);
     console.log("querying for available vars for func: %s off: %d", node.details, node.pcoff);
     this.loadingAvailableVars = true;
-    this.typeInfo!.dataSource.data = [];
+    // this.typeInfo.flightRecorderEventSpecs = !!!
+    this.typeInfo.dataSource.data = [];
     this.varsQuery.fetch({func: node.details, pcOff: node.pcoff})
       .subscribe(
         results => {
@@ -276,7 +287,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
             console.log("err: ", results.error)
             return
           }
-          this.typeInfo!.dataSource.initData(
+          this.typeInfo.dataSource.initData(
             results.data.availableVars.Vars,
             results.data.availableVars.Types,
             results.data.collectSpec.length > 0 ? results.data.collectSpec[0].exprs : [],
@@ -309,4 +320,3 @@ function parseFilter(filter: string): parsedFilter {
     filter: filter
   };
 }
-

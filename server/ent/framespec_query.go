@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"stacksviz/ent/collectspec"
 	"stacksviz/ent/framespec"
 	"stacksviz/ent/predicate"
 
@@ -17,13 +18,13 @@ import (
 // FrameSpecQuery is the builder for querying FrameSpec entities.
 type FrameSpecQuery struct {
 	config
-	ctx        *QueryContext
-	order      []framespec.OrderOption
-	inters     []Interceptor
-	predicates []predicate.FrameSpec
-	withFKs    bool
-	modifiers  []func(*sql.Selector)
-	loadTotal  []func(context.Context, []*FrameSpec) error
+	ctx                *QueryContext
+	order              []framespec.OrderOption
+	inters             []Interceptor
+	predicates         []predicate.FrameSpec
+	withCollectSpecRef *CollectSpecQuery
+	modifiers          []func(*sql.Selector)
+	loadTotal          []func(context.Context, []*FrameSpec) error
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -58,6 +59,28 @@ func (fsq *FrameSpecQuery) Unique(unique bool) *FrameSpecQuery {
 func (fsq *FrameSpecQuery) Order(o ...framespec.OrderOption) *FrameSpecQuery {
 	fsq.order = append(fsq.order, o...)
 	return fsq
+}
+
+// QueryCollectSpecRef chains the current query on the "collect_spec_ref" edge.
+func (fsq *FrameSpecQuery) QueryCollectSpecRef() *CollectSpecQuery {
+	query := (&CollectSpecClient{config: fsq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := fsq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := fsq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(framespec.Table, framespec.FieldID, selector),
+			sqlgraph.To(collectspec.Table, collectspec.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, framespec.CollectSpecRefTable, framespec.CollectSpecRefColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(fsq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first FrameSpec entity from the query.
@@ -247,15 +270,27 @@ func (fsq *FrameSpecQuery) Clone() *FrameSpecQuery {
 		return nil
 	}
 	return &FrameSpecQuery{
-		config:     fsq.config,
-		ctx:        fsq.ctx.Clone(),
-		order:      append([]framespec.OrderOption{}, fsq.order...),
-		inters:     append([]Interceptor{}, fsq.inters...),
-		predicates: append([]predicate.FrameSpec{}, fsq.predicates...),
+		config:             fsq.config,
+		ctx:                fsq.ctx.Clone(),
+		order:              append([]framespec.OrderOption{}, fsq.order...),
+		inters:             append([]Interceptor{}, fsq.inters...),
+		predicates:         append([]predicate.FrameSpec{}, fsq.predicates...),
+		withCollectSpecRef: fsq.withCollectSpecRef.Clone(),
 		// clone intermediate query.
 		sql:  fsq.sql.Clone(),
 		path: fsq.path,
 	}
+}
+
+// WithCollectSpecRef tells the query-builder to eager-load the nodes that are connected to
+// the "collect_spec_ref" edge. The optional arguments are used to configure the query builder of the edge.
+func (fsq *FrameSpecQuery) WithCollectSpecRef(opts ...func(*CollectSpecQuery)) *FrameSpecQuery {
+	query := (&CollectSpecClient{config: fsq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	fsq.withCollectSpecRef = query
+	return fsq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -334,19 +369,19 @@ func (fsq *FrameSpecQuery) prepareQuery(ctx context.Context) error {
 
 func (fsq *FrameSpecQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*FrameSpec, error) {
 	var (
-		nodes   = []*FrameSpec{}
-		withFKs = fsq.withFKs
-		_spec   = fsq.querySpec()
+		nodes       = []*FrameSpec{}
+		_spec       = fsq.querySpec()
+		loadedTypes = [1]bool{
+			fsq.withCollectSpecRef != nil,
+		}
 	)
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, framespec.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*FrameSpec).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &FrameSpec{config: fsq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	if len(fsq.modifiers) > 0 {
@@ -361,12 +396,48 @@ func (fsq *FrameSpecQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*F
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := fsq.withCollectSpecRef; query != nil {
+		if err := fsq.loadCollectSpecRef(ctx, query, nodes, nil,
+			func(n *FrameSpec, e *CollectSpec) { n.Edges.CollectSpecRef = e }); err != nil {
+			return nil, err
+		}
+	}
 	for i := range fsq.loadTotal {
 		if err := fsq.loadTotal[i](ctx, nodes); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
+}
+
+func (fsq *FrameSpecQuery) loadCollectSpecRef(ctx context.Context, query *CollectSpecQuery, nodes []*FrameSpec, init func(*FrameSpec), assign func(*FrameSpec, *CollectSpec)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*FrameSpec)
+	for i := range nodes {
+		fk := nodes[i].CollectSpec
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(collectspec.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "collect_spec" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
 }
 
 func (fsq *FrameSpecQuery) sqlCount(ctx context.Context) (int, error) {
@@ -396,6 +467,9 @@ func (fsq *FrameSpecQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != framespec.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if fsq.withCollectSpecRef != nil {
+			_spec.Node.AddColumnOnce(framespec.FieldCollectSpec)
 		}
 	}
 	if ps := fsq.predicates; len(ps) > 0 {

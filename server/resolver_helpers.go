@@ -37,13 +37,14 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(ctx context.Context, agentA
 		log.Fatal("dialing:", err)
 	}
 
-	frames, err := spec.Frames(ctx)
+	frames, err := spec.QueryFrames().All(ctx)
+	//frames, err := spec.Frames(ctx)
 	if err != nil {
 		return agentrpc.Snapshot{}, err
 	}
 	framesSpec := make(map[string][]string)
 	for _, f := range frames {
-		for _, e := range f.Exprs {
+		for _, e := range f.CollectExpressions {
 			framesSpec[f.Frame] = append(framesSpec[f.Frame], e)
 		}
 	}
@@ -91,14 +92,14 @@ func snapToString(s agentrpc.Snapshot) string {
 	return sb.String()
 }
 
-func (r *mutationResolver) getOrCreateCollectSpec(ctx context.Context) *ent.CollectSpec {
-	cis := r.dbClient.CollectSpec.Query().AllX(ctx)
+func getOrCreateCollectSpec(ctx context.Context, dbClient *ent.Client) *ent.CollectSpec {
+	cis := dbClient.CollectSpec.Query().AllX(ctx)
 	if len(cis) > 1 {
 		log.Fatalf("expected at most one CollectSpec, got: %d", len(cis))
 	}
 	// If there isn't a CollectSpec already, create one.
 	if len(cis) == 0 {
-		cs := r.dbClient.CollectSpec.Create().SaveX(ctx)
+		cs := dbClient.CollectSpec.Create().SaveX(ctx)
 
 		for _, f := range []struct {
 			frame string
@@ -113,8 +114,9 @@ func (r *mutationResolver) getOrCreateCollectSpec(ctx context.Context) *ent.Coll
 				exprs: []string{"stream.id"},
 			},
 		} {
-			fi := r.dbClient.FrameSpec.Create().SetFrame(f.frame).SetExprs(f.exprs).SaveX(ctx)
-			cs = cs.Update().AddFrames(fi).SaveX(ctx)
+			fi := dbClient.FrameSpec.Create().SetFrame(f.frame).SetCollectSpecRef(cs).SetCollectExpressions(f.exprs).SetFlightRecorderEvents([]string{}).SaveX(ctx)
+			_ = fi
+			// !!! cs = cs.Update().AddFrames(fi).SaveX(ctx)
 		}
 		return cs
 	}

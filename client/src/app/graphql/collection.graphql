@@ -118,9 +118,22 @@ query GetTree($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
   getTree(colID: $colID, snapID: $snapID, gID: $gID, filter: $filter)
 }
 
-query GetCollectSpec {
+query GetFrameSpec($collect_spec_id: Int!, $frame: String!) {
+
+}
+
+query GetCollectSpec($frame: String) {
   collectSpec {
-    frame
-    exprs
+    frames(where: {
+       frame: $frame,
+    }) {
+      edges {
+        node {
+          frame
+          collectExpressions
+          flightRecorderEvents
+        }
+      }
+    }
   }
 }
