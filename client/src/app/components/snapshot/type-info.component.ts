@@ -3,12 +3,26 @@ import { NestedTreeControl } from "@angular/cdk/tree";
 import { GetTypeInfoGQL, TypeInfo, VarInfo } from "../../graphql/graphql-codegen-generated";
 import { CollectionViewer, DataSource, SelectionChange } from "@angular/cdk/collections";
 import { BehaviorSubject, map, merge, Observable } from "rxjs";
-import { MatCheckboxChange } from "@angular/material/checkbox";
+import { MatCheckboxChange, MatCheckboxModule } from "@angular/material/checkbox";
+import { MatProgressBarModule } from "@angular/material/progress-bar";
+import { NgIf } from "@angular/common";
+import { MatIconModule } from "@angular/material/icon";
+import { MatButtonModule } from "@angular/material/button";
+import { MatTreeModule } from "@angular/material/tree";
 
 @Component({
-  selector: 'type-info',
-  templateUrl: './type-info.component.html',
-  styleUrls: ['type-info.component.css'],
+    selector: 'type-info',
+    templateUrl: './type-info.component.html',
+    styleUrls: ['type-info.component.css'],
+    standalone: true,
+    imports: [
+        MatTreeModule,
+        MatCheckboxModule,
+        MatButtonModule,
+        MatIconModule,
+        NgIf,
+        MatProgressBarModule,
+    ],
 })
 export class TypeInfoComponent {
   dataSource: TypesDataSource;

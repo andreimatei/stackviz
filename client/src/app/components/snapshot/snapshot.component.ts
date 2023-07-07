@@ -8,11 +8,11 @@ import {
   ProcessSnapshot,
   RemoveExprFromCollectSpecGQL
 } from "../../graphql/graphql-codegen-generated";
-import { ActivatedRoute, Router } from "@angular/router";
-import { MatDrawer } from "@angular/material/sidenav";
-import { ResizeEvent } from 'angular-resizable-element';
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
+import { MatDrawer, MatSidenavModule } from "@angular/material/sidenav";
+import { ResizeEvent, ResizableModule } from 'angular-resizable-element';
 import { CheckedEventArg, TypeInfoComponent } from "./type-info.component";
-import { MatSelect } from "@angular/material/select";
+import { MatSelect, MatSelectModule } from "@angular/material/select";
 import {
   FlamegraphComponent,
   Frame as FlameFrame,
@@ -29,7 +29,17 @@ import {
   tap
 } from "rxjs";
 import { StacksComponent } from "../stacks/stacks.component";
-import { GoroutineData } from "../captured-data/captured-data.component";
+import { GoroutineData, CapturedDataComponent } from "../captured-data/captured-data.component";
+import { MatTabsModule } from '@angular/material/tabs';
+import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { MatInputModule } from '@angular/material/input';
+import { MatOptionModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { NgStyle, NgIf, NgFor, AsyncPipe, KeyValuePipe } from '@angular/common';
 
 class Frame {
   constructor(public name: string, public file: string, public line: number) {
@@ -37,9 +47,35 @@ class Frame {
 }
 
 @Component({
-  selector: 'snapshot',
-  templateUrl: './snapshot.component.html',
-  styleUrls: ['snapshot.component.css'],
+    selector: 'snapshot',
+    templateUrl: './snapshot.component.html',
+    styleUrls: ['snapshot.component.css'],
+    standalone: true,
+    imports: [
+        MatSidenavModule,
+        ResizableModule,
+        NgStyle,
+        MatButtonModule,
+        MatIconModule,
+        MatExpansionModule,
+        NgIf,
+        MatProgressBarModule,
+        TypeInfoComponent,
+        NgFor,
+        CapturedDataComponent,
+        RouterLink,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatOptionModule,
+        MatInputModule,
+        ReactiveFormsModule,
+        FormsModule,
+        FlamegraphComponent,
+        MatTabsModule,
+        StacksComponent,
+        AsyncPipe,
+        KeyValuePipe,
+    ],
 })
 export class SnapshotComponent implements OnInit, AfterViewInit {
   // collectionID and snapshotID input properties are set by the router.
