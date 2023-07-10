@@ -23,12 +23,14 @@ func (c *CollectSpecCreate) SetInput(i CreateCollectSpecInput) *CollectSpecCreat
 // CreateCollectionInput represents a mutation input for creating collections.
 type CreateCollectionInput struct {
 	Name               string
+	CollectSpec        int
 	ProcessSnapshotIDs []int
 }
 
 // Mutate applies the CreateCollectionInput on the CollectionMutation builder.
 func (i *CreateCollectionInput) Mutate(m *CollectionMutation) {
 	m.SetName(i.Name)
+	m.SetCollectSpec(i.CollectSpec)
 	if v := i.ProcessSnapshotIDs; len(v) > 0 {
 		m.AddProcessSnapshotIDs(v...)
 	}
@@ -45,7 +47,7 @@ type CreateFrameSpecInput struct {
 	Frame                string
 	CollectExpressions   []string
 	FlightRecorderEvents []string
-	CollectSpecRefID     int
+	ParentCollectionID   int
 }
 
 // Mutate applies the CreateFrameSpecInput on the FrameSpecMutation builder.
@@ -57,7 +59,7 @@ func (i *CreateFrameSpecInput) Mutate(m *FrameSpecMutation) {
 	if v := i.FlightRecorderEvents; v != nil {
 		m.SetFlightRecorderEvents(v)
 	}
-	m.SetCollectSpecRefID(i.CollectSpecRefID)
+	m.SetParentCollectionID(i.ParentCollectionID)
 }
 
 // SetInput applies the change-set in the CreateFrameSpecInput on the FrameSpecCreate builder.

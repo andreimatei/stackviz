@@ -16,39 +16,17 @@ import (
 	"strings"
 )
 
-const (
-	stacksTreeQuery = "stacks.tree"
-	stacksRawQuery  = "stacks.raw"
-
-	collectionIDKey          = "collection_id"
-	snapshotIDKey            = "snapshot_id"
-	pathPrefixKey            = "path_prefix"
-	nameKey                  = "name"
-	detailsFormatKey         = "detail_format"
-	fullNameKey              = "full_name"
-	filterKey                = "filter"
-	numTotalGoroutinesKey    = "num_total_goroutines"
-	numFilteredGoroutinesKey = "num_filtered_goroutines"
-	numBucketsKey            = "num_buckets"
-
-	numGoroutinesInBucketKey = "num_gs_in_bucket"
-	goroutineIDKey           = "g_id"
-	varsKey                  = "vars"
-	pcOffsetKey              = "pc_off"
-	fileKey                  = "file"
-	lineKey                  = "line"
-)
-
-// DataSource implements the querydispatcher.dataSource that deals with
-// goroutine stacks.
-type DataSource struct {
-	fetcher StacksFetcher
-}
-
-// New builds a DataSource.
-func New(fetcher StacksFetcher) *DataSource {
-	return &DataSource{fetcher: fetcher}
-}
+// !!!
+//// DataSource implements the querydispatcher.dataSource that deals with
+//// goroutine stacks.
+//type DataSource struct {
+//	fetcher StacksFetcher
+//}
+//
+//// New builds a DataSource.
+//func New(fetcher StacksFetcher) *DataSource {
+//	return &DataSource{fetcher: fetcher}
+//}
 
 // ProcessSnapshot represents a single fetched log trace, along with any metadata it
 // requires.
@@ -172,71 +150,3 @@ func (f *stacksFetcherImpl) Fetch(ctx context.Context, collectionID int, snapsho
 	// !!! f.lru.Add(snapshotID, res)
 	return snap, fois, nil
 }
-
-//// filterStacks returns a new Snapshot containing the goroutines in snap that
-//// contain at least a frame that matches filter.
-//func (ds *DataSource) filterStacks(snap *pp.Snapshot, filter string) *pp.Snapshot {
-//	if filter == "" {
-//		return snap
-//	}
-//	res := new(pp.Snapshot)
-//	*res = *snap // shallow copy
-//	res.Goroutines = nil
-//	for _, g := range snap.Goroutines {
-//		if ds.stackMatchesFilter(g, filter) {
-//			res.Goroutines = append(res.Goroutines, g)
-//		}
-//	}
-//	return res
-//}
-//
-//// filterStacksByPrefix returns a new Snapshot containing the goroutines in snap
-//// that have the given prefix.
-//func (ds *DataSource) filterStacksByPrefix(snap *pp.Snapshot, prefix []weightedtree.ScopeID) *pp.Snapshot {
-//	if len(prefix) == 0 {
-//		return snap
-//	}
-//	res := new(pp.Snapshot)
-//	*res = *snap // shallow copy
-//	res.Goroutines = nil
-//	for _, g := range snap.Goroutines {
-//		if ds.stackMatchesPrefix(g, prefix) {
-//			res.Goroutines = append(res.Goroutines, g)
-//		}
-//	}
-//	return res
-//}
-//
-//func (ds *DataSource) stackMatchesFilter(g *pp.Goroutine, filter string) bool {
-//	for i := range g.Stack.Calls {
-//		if strings.Contains(g.Stack.Calls[i].Func.Complete, filter) {
-//			return true
-//		}
-//	}
-//	return false
-//}
-//
-//func (ds *DataSource) stackMatchesPrefix(g *pp.Goroutine, prefix []weightedtree.ScopeID) bool {
-//	if len(g.Stack.Calls) < len(prefix) {
-//		return false
-//	}
-//	for i := range prefix {
-//		c := &g.Stack.Calls[len(g.Stack.Calls)-i-1]
-//		if stacks.ComputeScopeID(c) != prefix[i] {
-//			return false
-//		}
-//	}
-//	return true
-//}
-//
-//// compareByFunctionName compares the function names of two nodes
-//// lexicographically, returning 1 if a < b and -1 if b < a. This corresponds to
-//// a descending sorting; this function is intended to be used with
-//// weightedtree.Walk(), which explores "higher" nodes first so, in order to get
-//// alphabetic sorting, we invert the regular comparison.
-//func compareByFunctionName(a, b weightedtree.TreeNode) (int, error) {
-//	aa := a.(*stacks.TreeNode)
-//	bb := b.(*stacks.TreeNode)
-//	res := -strings.Compare(aa.Function.Complete, bb.Function.Complete)
-//	return res, nil
-//}

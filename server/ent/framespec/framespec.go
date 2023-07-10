@@ -14,30 +14,30 @@ const (
 	FieldID = "id"
 	// FieldFrame holds the string denoting the frame field in the database.
 	FieldFrame = "frame"
-	// FieldCollectSpec holds the string denoting the collect_spec field in the database.
-	FieldCollectSpec = "collect_spec"
+	// FieldParent holds the string denoting the parent field in the database.
+	FieldParent = "parent"
 	// FieldCollectExpressions holds the string denoting the collect_expressions field in the database.
 	FieldCollectExpressions = "collect_expressions"
 	// FieldFlightRecorderEvents holds the string denoting the flight_recorder_events field in the database.
 	FieldFlightRecorderEvents = "flight_recorder_events"
-	// EdgeCollectSpecRef holds the string denoting the collect_spec_ref edge name in mutations.
-	EdgeCollectSpecRef = "collect_spec_ref"
+	// EdgeParentCollection holds the string denoting the parentcollection edge name in mutations.
+	EdgeParentCollection = "parentCollection"
 	// Table holds the table name of the framespec in the database.
 	Table = "frame_specs"
-	// CollectSpecRefTable is the table that holds the collect_spec_ref relation/edge.
-	CollectSpecRefTable = "frame_specs"
-	// CollectSpecRefInverseTable is the table name for the CollectSpec entity.
+	// ParentCollectionTable is the table that holds the parentCollection relation/edge.
+	ParentCollectionTable = "frame_specs"
+	// ParentCollectionInverseTable is the table name for the CollectSpec entity.
 	// It exists in this package in order to avoid circular dependency with the "collectspec" package.
-	CollectSpecRefInverseTable = "collect_specs"
-	// CollectSpecRefColumn is the table column denoting the collect_spec_ref relation/edge.
-	CollectSpecRefColumn = "collect_spec"
+	ParentCollectionInverseTable = "collect_specs"
+	// ParentCollectionColumn is the table column denoting the parentCollection relation/edge.
+	ParentCollectionColumn = "parent"
 )
 
 // Columns holds all SQL columns for framespec fields.
 var Columns = []string{
 	FieldID,
 	FieldFrame,
-	FieldCollectSpec,
+	FieldParent,
 	FieldCollectExpressions,
 	FieldFlightRecorderEvents,
 }
@@ -65,21 +65,21 @@ func ByFrame(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFrame, opts...).ToFunc()
 }
 
-// ByCollectSpec orders the results by the collect_spec field.
-func ByCollectSpec(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCollectSpec, opts...).ToFunc()
+// ByParent orders the results by the parent field.
+func ByParent(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldParent, opts...).ToFunc()
 }
 
-// ByCollectSpecRefField orders the results by collect_spec_ref field.
-func ByCollectSpecRefField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByParentCollectionField orders the results by parentCollection field.
+func ByParentCollectionField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newCollectSpecRefStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newParentCollectionStep(), sql.OrderByField(field, opts...))
 	}
 }
-func newCollectSpecRefStep() *sqlgraph.Step {
+func newParentCollectionStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(CollectSpecRefInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, CollectSpecRefTable, CollectSpecRefColumn),
+		sqlgraph.To(ParentCollectionInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, ParentCollectionTable, ParentCollectionColumn),
 	)
 }

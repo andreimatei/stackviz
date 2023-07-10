@@ -23,6 +23,7 @@ import (
 
 // CollectCollection is the resolver for the collectCollection field.
 func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collection, error) {
+	dbClient := ent.FromContext(ctx)
 	i := 0
 	psIDs := make([]int, 0, len(r.conf.Targets))
 
@@ -38,7 +39,7 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 	}
 
 	var g errgroup.Group
-	spec := getOrCreateCollectSpec(ctx, r.dbClient)
+	spec := getOrCreateCollectSpec(ctx, dbClient)
 	for processName, url := range r.conf.Targets[svcName] {
 		i++
 		processName := processName
@@ -68,7 +69,7 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 			if framesOfInterest != "" {
 				input.FramesOfInterest = &framesOfInterest
 			}
-			ps, err := r.dbClient.ProcessSnapshot.Create().SetInput(input).Save(ctx)
+			ps, err := dbClient.ProcessSnapshot.Create().SetInput(input).Save(ctx)
 			if err != nil {
 				return err
 			}
@@ -81,27 +82,34 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 	}
 
 	const timeFormat = "Monday, 02-Jan-06 15:04:05 MST"
-	return r.dbClient.Collection.Create().SetInput(ent.CreateCollectionInput{
-		Name:               fmt.Sprintf("%s - %s", svcName, time.Now().Format(timeFormat)),
-		ProcessSnapshotIDs: psIDs,
-	}).Save(ctx)
+	return dbClient.Collection.Create().
+		SetName(fmt.Sprintf("%s - %s", svcName, time.Now().Format(timeFormat))).
+		SetCollectSpec(spec.ID).
+		AddProcessSnapshotIDs(psIDs...).
+		Save(ctx)
 }
 
 // AddExprToCollectSpec is the resolver for the addExprToCollectSpec mutation.
-func (r *mutationResolver) AddExprToCollectSpec(ctx context.Context, frame string, expr string) (*ent.CollectSpec, error) {
-	tx, err := r.dbClient.Tx(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
+func (r *mutationResolver) AddExprToCollectSpec(ctx context.Context, frame string, expr string) (_ *ent.CollectSpec, _err error) {
+	dbClient := ent.FromContext(ctx)
+	log.Printf("!!! AddExprToCollectSpec: starting")
+	defer func() {
+		log.Printf("!!! AddExprToCollectSpec: done")
+	}()
 
-	collectSpec := getOrCreateCollectSpec(ctx, tx.Client())
+	collectSpec := getOrCreateCollectSpec(ctx, dbClient)
 	// Create of update the frame info.
 	fi, err := collectSpec.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
-		fi = r.dbClient.FrameSpec.Create().SetFrame(frame).SetCollectExpressions([]string{expr}).SaveX(ctx)
-		collectSpec = collectSpec.Update().AddFrames(fi).SaveX(ctx)
+		// Create a new FrameSpec with the given expression.
+		fi = dbClient.FrameSpec.Create().
+			SetParentCollection(collectSpec).
+			SetFrame(frame).
+			SetCollectExpressions([]string{expr}).
+			SetFlightRecorderEvents([]string{}).
+			SaveX(ctx)
+		// !!! collectSpec = collectSpec.Update().AddFrames(fi).SaveX(ctx)
 		return collectSpec, nil
 	}
 	if err != nil {
@@ -118,7 +126,9 @@ func (r *mutationResolver) AddExprToCollectSpec(ctx context.Context, frame strin
 
 // RemoveExprFromCollectSpec is the resolver for the removeExprFromCollectSpec field.
 func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr string, frame string) (*ent.CollectSpec, error) {
-	collectSpec := getOrCreateCollectSpec(ctx, r.dbClient)
+	log.Printf("!!! RemoveExprFromCollectSpec resolver")
+	dbClient := ent.FromContext(ctx)
+	collectSpec := getOrCreateCollectSpec(ctx, dbClient)
 	fi, err := collectSpec.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
@@ -138,12 +148,17 @@ func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr s
 }
 
 // AddFlightRecorderEventToCollectSpec is the resolver for the addFlightRecorderEventToCollectSpec field.
-func (r *mutationResolver) AddFlightRecorderEventToCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error) {
-	tx, err := r.dbClient.Tx(ctx)
+func (r *mutationResolver) AddFlightRecorderEventToCollectSpec(ctx context.Context, frame string, spec string) (_ *ent.CollectSpec, _err error) {
+	dbClient := ent.FromContext(ctx)
+	tx, err := dbClient.Tx(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if _err != nil {
+			tx.Rollback()
+		}
+	}()
 
 	collectSpec := getOrCreateCollectSpec(ctx, tx.Client())
 	// Create of update the frame info.
@@ -152,6 +167,9 @@ func (r *mutationResolver) AddFlightRecorderEventToCollectSpec(ctx context.Conte
 	if errors.As(err, &nfe) {
 		fi = tx.FrameSpec.Create().SetFrame(frame).SetFlightRecorderEvents([]string{spec}).SaveX(ctx)
 		collectSpec = collectSpec.Update().AddFrames(fi).SaveX(ctx)
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
 		return collectSpec, nil
 	}
 	if err != nil {
@@ -168,7 +186,9 @@ func (r *mutationResolver) AddFlightRecorderEventToCollectSpec(ctx context.Conte
 
 // RemoveFlightRecorderEventFromCollectSpec is the resolver for the removeFlightRecorderEventFromCollectSpec field.
 func (r *mutationResolver) RemoveFlightRecorderEventFromCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error) {
-	collectSpec := getOrCreateCollectSpec(ctx, r.dbClient)
+	log.Printf("!!! RemoveFlightRecorderEventFromCollectSpec resolver")
+	dbClient := ent.FromContext(ctx)
+	collectSpec := getOrCreateCollectSpec(ctx, dbClient)
 	fi, err := collectSpec.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
@@ -192,11 +212,16 @@ func (r *mutationResolver) RemoveFlightRecorderEventFromCollectSpec(ctx context.
 // CollectionByID is the resolver for the collectionByID field.
 func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collection, error) {
 	log.Printf("!!! querying collection by ID: %d", id)
-	return r.dbClient.Collection.Query().Where(collection.ID(id)).Only(ctx)
+	dbClient := r.dbClient
+	if dbClient == nil {
+		panic("!!! nil client")
+	}
+	return dbClient.Collection.Query().Where(collection.ID(id)).Only(ctx)
 }
 
 // Goroutines is the resolver for the goroutines field.
 func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error) {
+	log.Printf("!!! Goroutines resolver")
 	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return nil, err
@@ -285,6 +310,7 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 
 // AvailableVars is the resolver for the availableVars field.
 func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff int) (*graph.VarsAndTypes, error) {
+	log.Printf("!!! AvailableVars resolver")
 	var svcName string
 	for serviceName, _ := range r.conf.Targets {
 		// TODO(andrei): deal with multiple services
@@ -336,7 +362,9 @@ func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff
 
 // CollectSpec is the resolver for the collectSpec field.
 func (r *queryResolver) CollectSpec(ctx context.Context) (*ent.CollectSpec, error) {
-	return r.dbClient.CollectSpec.Query().Only(ctx)
+	log.Printf("!!! CollectSpec resolver")
+	dbClient := r.dbClient
+	return dbClient.CollectSpec.Query().Only(ctx)
 	//q := r.dbClient.FrameSpec.Query()
 	//if funcArg != nil {
 	//	q = q.Where(framespec.Frame(*funcArg))
@@ -354,6 +382,7 @@ func (r *queryResolver) CollectSpec(ctx context.Context) (*ent.CollectSpec, erro
 
 // TypeInfo is the resolver for the typeInfo field.
 func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*graph.TypeInfo, error) {
+	log.Printf("!!! TypeInfo resolver")
 	var svcName string
 	for serviceName, _ := range r.conf.Targets {
 		// TODO(andrei): deal with multiple services
@@ -379,6 +408,7 @@ func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*graph.TypeI
 
 // GetTree is the resolver for the getTree field.
 func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int, gID *int, filter *string) (string, error) {
+	log.Printf("!!! GetTree resolver")
 	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
 	if err != nil {
 		return "", err
@@ -386,6 +416,21 @@ func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int, gID 
 	snap = filterStacks(snap, gID, filter)
 	tree := stacks.BuildTree(snap, fois)
 	return tree.ToJSON(), nil
+}
+
+// FrameSpecsWhere is the resolver for the frameSpecsWhere field.
+func (r *queryResolver) FrameSpecsWhere(ctx context.Context, where *ent.FrameSpecWhereInput) ([]ent.FrameSpec, error) {
+	log.Printf("!!! FrameSpecsWhere: %+v", where)
+	dbClient := r.dbClient
+	pred, err := where.P()
+	if err != nil {
+		return nil, err
+	}
+	rows := dbClient.FrameSpec.Query().Where(pred).AllX(ctx)
+	//if err != nil {
+	//	return nil, err
+	//}
+	return flatten(rows), nil
 }
 
 // Mutation returns MutationResolver implementation.

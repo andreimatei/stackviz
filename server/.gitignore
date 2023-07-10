@@ -1,1 +1,4 @@
 stacky
+
+# The sqlite DB.
+server/stackviz.db

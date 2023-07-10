@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"entgo.io/contrib/entgql"
 	"flag"
 	"fmt"
 	graphqlhandler "github.com/99designs/gqlgen/graphql/handler"
@@ -36,7 +37,8 @@ func main() {
 		log.Fatalf("failed to read config file: %s", err)
 	}
 
-	client, err := ent.Open("sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	// !!! client, err := ent.Open("sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client, err := ent.Open("sqlite3", "file:stackviz.db?cache=shared&_fk=1")
 	if err != nil {
 		log.Fatalf("failed opening connection to sqlite: %v", err)
 	}
@@ -59,6 +61,7 @@ func main() {
 
 	// Create the Graphql server and register it and the playground.
 	graphqlServer := graphqlhandler.NewDefaultServer(server.NewSchema(client, stacksFetcher, conf))
+	graphqlServer.Use(entgql.Transactioner{TxOpener: client})
 	mux.Handle("/playground", playground.Handler("GraphQL playground", "/graphql"))
 	mux.Handle("/graphql", graphqlServer)
 

@@ -34,6 +34,19 @@ func (cu *CollectionUpdate) SetName(s string) *CollectionUpdate {
 	return cu
 }
 
+// SetCollectSpec sets the "collect_spec" field.
+func (cu *CollectionUpdate) SetCollectSpec(i int) *CollectionUpdate {
+	cu.mutation.ResetCollectSpec()
+	cu.mutation.SetCollectSpec(i)
+	return cu
+}
+
+// AddCollectSpec adds i to the "collect_spec" field.
+func (cu *CollectionUpdate) AddCollectSpec(i int) *CollectionUpdate {
+	cu.mutation.AddCollectSpec(i)
+	return cu
+}
+
 // AddProcessSnapshotIDs adds the "process_snapshots" edge to the ProcessSnapshot entity by IDs.
 func (cu *CollectionUpdate) AddProcessSnapshotIDs(ids ...int) *CollectionUpdate {
 	cu.mutation.AddProcessSnapshotIDs(ids...)
@@ -114,6 +127,12 @@ func (cu *CollectionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := cu.mutation.Name(); ok {
 		_spec.SetField(collection.FieldName, field.TypeString, value)
 	}
+	if value, ok := cu.mutation.CollectSpec(); ok {
+		_spec.SetField(collection.FieldCollectSpec, field.TypeInt, value)
+	}
+	if value, ok := cu.mutation.AddedCollectSpec(); ok {
+		_spec.AddField(collection.FieldCollectSpec, field.TypeInt, value)
+	}
 	if cu.mutation.ProcessSnapshotsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -182,6 +201,19 @@ type CollectionUpdateOne struct {
 // SetName sets the "name" field.
 func (cuo *CollectionUpdateOne) SetName(s string) *CollectionUpdateOne {
 	cuo.mutation.SetName(s)
+	return cuo
+}
+
+// SetCollectSpec sets the "collect_spec" field.
+func (cuo *CollectionUpdateOne) SetCollectSpec(i int) *CollectionUpdateOne {
+	cuo.mutation.ResetCollectSpec()
+	cuo.mutation.SetCollectSpec(i)
+	return cuo
+}
+
+// AddCollectSpec adds i to the "collect_spec" field.
+func (cuo *CollectionUpdateOne) AddCollectSpec(i int) *CollectionUpdateOne {
+	cuo.mutation.AddCollectSpec(i)
 	return cuo
 }
 
@@ -294,6 +326,12 @@ func (cuo *CollectionUpdateOne) sqlSave(ctx context.Context) (_node *Collection,
 	}
 	if value, ok := cuo.mutation.Name(); ok {
 		_spec.SetField(collection.FieldName, field.TypeString, value)
+	}
+	if value, ok := cuo.mutation.CollectSpec(); ok {
+		_spec.SetField(collection.FieldCollectSpec, field.TypeInt, value)
+	}
+	if value, ok := cuo.mutation.AddedCollectSpec(); ok {
+		_spec.AddField(collection.FieldCollectSpec, field.TypeInt, value)
 	}
 	if cuo.mutation.ProcessSnapshotsCleared() {
 		edge := &sqlgraph.EdgeSpec{

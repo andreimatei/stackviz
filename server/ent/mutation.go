@@ -396,6 +396,8 @@ type CollectionMutation struct {
 	typ                      string
 	id                       *int
 	name                     *string
+	collect_spec             *int
+	addcollect_spec          *int
 	clearedFields            map[string]struct{}
 	process_snapshots        map[int]struct{}
 	removedprocess_snapshots map[int]struct{}
@@ -539,6 +541,62 @@ func (m *CollectionMutation) ResetName() {
 	m.name = nil
 }
 
+// SetCollectSpec sets the "collect_spec" field.
+func (m *CollectionMutation) SetCollectSpec(i int) {
+	m.collect_spec = &i
+	m.addcollect_spec = nil
+}
+
+// CollectSpec returns the value of the "collect_spec" field in the mutation.
+func (m *CollectionMutation) CollectSpec() (r int, exists bool) {
+	v := m.collect_spec
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCollectSpec returns the old "collect_spec" field's value of the Collection entity.
+// If the Collection object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CollectionMutation) OldCollectSpec(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCollectSpec is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCollectSpec requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCollectSpec: %w", err)
+	}
+	return oldValue.CollectSpec, nil
+}
+
+// AddCollectSpec adds i to the "collect_spec" field.
+func (m *CollectionMutation) AddCollectSpec(i int) {
+	if m.addcollect_spec != nil {
+		*m.addcollect_spec += i
+	} else {
+		m.addcollect_spec = &i
+	}
+}
+
+// AddedCollectSpec returns the value that was added to the "collect_spec" field in this mutation.
+func (m *CollectionMutation) AddedCollectSpec() (r int, exists bool) {
+	v := m.addcollect_spec
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCollectSpec resets all changes to the "collect_spec" field.
+func (m *CollectionMutation) ResetCollectSpec() {
+	m.collect_spec = nil
+	m.addcollect_spec = nil
+}
+
 // AddProcessSnapshotIDs adds the "process_snapshots" edge to the ProcessSnapshot entity by ids.
 func (m *CollectionMutation) AddProcessSnapshotIDs(ids ...int) {
 	if m.process_snapshots == nil {
@@ -627,9 +685,12 @@ func (m *CollectionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CollectionMutation) Fields() []string {
-	fields := make([]string, 0, 1)
+	fields := make([]string, 0, 2)
 	if m.name != nil {
 		fields = append(fields, collection.FieldName)
+	}
+	if m.collect_spec != nil {
+		fields = append(fields, collection.FieldCollectSpec)
 	}
 	return fields
 }
@@ -641,6 +702,8 @@ func (m *CollectionMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case collection.FieldName:
 		return m.Name()
+	case collection.FieldCollectSpec:
+		return m.CollectSpec()
 	}
 	return nil, false
 }
@@ -652,6 +715,8 @@ func (m *CollectionMutation) OldField(ctx context.Context, name string) (ent.Val
 	switch name {
 	case collection.FieldName:
 		return m.OldName(ctx)
+	case collection.FieldCollectSpec:
+		return m.OldCollectSpec(ctx)
 	}
 	return nil, fmt.Errorf("unknown Collection field %s", name)
 }
@@ -668,6 +733,13 @@ func (m *CollectionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetName(v)
 		return nil
+	case collection.FieldCollectSpec:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCollectSpec(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Collection field %s", name)
 }
@@ -675,13 +747,21 @@ func (m *CollectionMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *CollectionMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addcollect_spec != nil {
+		fields = append(fields, collection.FieldCollectSpec)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *CollectionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case collection.FieldCollectSpec:
+		return m.AddedCollectSpec()
+	}
 	return nil, false
 }
 
@@ -690,6 +770,13 @@ func (m *CollectionMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *CollectionMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case collection.FieldCollectSpec:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCollectSpec(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Collection numeric field %s", name)
 }
@@ -719,6 +806,9 @@ func (m *CollectionMutation) ResetField(name string) error {
 	switch name {
 	case collection.FieldName:
 		m.ResetName()
+		return nil
+	case collection.FieldCollectSpec:
+		m.ResetCollectSpec()
 		return nil
 	}
 	return fmt.Errorf("unknown Collection field %s", name)
@@ -820,8 +910,8 @@ type FrameSpecMutation struct {
 	flight_recorder_events       *[]string
 	appendflight_recorder_events []string
 	clearedFields                map[string]struct{}
-	collect_spec_ref             *int
-	clearedcollect_spec_ref      bool
+	parentCollection             *int
+	clearedparentCollection      bool
 	done                         bool
 	oldValue                     func(context.Context) (*FrameSpec, error)
 	predicates                   []predicate.FrameSpec
@@ -961,40 +1051,40 @@ func (m *FrameSpecMutation) ResetFrame() {
 	m.frame = nil
 }
 
-// SetCollectSpec sets the "collect_spec" field.
-func (m *FrameSpecMutation) SetCollectSpec(i int) {
-	m.collect_spec_ref = &i
+// SetParent sets the "parent" field.
+func (m *FrameSpecMutation) SetParent(i int) {
+	m.parentCollection = &i
 }
 
-// CollectSpec returns the value of the "collect_spec" field in the mutation.
-func (m *FrameSpecMutation) CollectSpec() (r int, exists bool) {
-	v := m.collect_spec_ref
+// Parent returns the value of the "parent" field in the mutation.
+func (m *FrameSpecMutation) Parent() (r int, exists bool) {
+	v := m.parentCollection
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldCollectSpec returns the old "collect_spec" field's value of the FrameSpec entity.
+// OldParent returns the old "parent" field's value of the FrameSpec entity.
 // If the FrameSpec object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *FrameSpecMutation) OldCollectSpec(ctx context.Context) (v int, err error) {
+func (m *FrameSpecMutation) OldParent(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCollectSpec is only allowed on UpdateOne operations")
+		return v, errors.New("OldParent is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCollectSpec requires an ID field in the mutation")
+		return v, errors.New("OldParent requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCollectSpec: %w", err)
+		return v, fmt.Errorf("querying old value for OldParent: %w", err)
 	}
-	return oldValue.CollectSpec, nil
+	return oldValue.Parent, nil
 }
 
-// ResetCollectSpec resets all changes to the "collect_spec" field.
-func (m *FrameSpecMutation) ResetCollectSpec() {
-	m.collect_spec_ref = nil
+// ResetParent resets all changes to the "parent" field.
+func (m *FrameSpecMutation) ResetParent() {
+	m.parentCollection = nil
 }
 
 // SetCollectExpressions sets the "collect_expressions" field.
@@ -1099,43 +1189,43 @@ func (m *FrameSpecMutation) ResetFlightRecorderEvents() {
 	m.appendflight_recorder_events = nil
 }
 
-// SetCollectSpecRefID sets the "collect_spec_ref" edge to the CollectSpec entity by id.
-func (m *FrameSpecMutation) SetCollectSpecRefID(id int) {
-	m.collect_spec_ref = &id
+// SetParentCollectionID sets the "parentCollection" edge to the CollectSpec entity by id.
+func (m *FrameSpecMutation) SetParentCollectionID(id int) {
+	m.parentCollection = &id
 }
 
-// ClearCollectSpecRef clears the "collect_spec_ref" edge to the CollectSpec entity.
-func (m *FrameSpecMutation) ClearCollectSpecRef() {
-	m.clearedcollect_spec_ref = true
+// ClearParentCollection clears the "parentCollection" edge to the CollectSpec entity.
+func (m *FrameSpecMutation) ClearParentCollection() {
+	m.clearedparentCollection = true
 }
 
-// CollectSpecRefCleared reports if the "collect_spec_ref" edge to the CollectSpec entity was cleared.
-func (m *FrameSpecMutation) CollectSpecRefCleared() bool {
-	return m.clearedcollect_spec_ref
+// ParentCollectionCleared reports if the "parentCollection" edge to the CollectSpec entity was cleared.
+func (m *FrameSpecMutation) ParentCollectionCleared() bool {
+	return m.clearedparentCollection
 }
 
-// CollectSpecRefID returns the "collect_spec_ref" edge ID in the mutation.
-func (m *FrameSpecMutation) CollectSpecRefID() (id int, exists bool) {
-	if m.collect_spec_ref != nil {
-		return *m.collect_spec_ref, true
+// ParentCollectionID returns the "parentCollection" edge ID in the mutation.
+func (m *FrameSpecMutation) ParentCollectionID() (id int, exists bool) {
+	if m.parentCollection != nil {
+		return *m.parentCollection, true
 	}
 	return
 }
 
-// CollectSpecRefIDs returns the "collect_spec_ref" edge IDs in the mutation.
+// ParentCollectionIDs returns the "parentCollection" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// CollectSpecRefID instead. It exists only for internal usage by the builders.
-func (m *FrameSpecMutation) CollectSpecRefIDs() (ids []int) {
-	if id := m.collect_spec_ref; id != nil {
+// ParentCollectionID instead. It exists only for internal usage by the builders.
+func (m *FrameSpecMutation) ParentCollectionIDs() (ids []int) {
+	if id := m.parentCollection; id != nil {
 		ids = append(ids, *id)
 	}
 	return
 }
 
-// ResetCollectSpecRef resets all changes to the "collect_spec_ref" edge.
-func (m *FrameSpecMutation) ResetCollectSpecRef() {
-	m.collect_spec_ref = nil
-	m.clearedcollect_spec_ref = false
+// ResetParentCollection resets all changes to the "parentCollection" edge.
+func (m *FrameSpecMutation) ResetParentCollection() {
+	m.parentCollection = nil
+	m.clearedparentCollection = false
 }
 
 // Where appends a list predicates to the FrameSpecMutation builder.
@@ -1176,8 +1266,8 @@ func (m *FrameSpecMutation) Fields() []string {
 	if m.frame != nil {
 		fields = append(fields, framespec.FieldFrame)
 	}
-	if m.collect_spec_ref != nil {
-		fields = append(fields, framespec.FieldCollectSpec)
+	if m.parentCollection != nil {
+		fields = append(fields, framespec.FieldParent)
 	}
 	if m.collect_expressions != nil {
 		fields = append(fields, framespec.FieldCollectExpressions)
@@ -1195,8 +1285,8 @@ func (m *FrameSpecMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case framespec.FieldFrame:
 		return m.Frame()
-	case framespec.FieldCollectSpec:
-		return m.CollectSpec()
+	case framespec.FieldParent:
+		return m.Parent()
 	case framespec.FieldCollectExpressions:
 		return m.CollectExpressions()
 	case framespec.FieldFlightRecorderEvents:
@@ -1212,8 +1302,8 @@ func (m *FrameSpecMutation) OldField(ctx context.Context, name string) (ent.Valu
 	switch name {
 	case framespec.FieldFrame:
 		return m.OldFrame(ctx)
-	case framespec.FieldCollectSpec:
-		return m.OldCollectSpec(ctx)
+	case framespec.FieldParent:
+		return m.OldParent(ctx)
 	case framespec.FieldCollectExpressions:
 		return m.OldCollectExpressions(ctx)
 	case framespec.FieldFlightRecorderEvents:
@@ -1234,12 +1324,12 @@ func (m *FrameSpecMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFrame(v)
 		return nil
-	case framespec.FieldCollectSpec:
+	case framespec.FieldParent:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetCollectSpec(v)
+		m.SetParent(v)
 		return nil
 	case framespec.FieldCollectExpressions:
 		v, ok := value.([]string)
@@ -1310,8 +1400,8 @@ func (m *FrameSpecMutation) ResetField(name string) error {
 	case framespec.FieldFrame:
 		m.ResetFrame()
 		return nil
-	case framespec.FieldCollectSpec:
-		m.ResetCollectSpec()
+	case framespec.FieldParent:
+		m.ResetParent()
 		return nil
 	case framespec.FieldCollectExpressions:
 		m.ResetCollectExpressions()
@@ -1326,8 +1416,8 @@ func (m *FrameSpecMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *FrameSpecMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.collect_spec_ref != nil {
-		edges = append(edges, framespec.EdgeCollectSpecRef)
+	if m.parentCollection != nil {
+		edges = append(edges, framespec.EdgeParentCollection)
 	}
 	return edges
 }
@@ -1336,8 +1426,8 @@ func (m *FrameSpecMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *FrameSpecMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case framespec.EdgeCollectSpecRef:
-		if id := m.collect_spec_ref; id != nil {
+	case framespec.EdgeParentCollection:
+		if id := m.parentCollection; id != nil {
 			return []ent.Value{*id}
 		}
 	}
@@ -1359,8 +1449,8 @@ func (m *FrameSpecMutation) RemovedIDs(name string) []ent.Value {
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *FrameSpecMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedcollect_spec_ref {
-		edges = append(edges, framespec.EdgeCollectSpecRef)
+	if m.clearedparentCollection {
+		edges = append(edges, framespec.EdgeParentCollection)
 	}
 	return edges
 }
@@ -1369,8 +1459,8 @@ func (m *FrameSpecMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *FrameSpecMutation) EdgeCleared(name string) bool {
 	switch name {
-	case framespec.EdgeCollectSpecRef:
-		return m.clearedcollect_spec_ref
+	case framespec.EdgeParentCollection:
+		return m.clearedparentCollection
 	}
 	return false
 }
@@ -1379,8 +1469,8 @@ func (m *FrameSpecMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *FrameSpecMutation) ClearEdge(name string) error {
 	switch name {
-	case framespec.EdgeCollectSpecRef:
-		m.ClearCollectSpecRef()
+	case framespec.EdgeParentCollection:
+		m.ClearParentCollection()
 		return nil
 	}
 	return fmt.Errorf("unknown FrameSpec unique edge %s", name)
@@ -1390,8 +1480,8 @@ func (m *FrameSpecMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *FrameSpecMutation) ResetEdge(name string) error {
 	switch name {
-	case framespec.EdgeCollectSpecRef:
-		m.ResetCollectSpecRef()
+	case framespec.EdgeParentCollection:
+		m.ResetParentCollection()
 		return nil
 	}
 	return fmt.Errorf("unknown FrameSpec edge %s", name)

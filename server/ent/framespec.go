@@ -21,7 +21,7 @@ type FrameSpec struct {
 	// Frame holds the value of the "frame" field.
 	Frame string `json:"frame,omitempty"`
 	// The parent collection spec
-	CollectSpec int `json:"collect_spec,omitempty"`
+	Parent int `json:"parent,omitempty"`
 	// CollectExpressions holds the value of the "collect_expressions" field.
 	CollectExpressions []string `json:"collect_expressions,omitempty"`
 	// FlightRecorderEvents holds the value of the "flight_recorder_events" field.
@@ -34,8 +34,8 @@ type FrameSpec struct {
 
 // FrameSpecEdges holds the relations/edges for other nodes in the graph.
 type FrameSpecEdges struct {
-	// CollectSpecRef holds the value of the collect_spec_ref edge.
-	CollectSpecRef *CollectSpec `json:"collect_spec_ref,omitempty"`
+	// The parent collection spec
+	ParentCollection *CollectSpec `json:"parentCollection,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
@@ -43,17 +43,17 @@ type FrameSpecEdges struct {
 	totalCount [1]map[string]int
 }
 
-// CollectSpecRefOrErr returns the CollectSpecRef value or an error if the edge
+// ParentCollectionOrErr returns the ParentCollection value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e FrameSpecEdges) CollectSpecRefOrErr() (*CollectSpec, error) {
+func (e FrameSpecEdges) ParentCollectionOrErr() (*CollectSpec, error) {
 	if e.loadedTypes[0] {
-		if e.CollectSpecRef == nil {
+		if e.ParentCollection == nil {
 			// Edge was loaded but was not found.
 			return nil, &NotFoundError{label: collectspec.Label}
 		}
-		return e.CollectSpecRef, nil
+		return e.ParentCollection, nil
 	}
-	return nil, &NotLoadedError{edge: "collect_spec_ref"}
+	return nil, &NotLoadedError{edge: "parentCollection"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -63,7 +63,7 @@ func (*FrameSpec) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case framespec.FieldCollectExpressions, framespec.FieldFlightRecorderEvents:
 			values[i] = new([]byte)
-		case framespec.FieldID, framespec.FieldCollectSpec:
+		case framespec.FieldID, framespec.FieldParent:
 			values[i] = new(sql.NullInt64)
 		case framespec.FieldFrame:
 			values[i] = new(sql.NullString)
@@ -94,11 +94,11 @@ func (fs *FrameSpec) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				fs.Frame = value.String
 			}
-		case framespec.FieldCollectSpec:
+		case framespec.FieldParent:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field collect_spec", values[i])
+				return fmt.Errorf("unexpected type %T for field parent", values[i])
 			} else if value.Valid {
-				fs.CollectSpec = int(value.Int64)
+				fs.Parent = int(value.Int64)
 			}
 		case framespec.FieldCollectExpressions:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -129,9 +129,9 @@ func (fs *FrameSpec) Value(name string) (ent.Value, error) {
 	return fs.selectValues.Get(name)
 }
 
-// QueryCollectSpecRef queries the "collect_spec_ref" edge of the FrameSpec entity.
-func (fs *FrameSpec) QueryCollectSpecRef() *CollectSpecQuery {
-	return NewFrameSpecClient(fs.config).QueryCollectSpecRef(fs)
+// QueryParentCollection queries the "parentCollection" edge of the FrameSpec entity.
+func (fs *FrameSpec) QueryParentCollection() *CollectSpecQuery {
+	return NewFrameSpecClient(fs.config).QueryParentCollection(fs)
 }
 
 // Update returns a builder for updating this FrameSpec.
@@ -160,8 +160,8 @@ func (fs *FrameSpec) String() string {
 	builder.WriteString("frame=")
 	builder.WriteString(fs.Frame)
 	builder.WriteString(", ")
-	builder.WriteString("collect_spec=")
-	builder.WriteString(fmt.Sprintf("%v", fs.CollectSpec))
+	builder.WriteString("parent=")
+	builder.WriteString(fmt.Sprintf("%v", fs.Parent))
 	builder.WriteString(", ")
 	builder.WriteString("collect_expressions=")
 	builder.WriteString(fmt.Sprintf("%v", fs.CollectExpressions))

@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// FieldCollectSpec holds the string denoting the collect_spec field in the database.
+	FieldCollectSpec = "collect_spec"
 	// EdgeProcessSnapshots holds the string denoting the process_snapshots edge name in mutations.
 	EdgeProcessSnapshots = "process_snapshots"
 	// Table holds the table name of the collection in the database.
@@ -31,6 +33,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldName,
+	FieldCollectSpec,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -54,6 +57,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByCollectSpec orders the results by the collect_spec field.
+func ByCollectSpec(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCollectSpec, opts...).ToFunc()
 }
 
 // ByProcessSnapshotsCount orders the results by process_snapshots count.

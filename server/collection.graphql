@@ -16,6 +16,8 @@ extend type Query {
   collectSpec: CollectSpec!
   typeInfo(name: String!): TypeInfo!
   getTree(colID: Int!, snapID: Int!, gID: Int, filter: String): String!
+
+  frameSpecsWhere(where: FrameSpecWhereInput): [FrameSpec!]!
 }
 
 type VarsAndTypes {

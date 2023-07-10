@@ -24,7 +24,7 @@ func NewSchema(client *ent.Client, stacksFetcher datasource.StacksFetcher, conf 
 	return NewExecutableSchema(Config{
 		Resolvers: &Resolver{
 			stacksFetcher: stacksFetcher,
-			dbClient:      client,
+			dbClient:      client, // client.Debug() to log all the queries
 			conf:          conf,
 		},
 	})

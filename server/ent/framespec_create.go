@@ -26,9 +26,9 @@ func (fsc *FrameSpecCreate) SetFrame(s string) *FrameSpecCreate {
 	return fsc
 }
 
-// SetCollectSpec sets the "collect_spec" field.
-func (fsc *FrameSpecCreate) SetCollectSpec(i int) *FrameSpecCreate {
-	fsc.mutation.SetCollectSpec(i)
+// SetParent sets the "parent" field.
+func (fsc *FrameSpecCreate) SetParent(i int) *FrameSpecCreate {
+	fsc.mutation.SetParent(i)
 	return fsc
 }
 
@@ -44,15 +44,15 @@ func (fsc *FrameSpecCreate) SetFlightRecorderEvents(s []string) *FrameSpecCreate
 	return fsc
 }
 
-// SetCollectSpecRefID sets the "collect_spec_ref" edge to the CollectSpec entity by ID.
-func (fsc *FrameSpecCreate) SetCollectSpecRefID(id int) *FrameSpecCreate {
-	fsc.mutation.SetCollectSpecRefID(id)
+// SetParentCollectionID sets the "parentCollection" edge to the CollectSpec entity by ID.
+func (fsc *FrameSpecCreate) SetParentCollectionID(id int) *FrameSpecCreate {
+	fsc.mutation.SetParentCollectionID(id)
 	return fsc
 }
 
-// SetCollectSpecRef sets the "collect_spec_ref" edge to the CollectSpec entity.
-func (fsc *FrameSpecCreate) SetCollectSpecRef(c *CollectSpec) *FrameSpecCreate {
-	return fsc.SetCollectSpecRefID(c.ID)
+// SetParentCollection sets the "parentCollection" edge to the CollectSpec entity.
+func (fsc *FrameSpecCreate) SetParentCollection(c *CollectSpec) *FrameSpecCreate {
+	return fsc.SetParentCollectionID(c.ID)
 }
 
 // Mutation returns the FrameSpecMutation object of the builder.
@@ -92,8 +92,8 @@ func (fsc *FrameSpecCreate) check() error {
 	if _, ok := fsc.mutation.Frame(); !ok {
 		return &ValidationError{Name: "frame", err: errors.New(`ent: missing required field "FrameSpec.frame"`)}
 	}
-	if _, ok := fsc.mutation.CollectSpec(); !ok {
-		return &ValidationError{Name: "collect_spec", err: errors.New(`ent: missing required field "FrameSpec.collect_spec"`)}
+	if _, ok := fsc.mutation.Parent(); !ok {
+		return &ValidationError{Name: "parent", err: errors.New(`ent: missing required field "FrameSpec.parent"`)}
 	}
 	if _, ok := fsc.mutation.CollectExpressions(); !ok {
 		return &ValidationError{Name: "collect_expressions", err: errors.New(`ent: missing required field "FrameSpec.collect_expressions"`)}
@@ -101,8 +101,8 @@ func (fsc *FrameSpecCreate) check() error {
 	if _, ok := fsc.mutation.FlightRecorderEvents(); !ok {
 		return &ValidationError{Name: "flight_recorder_events", err: errors.New(`ent: missing required field "FrameSpec.flight_recorder_events"`)}
 	}
-	if _, ok := fsc.mutation.CollectSpecRefID(); !ok {
-		return &ValidationError{Name: "collect_spec_ref", err: errors.New(`ent: missing required edge "FrameSpec.collect_spec_ref"`)}
+	if _, ok := fsc.mutation.ParentCollectionID(); !ok {
+		return &ValidationError{Name: "parentCollection", err: errors.New(`ent: missing required edge "FrameSpec.parentCollection"`)}
 	}
 	return nil
 }
@@ -142,12 +142,12 @@ func (fsc *FrameSpecCreate) createSpec() (*FrameSpec, *sqlgraph.CreateSpec) {
 		_spec.SetField(framespec.FieldFlightRecorderEvents, field.TypeJSON, value)
 		_node.FlightRecorderEvents = value
 	}
-	if nodes := fsc.mutation.CollectSpecRefIDs(); len(nodes) > 0 {
+	if nodes := fsc.mutation.ParentCollectionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   framespec.CollectSpecRefTable,
-			Columns: []string{framespec.CollectSpecRefColumn},
+			Table:   framespec.ParentCollectionTable,
+			Columns: []string{framespec.ParentCollectionColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
@@ -156,7 +156,7 @@ func (fsc *FrameSpecCreate) createSpec() (*FrameSpec, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.CollectSpec = nodes[0]
+		_node.Parent = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

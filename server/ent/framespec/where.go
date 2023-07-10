@@ -59,9 +59,9 @@ func Frame(v string) predicate.FrameSpec {
 	return predicate.FrameSpec(sql.FieldEQ(FieldFrame, v))
 }
 
-// CollectSpec applies equality check predicate on the "collect_spec" field. It's identical to CollectSpecEQ.
-func CollectSpec(v int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldEQ(FieldCollectSpec, v))
+// Parent applies equality check predicate on the "parent" field. It's identical to ParentEQ.
+func Parent(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldEQ(FieldParent, v))
 }
 
 // FrameEQ applies the EQ predicate on the "frame" field.
@@ -129,41 +129,41 @@ func FrameContainsFold(v string) predicate.FrameSpec {
 	return predicate.FrameSpec(sql.FieldContainsFold(FieldFrame, v))
 }
 
-// CollectSpecEQ applies the EQ predicate on the "collect_spec" field.
-func CollectSpecEQ(v int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldEQ(FieldCollectSpec, v))
+// ParentEQ applies the EQ predicate on the "parent" field.
+func ParentEQ(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldEQ(FieldParent, v))
 }
 
-// CollectSpecNEQ applies the NEQ predicate on the "collect_spec" field.
-func CollectSpecNEQ(v int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldNEQ(FieldCollectSpec, v))
+// ParentNEQ applies the NEQ predicate on the "parent" field.
+func ParentNEQ(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldNEQ(FieldParent, v))
 }
 
-// CollectSpecIn applies the In predicate on the "collect_spec" field.
-func CollectSpecIn(vs ...int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldIn(FieldCollectSpec, vs...))
+// ParentIn applies the In predicate on the "parent" field.
+func ParentIn(vs ...int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldIn(FieldParent, vs...))
 }
 
-// CollectSpecNotIn applies the NotIn predicate on the "collect_spec" field.
-func CollectSpecNotIn(vs ...int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldNotIn(FieldCollectSpec, vs...))
+// ParentNotIn applies the NotIn predicate on the "parent" field.
+func ParentNotIn(vs ...int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldNotIn(FieldParent, vs...))
 }
 
-// HasCollectSpecRef applies the HasEdge predicate on the "collect_spec_ref" edge.
-func HasCollectSpecRef() predicate.FrameSpec {
+// HasParentCollection applies the HasEdge predicate on the "parentCollection" edge.
+func HasParentCollection() predicate.FrameSpec {
 	return predicate.FrameSpec(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, CollectSpecRefTable, CollectSpecRefColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, ParentCollectionTable, ParentCollectionColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasCollectSpecRefWith applies the HasEdge predicate on the "collect_spec_ref" edge with a given conditions (other predicates).
-func HasCollectSpecRefWith(preds ...predicate.CollectSpec) predicate.FrameSpec {
+// HasParentCollectionWith applies the HasEdge predicate on the "parentCollection" edge with a given conditions (other predicates).
+func HasParentCollectionWith(preds ...predicate.CollectSpec) predicate.FrameSpec {
 	return predicate.FrameSpec(func(s *sql.Selector) {
-		step := newCollectSpecRefStep()
+		step := newParentCollectionStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

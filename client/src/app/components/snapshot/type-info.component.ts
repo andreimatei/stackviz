@@ -20,7 +20,9 @@ import { MatInputModule } from "@angular/material/input";
 import { FormsModule } from "@angular/forms";
 import { MatRadioModule } from "@angular/material/radio";
 
-interface FlightRecorderEventSpec {
+// FlightRecorderEventSpec represents the specification used for recording data.
+// It is part of a FrameSpec.
+export interface FlightRecorderEventSpec {
   expr: string;
   keyExpr: string;
 }
@@ -79,7 +81,8 @@ export class TypeInfoComponent {
     this.checkedChange.emit(cev);
   }
 
-  openFlightRecorderDialog(varName: string): void {
+  openFlightRecorderDialog(varName: any): void {
+    console.log("opening dialog for var:", varName);
     const dialogRef = this.dialog.open(
       FlightRecorderDialog, {
         data: {
@@ -92,6 +95,9 @@ export class TypeInfoComponent {
         },
       });
     dialogRef.afterClosed().subscribe(result => {
+      if (result === undefined) {
+        return;
+      }
       const ev = result as FlightRecorderEvent;
       console.log('The dialog was closed with result:', ev);
       this.flightRecorderChange.emit(ev);
@@ -129,6 +135,7 @@ export class TreeNode {
     readonly formalParam: boolean,
     readonly loclistAvailable: boolean,
   ) {
+    console.log("!!! TreeNode:", name, expr, type, expandable, checked, formalParam, loclistAvailable);
     this.color = loclistAvailable ? 'black' : 'gray';
     this.fontWeight = formalParam ? 'bold' : 'normal';
     this.children = [];
@@ -165,6 +172,7 @@ export class TypesDataSource implements DataSource<TreeNode> {
   }
 
   initData(vars: VarInfo[], types: TypeInfo[], exprs: string[]) {
+    console.log("!!! initData:", exprs);
     this.vars = vars;
     for (const t of types) {
       this.types.set(t.Name, t);
@@ -297,6 +305,7 @@ export class FlightRecorderDialog {
   }
 
   onOk(): void {
+    console.log("closing dialog for var:", this.data.varName, this);
     this.dialogRef.close(new FlightRecorderEvent(
       this.data.varName,
       // TODO(andrei): add delete button

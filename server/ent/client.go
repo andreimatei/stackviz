@@ -582,15 +582,15 @@ func (c *FrameSpecClient) GetX(ctx context.Context, id int) *FrameSpec {
 	return obj
 }
 
-// QueryCollectSpecRef queries the collect_spec_ref edge of a FrameSpec.
-func (c *FrameSpecClient) QueryCollectSpecRef(fs *FrameSpec) *CollectSpecQuery {
+// QueryParentCollection queries the parentCollection edge of a FrameSpec.
+func (c *FrameSpecClient) QueryParentCollection(fs *FrameSpec) *CollectSpecQuery {
 	query := (&CollectSpecClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := fs.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(framespec.Table, framespec.FieldID, id),
 			sqlgraph.To(collectspec.Table, collectspec.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, framespec.CollectSpecRefTable, framespec.CollectSpecRefColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, framespec.ParentCollectionTable, framespec.ParentCollectionColumn),
 		)
 		fromV = sqlgraph.Neighbors(fs.driver.Dialect(), step)
 		return fromV, nil

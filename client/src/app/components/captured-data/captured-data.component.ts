@@ -7,17 +7,19 @@ import { MatTableModule } from "@angular/material/table";
 import { RouterLink } from "@angular/router";
 import { MatChipListbox, MatChipsModule } from "@angular/material/chips";
 
+// CapturedDataComponent is a component that displays the captured data for a
+// single frame in a single goroutine.
 @Component({
   selector: 'app-captured-data',
   standalone: true,
   imports: [CommonModule, MatExpansionModule, MatTableModule, RouterLink, MatChipsModule],
   template: `
     <mat-chip-listbox #expressionChips multiple>
-      <ng-container *ngFor="let frameSpec of (collectionSpec$ | async)">
+      <ng-container *ngFor="let frameSpec of (frameSpecs$ | async)">
         <mat-chip-option
           selected
           id={{expr}}
-          *ngFor="let expr of frameSpec.exprs">
+          *ngFor="let expr of frameSpec.collectExpressions">
           {{expr}}
         </mat-chip-option>
       </ng-container>
@@ -72,7 +74,7 @@ import { MatChipListbox, MatChipsModule } from "@angular/material/chips";
 })
 export class CapturedDataComponent {
   @Input({required: true}) data$!: Observable<GoroutineData[]>;
-  @Input({required: true}) collectionSpec$!: Observable<Partial<FrameSpec>[]>;
+  @Input({required: true}) frameSpecs$!: Observable<Partial<FrameSpec>[]>;
   @ViewChild('expressionChips') expressionChips!: MatChipListbox;
   protected filteredData$!: Observable<GoroutineData[]>;
   @Input({required: true}) collectionID!: number;

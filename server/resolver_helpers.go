@@ -114,7 +114,12 @@ func getOrCreateCollectSpec(ctx context.Context, dbClient *ent.Client) *ent.Coll
 				exprs: []string{"stream.id"},
 			},
 		} {
-			fi := dbClient.FrameSpec.Create().SetFrame(f.frame).SetCollectSpecRef(cs).SetCollectExpressions(f.exprs).SetFlightRecorderEvents([]string{}).SaveX(ctx)
+			fi := dbClient.FrameSpec.Create().
+				SetFrame(f.frame).
+				SetParentCollection(cs).
+				SetCollectExpressions(f.exprs).
+				SetFlightRecorderEvents([]string{}).
+				SaveX(ctx)
 			_ = fi
 			// !!! cs = cs.Update().AddFrames(fi).SaveX(ctx)
 		}

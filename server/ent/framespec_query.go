@@ -5,6 +5,7 @@ package ent
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"stacksviz/ent/collectspec"
 	"stacksviz/ent/framespec"
@@ -18,13 +19,13 @@ import (
 // FrameSpecQuery is the builder for querying FrameSpec entities.
 type FrameSpecQuery struct {
 	config
-	ctx                *QueryContext
-	order              []framespec.OrderOption
-	inters             []Interceptor
-	predicates         []predicate.FrameSpec
-	withCollectSpecRef *CollectSpecQuery
-	modifiers          []func(*sql.Selector)
-	loadTotal          []func(context.Context, []*FrameSpec) error
+	ctx                  *QueryContext
+	order                []framespec.OrderOption
+	inters               []Interceptor
+	predicates           []predicate.FrameSpec
+	withParentCollection *CollectSpecQuery
+	modifiers            []func(*sql.Selector)
+	loadTotal            []func(context.Context, []*FrameSpec) error
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -61,8 +62,8 @@ func (fsq *FrameSpecQuery) Order(o ...framespec.OrderOption) *FrameSpecQuery {
 	return fsq
 }
 
-// QueryCollectSpecRef chains the current query on the "collect_spec_ref" edge.
-func (fsq *FrameSpecQuery) QueryCollectSpecRef() *CollectSpecQuery {
+// QueryParentCollection chains the current query on the "parentCollection" edge.
+func (fsq *FrameSpecQuery) QueryParentCollection() *CollectSpecQuery {
 	query := (&CollectSpecClient{config: fsq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := fsq.prepareQuery(ctx); err != nil {
@@ -75,7 +76,7 @@ func (fsq *FrameSpecQuery) QueryCollectSpecRef() *CollectSpecQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(framespec.Table, framespec.FieldID, selector),
 			sqlgraph.To(collectspec.Table, collectspec.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, framespec.CollectSpecRefTable, framespec.CollectSpecRefColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, framespec.ParentCollectionTable, framespec.ParentCollectionColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(fsq.driver.Dialect(), step)
 		return fromU, nil
@@ -186,7 +187,9 @@ func (fsq *FrameSpecQuery) OnlyIDX(ctx context.Context) int {
 // All executes the query and returns a list of FrameSpecs.
 func (fsq *FrameSpecQuery) All(ctx context.Context) ([]*FrameSpec, error) {
 	ctx = setContextOp(ctx, fsq.ctx, "All")
+	log.Printf("!!! generated FrameSpecQuery All 1")
 	if err := fsq.prepareQuery(ctx); err != nil {
+		log.Printf("!!! generated FrameSpecQuery All 2")
 		return nil, err
 	}
 	qr := querierAll[[]*FrameSpec, *FrameSpecQuery]()
@@ -270,26 +273,26 @@ func (fsq *FrameSpecQuery) Clone() *FrameSpecQuery {
 		return nil
 	}
 	return &FrameSpecQuery{
-		config:             fsq.config,
-		ctx:                fsq.ctx.Clone(),
-		order:              append([]framespec.OrderOption{}, fsq.order...),
-		inters:             append([]Interceptor{}, fsq.inters...),
-		predicates:         append([]predicate.FrameSpec{}, fsq.predicates...),
-		withCollectSpecRef: fsq.withCollectSpecRef.Clone(),
+		config:               fsq.config,
+		ctx:                  fsq.ctx.Clone(),
+		order:                append([]framespec.OrderOption{}, fsq.order...),
+		inters:               append([]Interceptor{}, fsq.inters...),
+		predicates:           append([]predicate.FrameSpec{}, fsq.predicates...),
+		withParentCollection: fsq.withParentCollection.Clone(),
 		// clone intermediate query.
 		sql:  fsq.sql.Clone(),
 		path: fsq.path,
 	}
 }
 
-// WithCollectSpecRef tells the query-builder to eager-load the nodes that are connected to
-// the "collect_spec_ref" edge. The optional arguments are used to configure the query builder of the edge.
-func (fsq *FrameSpecQuery) WithCollectSpecRef(opts ...func(*CollectSpecQuery)) *FrameSpecQuery {
+// WithParentCollection tells the query-builder to eager-load the nodes that are connected to
+// the "parentCollection" edge. The optional arguments are used to configure the query builder of the edge.
+func (fsq *FrameSpecQuery) WithParentCollection(opts ...func(*CollectSpecQuery)) *FrameSpecQuery {
 	query := (&CollectSpecClient{config: fsq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	fsq.withCollectSpecRef = query
+	fsq.withParentCollection = query
 	return fsq
 }
 
@@ -372,7 +375,7 @@ func (fsq *FrameSpecQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*F
 		nodes       = []*FrameSpec{}
 		_spec       = fsq.querySpec()
 		loadedTypes = [1]bool{
-			fsq.withCollectSpecRef != nil,
+			fsq.withParentCollection != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -396,9 +399,9 @@ func (fsq *FrameSpecQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*F
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := fsq.withCollectSpecRef; query != nil {
-		if err := fsq.loadCollectSpecRef(ctx, query, nodes, nil,
-			func(n *FrameSpec, e *CollectSpec) { n.Edges.CollectSpecRef = e }); err != nil {
+	if query := fsq.withParentCollection; query != nil {
+		if err := fsq.loadParentCollection(ctx, query, nodes, nil,
+			func(n *FrameSpec, e *CollectSpec) { n.Edges.ParentCollection = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -410,11 +413,11 @@ func (fsq *FrameSpecQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*F
 	return nodes, nil
 }
 
-func (fsq *FrameSpecQuery) loadCollectSpecRef(ctx context.Context, query *CollectSpecQuery, nodes []*FrameSpec, init func(*FrameSpec), assign func(*FrameSpec, *CollectSpec)) error {
+func (fsq *FrameSpecQuery) loadParentCollection(ctx context.Context, query *CollectSpecQuery, nodes []*FrameSpec, init func(*FrameSpec), assign func(*FrameSpec, *CollectSpec)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*FrameSpec)
 	for i := range nodes {
-		fk := nodes[i].CollectSpec
+		fk := nodes[i].Parent
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -431,7 +434,7 @@ func (fsq *FrameSpecQuery) loadCollectSpecRef(ctx context.Context, query *Collec
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "collect_spec" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "parent" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -468,8 +471,8 @@ func (fsq *FrameSpecQuery) querySpec() *sqlgraph.QuerySpec {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
-		if fsq.withCollectSpecRef != nil {
-			_spec.Node.AddColumnOnce(framespec.FieldCollectSpec)
+		if fsq.withParentCollection != nil {
+			_spec.Node.AddColumnOnce(framespec.FieldParent)
 		}
 	}
 	if ps := fsq.predicates; len(ps) > 0 {

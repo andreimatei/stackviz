@@ -190,6 +190,16 @@ type CollectionWhereInput struct {
 	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
 	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
 
+	// "collect_spec" field predicates.
+	CollectSpec      *int  `json:"collectSpec,omitempty"`
+	CollectSpecNEQ   *int  `json:"collectSpecNEQ,omitempty"`
+	CollectSpecIn    []int `json:"collectSpecIn,omitempty"`
+	CollectSpecNotIn []int `json:"collectSpecNotIn,omitempty"`
+	CollectSpecGT    *int  `json:"collectSpecGT,omitempty"`
+	CollectSpecGTE   *int  `json:"collectSpecGTE,omitempty"`
+	CollectSpecLT    *int  `json:"collectSpecLT,omitempty"`
+	CollectSpecLTE   *int  `json:"collectSpecLTE,omitempty"`
+
 	// "process_snapshots" edge predicates.
 	HasProcessSnapshots     *bool                        `json:"hasProcessSnapshots,omitempty"`
 	HasProcessSnapshotsWith []*ProcessSnapshotWhereInput `json:"hasProcessSnapshotsWith,omitempty"`
@@ -329,6 +339,30 @@ func (i *CollectionWhereInput) P() (predicate.Collection, error) {
 	if i.NameContainsFold != nil {
 		predicates = append(predicates, collection.NameContainsFold(*i.NameContainsFold))
 	}
+	if i.CollectSpec != nil {
+		predicates = append(predicates, collection.CollectSpecEQ(*i.CollectSpec))
+	}
+	if i.CollectSpecNEQ != nil {
+		predicates = append(predicates, collection.CollectSpecNEQ(*i.CollectSpecNEQ))
+	}
+	if len(i.CollectSpecIn) > 0 {
+		predicates = append(predicates, collection.CollectSpecIn(i.CollectSpecIn...))
+	}
+	if len(i.CollectSpecNotIn) > 0 {
+		predicates = append(predicates, collection.CollectSpecNotIn(i.CollectSpecNotIn...))
+	}
+	if i.CollectSpecGT != nil {
+		predicates = append(predicates, collection.CollectSpecGT(*i.CollectSpecGT))
+	}
+	if i.CollectSpecGTE != nil {
+		predicates = append(predicates, collection.CollectSpecGTE(*i.CollectSpecGTE))
+	}
+	if i.CollectSpecLT != nil {
+		predicates = append(predicates, collection.CollectSpecLT(*i.CollectSpecLT))
+	}
+	if i.CollectSpecLTE != nil {
+		predicates = append(predicates, collection.CollectSpecLTE(*i.CollectSpecLTE))
+	}
 
 	if i.HasProcessSnapshots != nil {
 		p := collection.HasProcessSnapshots()
@@ -390,15 +424,15 @@ type FrameSpecWhereInput struct {
 	FrameEqualFold    *string  `json:"frameEqualFold,omitempty"`
 	FrameContainsFold *string  `json:"frameContainsFold,omitempty"`
 
-	// "collect_spec" field predicates.
-	CollectSpec      *int  `json:"collectSpec,omitempty"`
-	CollectSpecNEQ   *int  `json:"collectSpecNEQ,omitempty"`
-	CollectSpecIn    []int `json:"collectSpecIn,omitempty"`
-	CollectSpecNotIn []int `json:"collectSpecNotIn,omitempty"`
+	// "parent" field predicates.
+	Parent      *int  `json:"parent,omitempty"`
+	ParentNEQ   *int  `json:"parentNEQ,omitempty"`
+	ParentIn    []int `json:"parentIn,omitempty"`
+	ParentNotIn []int `json:"parentNotIn,omitempty"`
 
-	// "collect_spec_ref" edge predicates.
-	HasCollectSpecRef     *bool                    `json:"hasCollectSpecRef,omitempty"`
-	HasCollectSpecRefWith []*CollectSpecWhereInput `json:"hasCollectSpecRefWith,omitempty"`
+	// "parentCollection" edge predicates.
+	HasParentCollection     *bool                    `json:"hasParentCollection,omitempty"`
+	HasParentCollectionWith []*CollectSpecWhereInput `json:"hasParentCollectionWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -535,36 +569,36 @@ func (i *FrameSpecWhereInput) P() (predicate.FrameSpec, error) {
 	if i.FrameContainsFold != nil {
 		predicates = append(predicates, framespec.FrameContainsFold(*i.FrameContainsFold))
 	}
-	if i.CollectSpec != nil {
-		predicates = append(predicates, framespec.CollectSpecEQ(*i.CollectSpec))
+	if i.Parent != nil {
+		predicates = append(predicates, framespec.ParentEQ(*i.Parent))
 	}
-	if i.CollectSpecNEQ != nil {
-		predicates = append(predicates, framespec.CollectSpecNEQ(*i.CollectSpecNEQ))
+	if i.ParentNEQ != nil {
+		predicates = append(predicates, framespec.ParentNEQ(*i.ParentNEQ))
 	}
-	if len(i.CollectSpecIn) > 0 {
-		predicates = append(predicates, framespec.CollectSpecIn(i.CollectSpecIn...))
+	if len(i.ParentIn) > 0 {
+		predicates = append(predicates, framespec.ParentIn(i.ParentIn...))
 	}
-	if len(i.CollectSpecNotIn) > 0 {
-		predicates = append(predicates, framespec.CollectSpecNotIn(i.CollectSpecNotIn...))
+	if len(i.ParentNotIn) > 0 {
+		predicates = append(predicates, framespec.ParentNotIn(i.ParentNotIn...))
 	}
 
-	if i.HasCollectSpecRef != nil {
-		p := framespec.HasCollectSpecRef()
-		if !*i.HasCollectSpecRef {
+	if i.HasParentCollection != nil {
+		p := framespec.HasParentCollection()
+		if !*i.HasParentCollection {
 			p = framespec.Not(p)
 		}
 		predicates = append(predicates, p)
 	}
-	if len(i.HasCollectSpecRefWith) > 0 {
-		with := make([]predicate.CollectSpec, 0, len(i.HasCollectSpecRefWith))
-		for _, w := range i.HasCollectSpecRefWith {
+	if len(i.HasParentCollectionWith) > 0 {
+		with := make([]predicate.CollectSpec, 0, len(i.HasParentCollectionWith))
+		for _, w := range i.HasParentCollectionWith {
 			p, err := w.P()
 			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasCollectSpecRefWith'", err)
+				return nil, fmt.Errorf("%w: field 'HasParentCollectionWith'", err)
 			}
 			with = append(with, p)
 		}
-		predicates = append(predicates, framespec.HasCollectSpecRefWith(with...))
+		predicates = append(predicates, framespec.HasParentCollectionWith(with...))
 	}
 	switch len(predicates) {
 	case 0:

@@ -18,6 +18,8 @@ type Collection struct {
 	ID int `json:"id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
+	// The specification used to create this collection
+	CollectSpec int `json:"collect_spec,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the CollectionQuery when eager-loading is set.
 	Edges        CollectionEdges `json:"edges"`
@@ -51,7 +53,7 @@ func (*Collection) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case collection.FieldID:
+		case collection.FieldID, collection.FieldCollectSpec:
 			values[i] = new(sql.NullInt64)
 		case collection.FieldName:
 			values[i] = new(sql.NullString)
@@ -81,6 +83,12 @@ func (c *Collection) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				c.Name = value.String
+			}
+		case collection.FieldCollectSpec:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field collect_spec", values[i])
+			} else if value.Valid {
+				c.CollectSpec = int(value.Int64)
 			}
 		default:
 			c.selectValues.Set(columns[i], values[i])
@@ -125,6 +133,9 @@ func (c *Collection) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", c.ID))
 	builder.WriteString("name=")
 	builder.WriteString(c.Name)
+	builder.WriteString(", ")
+	builder.WriteString("collect_spec=")
+	builder.WriteString(fmt.Sprintf("%v", c.CollectSpec))
 	builder.WriteByte(')')
 	return builder.String()
 }

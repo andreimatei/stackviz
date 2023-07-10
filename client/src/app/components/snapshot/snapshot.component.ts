@@ -4,16 +4,21 @@ import {
   FrameSpec,
   GetAvailableVariablesGQL,
   GetCollectionGQL,
-  GetCollectSpecGQL,
+  GetFrameSpecsGQL,
   GetGoroutinesGQL,
   GetTreeGQL,
   ProcessSnapshot,
   RemoveExprFromCollectSpecGQL
 } from "../../graphql/graphql-codegen-generated";
-import { ActivatedRoute, Router, RouterLink } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 import { MatDrawer, MatSidenavModule } from "@angular/material/sidenav";
 import { ResizableModule, ResizeEvent } from 'angular-resizable-element';
-import { CheckedEvent, FlightRecorderEvent, TypeInfoComponent } from "./type-info.component";
+import {
+  CheckedEvent,
+  FlightRecorderEvent,
+  FlightRecorderEventSpec,
+  TypeInfoComponent
+} from "./type-info.component";
 import { MatSelect, MatSelectModule } from "@angular/material/select";
 import {
   FlamegraphComponent,
@@ -83,6 +88,8 @@ class Frame {
 export class SnapshotComponent implements OnInit, AfterViewInit {
   // collectionID and snapshotID input properties are set by the router.
   @Input('colID') collectionID!: number;
+  // The id of the specification that produced the collectio.
+  protected collectSpecID!: number;
 
   protected snapshotID$ = new Subject<number>();
   private _snapshotID!: number;
@@ -126,7 +133,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.filterChangeImmediate$,
   );
 
-  protected collectionName?: string;
+  protected collectionName!: string;
   protected snapshots?: Partial<ProcessSnapshot>[];
 
 
@@ -139,16 +146,17 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   @ViewChild(StacksComponent) stacks!: StacksComponent;
 
   protected selectedFrame?: Frame;
-  // Data about the selected node. Each element is a string containing all the
-  // captured variables from one frame (where all frames correspond to the
-  // selected node).
+
+  // Data about the selected frame. Map from goroutine ID to variables collected
+  // for the selected frame in that goroutine.
   protected funcInfo?: Map<number, VarInfo[]>;
+  protected flightRecorderEventSpecs?: FlightRecorderEventSpec[];
 
   protected loadingAvailableVars: boolean = false;
 
   private treeQuery!: ReturnType<GetTreeGQL["watch"]>;
   private goroutinesQuery!: ReturnType<GetGoroutinesGQL["watch"]>;
-  protected readonly collectSpecQuery$!: Observable<Partial<FrameSpec>[]>;
+  protected frameSpecsQuery$!: Observable<Partial<FrameSpec>[]>;
 
   constructor(
     private readonly getCollectionQuery: GetCollectionGQL,
@@ -157,20 +165,25 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly getTreeQuery: GetTreeGQL,
     private readonly addExpr: AddExprToCollectSpecGQL,
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
-    private readonly collectSpec: GetCollectSpecGQL,
+    private readonly frameSpecsQuery: GetFrameSpecsGQL,
     private readonly router: Router,
-    private readonly route: ActivatedRoute,
   ) {
-    this.collectSpecQuery$ = collectSpec.watch().valueChanges.pipe(
-      map(val => val.data.collectSpec),
-    );
   }
 
   ngOnInit(): void {
     this.getCollectionQuery.fetch({colID: this.collectionID})
       .subscribe(results => {
-        this.collectionName = results.data.collectionByID?.name;
+        this.collectionName = results.data.collectionByID!.name;
+        this.collectSpecID = results.data.collectionByID!.collectSpec;
         this.snapshots = results.data.collectionByID?.processSnapshots!;
+
+        this.frameSpecsQuery$ = this.frameSpecsQuery.fetch({collect_spec_id: this.collectSpecID}).pipe(
+          map(val => val.data.frameSpecsWhere),
+        )
+        // !!!
+        // this.frameSpecsQuery$ = frameSpecsQuery.watch({collect_spec_id: this.collectSpecID}).valueChanges.pipe(
+        //   map(val => val.data.frameSpecsWhere),
+        // );
       });
 
     const parsedFilter = this.filterVal ? parseFilter(this.filterVal) : {};
@@ -244,11 +257,11 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   checkedChange(ev: CheckedEvent) {
     if (ev.checked) {
       this.addExpr.mutate({frame: this.selectedFrame!.name, expr: ev.expr}).subscribe({
-        next: value => console.log(value.data?.addExprToCollectSpec.frames![0].exprs)
+        next: value => console.log(value.data?.addExprToCollectSpec.frames![0].collectExpressions)
       })
     } else {
       this.removeExpr.mutate({frame: this.selectedFrame!.name, expr: ev.expr}).subscribe({
-        next: value => console.log(value.data?.removeExprFromCollectSpec.frames![0].exprs)
+        next: value => console.log(value.data?.removeExprFromCollectSpec.frames![0].collectExpressions)
       })
     }
   }
@@ -287,10 +300,18 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
             console.log("err: ", results.error)
             return
           }
+          if (results.data.frameSpecsWhere.length != 1) {
+            console.log("expected exactly one frameSpec, got: ", results.data.frameSpecsWhere)
+            return
+          }
+          const frameSpec = results.data.frameSpecsWhere[0];
+          this.flightRecorderEventSpecs = frameSpec.flightRecorderEvents.map(
+            e => JSON.parse(e) as FlightRecorderEventSpec);
+          console.log("loaded flightRecorderEvents:", this.flightRecorderEventSpecs);
           this.typeInfo.dataSource.initData(
             results.data.availableVars.Vars,
             results.data.availableVars.Types,
-            results.data.collectSpec.length > 0 ? results.data.collectSpec[0].exprs : [],
+            frameSpec.collectExpressions,
           )
         })
     this.frameDetailsSidebar.open();

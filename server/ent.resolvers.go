@@ -8,13 +8,12 @@ import (
 	"context"
 	"fmt"
 	"stacksviz/ent"
-
-	"entgo.io/contrib/entgql"
 )
 
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id int) (ent.Noder, error) {
-	return r.dbClient.Noder(ctx, id)
+	dbClient := ent.FromContext(ctx)
+	return dbClient.Noder(ctx, id)
 }
 
 // Nodes is the resolver for the nodes field.
@@ -29,7 +28,8 @@ func (r *queryResolver) CollectSpecs(ctx context.Context) ([]ent.CollectSpec, er
 
 // Collections is the resolver for the collections field.
 func (r *queryResolver) Collections(ctx context.Context) ([]ent.Collection, error) {
-	results, err := r.dbClient.Collection.Query().All(ctx)
+	dbClient := ent.FromContext(ctx)
+	results, err := dbClient.Collection.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -37,13 +37,14 @@ func (r *queryResolver) Collections(ctx context.Context) ([]ent.Collection, erro
 }
 
 // FrameSpecs is the resolver for the frameSpecs field.
-func (r *queryResolver) FrameSpecs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.FrameSpecWhereInput) (*ent.FrameSpecConnection, error) {
-	panic(fmt.Errorf("not implemented: FrameSpecs - frameSpecs"))
+func (r *queryResolver) FrameSpecs(ctx context.Context) ([]ent.FrameSpec, error) {
+	panic("unimplemented - FrameSpecs")
 }
 
 // ProcessSnapshots is the resolver for the processSnapshots field.
 func (r *queryResolver) ProcessSnapshots(ctx context.Context) ([]ent.ProcessSnapshot, error) {
-	results, err := r.dbClient.ProcessSnapshot.Query().All(ctx)
+	dbClient := ent.FromContext(ctx)
+	results, err := dbClient.ProcessSnapshot.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}

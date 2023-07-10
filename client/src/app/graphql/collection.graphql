@@ -2,6 +2,7 @@ query AllCollections {
   collections {
     id
     name
+    collectSpec
   }
 }
 
@@ -9,6 +10,7 @@ query GetCollection($colID: ID!) {
   collectionByID(id: $colID) {
     id
     name
+    collectSpec
     processSnapshots {
       id
       processID
@@ -26,7 +28,7 @@ mutation AddExprToCollectSpec($frame: String!, $expr: String!) {
   addExprToCollectSpec(frame: $frame, expr: $expr){
     frames {
       frame
-      exprs
+      collectExpressions
     }
   }
 }
@@ -35,7 +37,7 @@ mutation RemoveExprFromCollectSpec ($frame: String!, $expr: String!) {
   removeExprFromCollectSpec(frame: $frame, expr: $expr){
     frames {
       frame
-      exprs
+      collectExpressions
     }
   }
 }
@@ -58,8 +60,12 @@ query GetAvailableVariables($func: String!, $pcOff: Int!) {
       FieldsNotLoaded
     }
   }
-  collectSpec(func: $func) {
-    exprs
+  frameSpecsWhere(where: {
+    frame: $func
+  }) {
+    id
+    collectExpressions
+    flightRecorderEvents
   }
 }
 
@@ -118,22 +124,13 @@ query GetTree($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
   getTree(colID: $colID, snapID: $snapID, gID: $gID, filter: $filter)
 }
 
-query GetFrameSpec($collect_spec_id: Int!, $frame: String!) {
-
-}
-
-query GetCollectSpec($frame: String) {
-  collectSpec {
-    frames(where: {
-       frame: $frame,
-    }) {
-      edges {
-        node {
-          frame
-          collectExpressions
-          flightRecorderEvents
-        }
-      }
-    }
+query GetFrameSpecs($collect_spec_id: ID!) {
+  frameSpecsWhere(where: {
+    parent: $collect_spec_id,
+  }) {
+    id
+    frame
+    collectExpressions
+    flightRecorderEvents
   }
 }

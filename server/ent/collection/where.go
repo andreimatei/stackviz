@@ -59,6 +59,11 @@ func Name(v string) predicate.Collection {
 	return predicate.Collection(sql.FieldEQ(FieldName, v))
 }
 
+// CollectSpec applies equality check predicate on the "collect_spec" field. It's identical to CollectSpecEQ.
+func CollectSpec(v int) predicate.Collection {
+	return predicate.Collection(sql.FieldEQ(FieldCollectSpec, v))
+}
+
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.Collection {
 	return predicate.Collection(sql.FieldEQ(FieldName, v))
@@ -122,6 +127,46 @@ func NameEqualFold(v string) predicate.Collection {
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.Collection {
 	return predicate.Collection(sql.FieldContainsFold(FieldName, v))
+}
+
+// CollectSpecEQ applies the EQ predicate on the "collect_spec" field.
+func CollectSpecEQ(v int) predicate.Collection {
+	return predicate.Collection(sql.FieldEQ(FieldCollectSpec, v))
+}
+
+// CollectSpecNEQ applies the NEQ predicate on the "collect_spec" field.
+func CollectSpecNEQ(v int) predicate.Collection {
+	return predicate.Collection(sql.FieldNEQ(FieldCollectSpec, v))
+}
+
+// CollectSpecIn applies the In predicate on the "collect_spec" field.
+func CollectSpecIn(vs ...int) predicate.Collection {
+	return predicate.Collection(sql.FieldIn(FieldCollectSpec, vs...))
+}
+
+// CollectSpecNotIn applies the NotIn predicate on the "collect_spec" field.
+func CollectSpecNotIn(vs ...int) predicate.Collection {
+	return predicate.Collection(sql.FieldNotIn(FieldCollectSpec, vs...))
+}
+
+// CollectSpecGT applies the GT predicate on the "collect_spec" field.
+func CollectSpecGT(v int) predicate.Collection {
+	return predicate.Collection(sql.FieldGT(FieldCollectSpec, v))
+}
+
+// CollectSpecGTE applies the GTE predicate on the "collect_spec" field.
+func CollectSpecGTE(v int) predicate.Collection {
+	return predicate.Collection(sql.FieldGTE(FieldCollectSpec, v))
+}
+
+// CollectSpecLT applies the LT predicate on the "collect_spec" field.
+func CollectSpecLT(v int) predicate.Collection {
+	return predicate.Collection(sql.FieldLT(FieldCollectSpec, v))
+}
+
+// CollectSpecLTE applies the LTE predicate on the "collect_spec" field.
+func CollectSpecLTE(v int) predicate.Collection {
+	return predicate.Collection(sql.FieldLTE(FieldCollectSpec, v))
 }
 
 // HasProcessSnapshots applies the HasEdge predicate on the "process_snapshots" edge.

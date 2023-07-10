@@ -26,6 +26,12 @@ func (cc *CollectionCreate) SetName(s string) *CollectionCreate {
 	return cc
 }
 
+// SetCollectSpec sets the "collect_spec" field.
+func (cc *CollectionCreate) SetCollectSpec(i int) *CollectionCreate {
+	cc.mutation.SetCollectSpec(i)
+	return cc
+}
+
 // AddProcessSnapshotIDs adds the "process_snapshots" edge to the ProcessSnapshot entity by IDs.
 func (cc *CollectionCreate) AddProcessSnapshotIDs(ids ...int) *CollectionCreate {
 	cc.mutation.AddProcessSnapshotIDs(ids...)
@@ -78,6 +84,9 @@ func (cc *CollectionCreate) check() error {
 	if _, ok := cc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Collection.name"`)}
 	}
+	if _, ok := cc.mutation.CollectSpec(); !ok {
+		return &ValidationError{Name: "collect_spec", err: errors.New(`ent: missing required field "Collection.collect_spec"`)}
+	}
 	return nil
 }
 
@@ -107,6 +116,10 @@ func (cc *CollectionCreate) createSpec() (*Collection, *sqlgraph.CreateSpec) {
 	if value, ok := cc.mutation.Name(); ok {
 		_spec.SetField(collection.FieldName, field.TypeString, value)
 		_node.Name = value
+	}
+	if value, ok := cc.mutation.CollectSpec(); ok {
+		_spec.SetField(collection.FieldCollectSpec, field.TypeInt, value)
+		_node.CollectSpec = value
 	}
 	if nodes := cc.mutation.ProcessSnapshotsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

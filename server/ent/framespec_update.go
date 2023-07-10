@@ -35,9 +35,9 @@ func (fsu *FrameSpecUpdate) SetFrame(s string) *FrameSpecUpdate {
 	return fsu
 }
 
-// SetCollectSpec sets the "collect_spec" field.
-func (fsu *FrameSpecUpdate) SetCollectSpec(i int) *FrameSpecUpdate {
-	fsu.mutation.SetCollectSpec(i)
+// SetParent sets the "parent" field.
+func (fsu *FrameSpecUpdate) SetParent(i int) *FrameSpecUpdate {
+	fsu.mutation.SetParent(i)
 	return fsu
 }
 
@@ -65,15 +65,15 @@ func (fsu *FrameSpecUpdate) AppendFlightRecorderEvents(s []string) *FrameSpecUpd
 	return fsu
 }
 
-// SetCollectSpecRefID sets the "collect_spec_ref" edge to the CollectSpec entity by ID.
-func (fsu *FrameSpecUpdate) SetCollectSpecRefID(id int) *FrameSpecUpdate {
-	fsu.mutation.SetCollectSpecRefID(id)
+// SetParentCollectionID sets the "parentCollection" edge to the CollectSpec entity by ID.
+func (fsu *FrameSpecUpdate) SetParentCollectionID(id int) *FrameSpecUpdate {
+	fsu.mutation.SetParentCollectionID(id)
 	return fsu
 }
 
-// SetCollectSpecRef sets the "collect_spec_ref" edge to the CollectSpec entity.
-func (fsu *FrameSpecUpdate) SetCollectSpecRef(c *CollectSpec) *FrameSpecUpdate {
-	return fsu.SetCollectSpecRefID(c.ID)
+// SetParentCollection sets the "parentCollection" edge to the CollectSpec entity.
+func (fsu *FrameSpecUpdate) SetParentCollection(c *CollectSpec) *FrameSpecUpdate {
+	return fsu.SetParentCollectionID(c.ID)
 }
 
 // Mutation returns the FrameSpecMutation object of the builder.
@@ -81,9 +81,9 @@ func (fsu *FrameSpecUpdate) Mutation() *FrameSpecMutation {
 	return fsu.mutation
 }
 
-// ClearCollectSpecRef clears the "collect_spec_ref" edge to the CollectSpec entity.
-func (fsu *FrameSpecUpdate) ClearCollectSpecRef() *FrameSpecUpdate {
-	fsu.mutation.ClearCollectSpecRef()
+// ClearParentCollection clears the "parentCollection" edge to the CollectSpec entity.
+func (fsu *FrameSpecUpdate) ClearParentCollection() *FrameSpecUpdate {
+	fsu.mutation.ClearParentCollection()
 	return fsu
 }
 
@@ -116,8 +116,8 @@ func (fsu *FrameSpecUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (fsu *FrameSpecUpdate) check() error {
-	if _, ok := fsu.mutation.CollectSpecRefID(); fsu.mutation.CollectSpecRefCleared() && !ok {
-		return errors.New(`ent: clearing a required unique edge "FrameSpec.collect_spec_ref"`)
+	if _, ok := fsu.mutation.ParentCollectionID(); fsu.mutation.ParentCollectionCleared() && !ok {
+		return errors.New(`ent: clearing a required unique edge "FrameSpec.parentCollection"`)
 	}
 	return nil
 }
@@ -153,12 +153,12 @@ func (fsu *FrameSpecUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			sqljson.Append(u, framespec.FieldFlightRecorderEvents, value)
 		})
 	}
-	if fsu.mutation.CollectSpecRefCleared() {
+	if fsu.mutation.ParentCollectionCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   framespec.CollectSpecRefTable,
-			Columns: []string{framespec.CollectSpecRefColumn},
+			Table:   framespec.ParentCollectionTable,
+			Columns: []string{framespec.ParentCollectionColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
@@ -166,12 +166,12 @@ func (fsu *FrameSpecUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := fsu.mutation.CollectSpecRefIDs(); len(nodes) > 0 {
+	if nodes := fsu.mutation.ParentCollectionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   framespec.CollectSpecRefTable,
-			Columns: []string{framespec.CollectSpecRefColumn},
+			Table:   framespec.ParentCollectionTable,
+			Columns: []string{framespec.ParentCollectionColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
@@ -208,9 +208,9 @@ func (fsuo *FrameSpecUpdateOne) SetFrame(s string) *FrameSpecUpdateOne {
 	return fsuo
 }
 
-// SetCollectSpec sets the "collect_spec" field.
-func (fsuo *FrameSpecUpdateOne) SetCollectSpec(i int) *FrameSpecUpdateOne {
-	fsuo.mutation.SetCollectSpec(i)
+// SetParent sets the "parent" field.
+func (fsuo *FrameSpecUpdateOne) SetParent(i int) *FrameSpecUpdateOne {
+	fsuo.mutation.SetParent(i)
 	return fsuo
 }
 
@@ -238,15 +238,15 @@ func (fsuo *FrameSpecUpdateOne) AppendFlightRecorderEvents(s []string) *FrameSpe
 	return fsuo
 }
 
-// SetCollectSpecRefID sets the "collect_spec_ref" edge to the CollectSpec entity by ID.
-func (fsuo *FrameSpecUpdateOne) SetCollectSpecRefID(id int) *FrameSpecUpdateOne {
-	fsuo.mutation.SetCollectSpecRefID(id)
+// SetParentCollectionID sets the "parentCollection" edge to the CollectSpec entity by ID.
+func (fsuo *FrameSpecUpdateOne) SetParentCollectionID(id int) *FrameSpecUpdateOne {
+	fsuo.mutation.SetParentCollectionID(id)
 	return fsuo
 }
 
-// SetCollectSpecRef sets the "collect_spec_ref" edge to the CollectSpec entity.
-func (fsuo *FrameSpecUpdateOne) SetCollectSpecRef(c *CollectSpec) *FrameSpecUpdateOne {
-	return fsuo.SetCollectSpecRefID(c.ID)
+// SetParentCollection sets the "parentCollection" edge to the CollectSpec entity.
+func (fsuo *FrameSpecUpdateOne) SetParentCollection(c *CollectSpec) *FrameSpecUpdateOne {
+	return fsuo.SetParentCollectionID(c.ID)
 }
 
 // Mutation returns the FrameSpecMutation object of the builder.
@@ -254,9 +254,9 @@ func (fsuo *FrameSpecUpdateOne) Mutation() *FrameSpecMutation {
 	return fsuo.mutation
 }
 
-// ClearCollectSpecRef clears the "collect_spec_ref" edge to the CollectSpec entity.
-func (fsuo *FrameSpecUpdateOne) ClearCollectSpecRef() *FrameSpecUpdateOne {
-	fsuo.mutation.ClearCollectSpecRef()
+// ClearParentCollection clears the "parentCollection" edge to the CollectSpec entity.
+func (fsuo *FrameSpecUpdateOne) ClearParentCollection() *FrameSpecUpdateOne {
+	fsuo.mutation.ClearParentCollection()
 	return fsuo
 }
 
@@ -302,8 +302,8 @@ func (fsuo *FrameSpecUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (fsuo *FrameSpecUpdateOne) check() error {
-	if _, ok := fsuo.mutation.CollectSpecRefID(); fsuo.mutation.CollectSpecRefCleared() && !ok {
-		return errors.New(`ent: clearing a required unique edge "FrameSpec.collect_spec_ref"`)
+	if _, ok := fsuo.mutation.ParentCollectionID(); fsuo.mutation.ParentCollectionCleared() && !ok {
+		return errors.New(`ent: clearing a required unique edge "FrameSpec.parentCollection"`)
 	}
 	return nil
 }
@@ -356,12 +356,12 @@ func (fsuo *FrameSpecUpdateOne) sqlSave(ctx context.Context) (_node *FrameSpec, 
 			sqljson.Append(u, framespec.FieldFlightRecorderEvents, value)
 		})
 	}
-	if fsuo.mutation.CollectSpecRefCleared() {
+	if fsuo.mutation.ParentCollectionCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   framespec.CollectSpecRefTable,
-			Columns: []string{framespec.CollectSpecRefColumn},
+			Table:   framespec.ParentCollectionTable,
+			Columns: []string{framespec.ParentCollectionColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),
@@ -369,12 +369,12 @@ func (fsuo *FrameSpecUpdateOne) sqlSave(ctx context.Context) (_node *FrameSpec, 
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := fsuo.mutation.CollectSpecRefIDs(); len(nodes) > 0 {
+	if nodes := fsuo.mutation.ParentCollectionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   framespec.CollectSpecRefTable,
-			Columns: []string{framespec.CollectSpecRefColumn},
+			Table:   framespec.ParentCollectionTable,
+			Columns: []string{framespec.ParentCollectionColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(collectspec.FieldID, field.TypeInt),

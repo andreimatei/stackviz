@@ -41,7 +41,11 @@
         </mat-expansion-panel-header>
 
         <mat-progress-bar mode="indeterminate" *ngIf="loadingAvailableVars"></mat-progress-bar>
-        <type-info (checkedChange)="checkedChange($event)" (flightRecorderChange)="flightRecorderChange($event)"/>
+        <type-info
+          (checkedChange)="checkedChange($event)"
+          (flightRecorderChange)="flightRecorderChange($event)"
+          [flightRecorderEventSpecs]="flightRecorderEventSpecs!"
+        />
       </mat-expansion-panel>
 
       <mat-expansion-panel expanded style="margin-left: 5px">
@@ -66,7 +70,7 @@
                 gid:frame.key,
                 vars:frame.value,
               }])"
-              [collectionSpec$]="collectSpecQuery$"
+              [frameSpecs$]="frameSpecsQuery$"
               [collectionID]="collectionID"
               [snapshotID]="snapshotID"
             ></app-captured-data>
@@ -108,7 +112,7 @@
         <mat-tab label="Captured data">
           <app-captured-data
             [data$]="capturedData$"
-            [collectionSpec$]="collectSpecQuery$"
+            [frameSpecs$]="frameSpecsQuery$"
             [collectionID]="collectionID"
             [snapshotID]="snapshotID"
           ></app-captured-data>

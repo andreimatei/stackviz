@@ -21,7 +21,7 @@ export class CollectionsListComponent implements OnInit {
   protected loading: boolean;
   protected collections?: Collection[];
   private collectionsQueryInstance?: QueryRef<any, any>;
-  protected querySubscription?: Observable<Query['collections']>;
+  protected querySubscription?: Observable<Collection[]>;
 
   constructor(
     private readonly collectionsQuery: AllCollectionsGQL,

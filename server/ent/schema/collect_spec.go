@@ -23,7 +23,10 @@ func (CollectSpec) Fields() []ent.Field {
 func (CollectSpec) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("frames", FrameSpec.Type).
-			Annotations(entsql.OnDelete(entsql.Cascade), entgql.RelayConnection()),
+			Annotations(
+				entsql.OnDelete(entsql.Cascade),
+				// !!! entgql.RelayConnection(),
+			),
 	}
 }
 
@@ -41,7 +44,7 @@ type FrameSpec struct {
 func (FrameSpec) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("frame"),
-		field.Int("collect_spec").Comment("The parent collection spec"),
+		field.Int("parent").Comment("The parent collection spec"),
 		// collect_expressions is the list of expressions to evaluate whenever this
 		// frame is encountered when taking a snapshot. Each expression is a string
 		// that is passed to Delve's `eval` function.
@@ -59,8 +62,12 @@ func (FrameSpec) Fields() []ent.Field {
 
 func (FrameSpec) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("collect_spec_ref", CollectSpec.Type).Ref("frames").
-			Field("collect_spec").Required().Unique(),
+		edge.From("parentCollection", CollectSpec.Type).
+			Comment("The parent collection spec").
+			Ref("frames").
+			Field("parent").
+			Unique().
+			Required(),
 	}
 }
 
@@ -68,6 +75,6 @@ func (FrameSpec) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		entgql.QueryField(),
 		entgql.Mutations(entgql.MutationCreate()),
-		entgql.RelayConnection(),
+		// !!! entgql.RelayConnection(),
 	}
 }

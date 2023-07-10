@@ -22,6 +22,7 @@ var (
 	CollectionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "name", Type: field.TypeString},
+		{Name: "collect_spec", Type: field.TypeInt},
 	}
 	// CollectionsTable holds the schema information for the "collections" table.
 	CollectionsTable = &schema.Table{
@@ -35,7 +36,7 @@ var (
 		{Name: "frame", Type: field.TypeString},
 		{Name: "collect_expressions", Type: field.TypeJSON},
 		{Name: "flight_recorder_events", Type: field.TypeJSON},
-		{Name: "collect_spec", Type: field.TypeInt},
+		{Name: "parent", Type: field.TypeInt},
 	}
 	// FrameSpecsTable holds the schema information for the "frame_specs" table.
 	FrameSpecsTable = &schema.Table{
