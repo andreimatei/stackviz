@@ -187,6 +187,35 @@ func (r *mutationResolver) AddFlightRecorderEventToFrameSpec(ctx context.Context
 	log.Printf("!!! adding flight recorder event: %s", string(data))
 	frameSpec.Update().SetFlightRecorderEvents(append(frameSpec.FlightRecorderEvents, string(data))).SaveX(ctx)
 	log.Printf("!!! events for %s are now: %s", frameSpec.Frame, frameSpec.FlightRecorderEvents)
+
+	fs := dbClient.FrameSpec.Query().AllX(ctx)
+	var evSpecs []FlightRecorderEventSpecFull
+	for _, frameSpec := range fs {
+		for _, evSpec := range frameSpec.FlightRecorderEvents {
+			var ev FlightRecorderEventSpecFull
+			err := json.Unmarshal([]byte(evSpec), &ev)
+			if err != nil {
+				return nil, err
+			}
+			evSpecs = append(evSpecs, ev)
+		}
+	}
+
+	var svcName string
+	for serviceName, _ := range r.conf.Targets {
+		// TODO(andrei): deal with multiple services
+		svcName = serviceName
+	}
+	for processName, url := range r.conf.Targets[svcName] {
+		processName := processName
+		url := url
+		log.Printf("reconciling breakpoints for process %s-%s - %s", svcName, processName, url)
+		err := reconcileFlightRecorder(ctx, url, evSpecs)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("!!! delve agent returned")
+	}
 	return frameSpec, nil
 }
 

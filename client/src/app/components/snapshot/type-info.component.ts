@@ -91,7 +91,7 @@ export class TypeInfoComponent {
           // variable (with different key expressions)? I guess the UI doesn't
           // allow creating them.
           existingSpec: this.flightRecorderEventSpecs.find(
-            s => s.expr == varName),
+            s => s.Expr == varName),
         },
       });
     dialogRef.afterClosed().subscribe(result => {

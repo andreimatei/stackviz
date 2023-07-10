@@ -67,6 +67,27 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(ctx context.Context, agentA
 	return res.Snapshot, nil
 }
 
+func reconcileFlightRecorder(ctx context.Context, agentAddr string, events []FlightRecorderEventSpecFull) error {
+	client, err := rpc.DialHTTP("tcp", agentAddr)
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+
+	var eventsIn []agentrpc.FlightRecorderEventSpec
+	for _, e := range events {
+		eventsIn = append(eventsIn, agentrpc.FlightRecorderEventSpec{
+			Frame:   e.Frame,
+			Expr:    e.Expr,
+			KeyExpr: e.KeyExpr,
+		})
+	}
+
+	out := agentrpc.ReconcileFLightRecorderOut{}
+	return client.Call("Agent.ReconcileFlightRecorder", &agentrpc.ReconcileFlightRecorderIn{
+		Events: eventsIn,
+	}, &out)
+}
+
 func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn string, pcOff int64) ([]debugger.VarInfo, []debugger.TypeInfo, error) {
 	log.Printf("!!! getting available vars for %s:0x%x", fn, pcOff)
 	client, err := rpc.DialHTTP("tcp", agentAddr)
@@ -203,4 +224,9 @@ func flatten[T any](src []*T) []T {
 type FlightRecorderEventSpec struct {
 	Expr    string
 	KeyExpr string
+}
+
+type FlightRecorderEventSpecFull struct {
+	FlightRecorderEventSpec
+	Frame string
 }
