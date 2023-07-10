@@ -29,6 +29,7 @@ mutation AddExprToCollectSpec($frame: String!, $expr: String!) {
     frames {
       frame
       collectExpressions
+      flightRecorderEvents
     }
   }
 }
@@ -38,6 +39,25 @@ mutation RemoveExprFromCollectSpec ($frame: String!, $expr: String!) {
     frames {
       frame
       collectExpressions
+      flightRecorderEvents
+    }
+  }
+}
+
+mutation AddFlightRecorderEventToCollectSpec($collectSpecID: ID!, $frame: String!, $expr: String!, $keyExpr: String!) {
+  addFlightRecorderEventToFrameSpec(collectSpecID: $collectSpecID, frame: $frame, expr: $expr, keyExpr: $keyExpr){
+    frame
+    collectExpressions
+    flightRecorderEvents
+  }
+}
+
+mutation RemoveFlightRecorderEventFromCollectSpec($frame: String!, $expr: String!, $keyExpr: String!) {
+  removeFlightRecorderEventFromCollectSpec(frame: $frame, expr: $expr, keyExpr: $keyExpr){
+    frames {
+      frame
+      collectExpressions
+      flightRecorderEvents
     }
   }
 }
@@ -124,9 +144,9 @@ query GetTree($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
   getTree(colID: $colID, snapID: $snapID, gID: $gID, filter: $filter)
 }
 
-query GetFrameSpecs($collect_spec_id: ID!) {
+query GetFrameSpecs($collectSpecID: ID!) {
   frameSpecsWhere(where: {
-    parent: $collect_spec_id,
+    collectSpecID: $collectSpecID,
   }) {
     id
     frame

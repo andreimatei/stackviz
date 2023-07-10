@@ -5,7 +5,6 @@ package ent
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"stacksviz/ent/collectspec"
 	"stacksviz/ent/framespec"
@@ -187,9 +186,7 @@ func (fsq *FrameSpecQuery) OnlyIDX(ctx context.Context) int {
 // All executes the query and returns a list of FrameSpecs.
 func (fsq *FrameSpecQuery) All(ctx context.Context) ([]*FrameSpec, error) {
 	ctx = setContextOp(ctx, fsq.ctx, "All")
-	log.Printf("!!! generated FrameSpecQuery All 1")
 	if err := fsq.prepareQuery(ctx); err != nil {
-		log.Printf("!!! generated FrameSpecQuery All 2")
 		return nil, err
 	}
 	qr := querierAll[[]*FrameSpec, *FrameSpecQuery]()
@@ -417,7 +414,7 @@ func (fsq *FrameSpecQuery) loadParentCollection(ctx context.Context, query *Coll
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*FrameSpec)
 	for i := range nodes {
-		fk := nodes[i].Parent
+		fk := nodes[i].CollectSpecID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -434,7 +431,7 @@ func (fsq *FrameSpecQuery) loadParentCollection(ctx context.Context, query *Coll
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "parent" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "collect_spec_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -472,7 +469,7 @@ func (fsq *FrameSpecQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 		if fsq.withParentCollection != nil {
-			_spec.Node.AddColumnOnce(framespec.FieldParent)
+			_spec.Node.AddColumnOnce(framespec.FieldCollectSpecID)
 		}
 	}
 	if ps := fsq.predicates; len(ps) > 0 {

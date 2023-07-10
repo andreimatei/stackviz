@@ -14,8 +14,8 @@ const (
 	FieldID = "id"
 	// FieldFrame holds the string denoting the frame field in the database.
 	FieldFrame = "frame"
-	// FieldParent holds the string denoting the parent field in the database.
-	FieldParent = "parent"
+	// FieldCollectSpecID holds the string denoting the collect_spec_id field in the database.
+	FieldCollectSpecID = "collect_spec_id"
 	// FieldCollectExpressions holds the string denoting the collect_expressions field in the database.
 	FieldCollectExpressions = "collect_expressions"
 	// FieldFlightRecorderEvents holds the string denoting the flight_recorder_events field in the database.
@@ -30,14 +30,14 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "collectspec" package.
 	ParentCollectionInverseTable = "collect_specs"
 	// ParentCollectionColumn is the table column denoting the parentCollection relation/edge.
-	ParentCollectionColumn = "parent"
+	ParentCollectionColumn = "collect_spec_id"
 )
 
 // Columns holds all SQL columns for framespec fields.
 var Columns = []string{
 	FieldID,
 	FieldFrame,
-	FieldParent,
+	FieldCollectSpecID,
 	FieldCollectExpressions,
 	FieldFlightRecorderEvents,
 }
@@ -65,9 +65,9 @@ func ByFrame(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFrame, opts...).ToFunc()
 }
 
-// ByParent orders the results by the parent field.
-func ByParent(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldParent, opts...).ToFunc()
+// ByCollectSpecID orders the results by the collect_spec_id field.
+func ByCollectSpecID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCollectSpecID, opts...).ToFunc()
 }
 
 // ByParentCollectionField orders the results by parentCollection field.

@@ -147,45 +147,51 @@ func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr s
 	return collectSpec, nil
 }
 
-// AddFlightRecorderEventToCollectSpec is the resolver for the addFlightRecorderEventToCollectSpec field.
-func (r *mutationResolver) AddFlightRecorderEventToCollectSpec(ctx context.Context, frame string, spec string) (_ *ent.CollectSpec, _err error) {
+// AddFlightRecorderEventToFrameSpec is the resolver for the addFlightRecorderEventToFrameSpec field.
+func (r *mutationResolver) AddFlightRecorderEventToFrameSpec(ctx context.Context, collectSpecID int, frame string, expr string, keyExpr string) (*ent.FrameSpec, error) {
 	dbClient := ent.FromContext(ctx)
-	tx, err := dbClient.Tx(ctx)
+	ev := FlightRecorderEventSpec{
+		Expr:    expr,
+		KeyExpr: keyExpr,
+	}
+	data, err := json.Marshal(ev)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if _err != nil {
-			tx.Rollback()
-		}
-	}()
 
-	collectSpec := getOrCreateCollectSpec(ctx, tx.Client())
 	// Create of update the frame info.
-	fi, err := collectSpec.QueryFrames().Where(framespec.Frame(frame)).Only(ctx)
+	frameSpec, err := dbClient.FrameSpec.Query().Where(
+		framespec.CollectSpecID(collectSpecID), framespec.Frame(frame),
+	).Only(ctx)
 	nfe := &ent.NotFoundError{}
 	if errors.As(err, &nfe) {
-		fi = tx.FrameSpec.Create().SetFrame(frame).SetFlightRecorderEvents([]string{spec}).SaveX(ctx)
-		collectSpec = collectSpec.Update().AddFrames(fi).SaveX(ctx)
-		if err := tx.Commit(); err != nil {
-			return nil, err
-		}
-		return collectSpec, nil
+		frameSpec = dbClient.FrameSpec.Create().
+			SetParentCollectionID(collectSpecID).
+			SetFrame(frame).
+			SetCollectExpressions([]string{}).
+			SetFlightRecorderEvents([]string{string(data)}).
+			SaveX(ctx)
+		return frameSpec, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	for _, e := range fi.FlightRecorderEvents {
-		if e == spec {
-			return collectSpec, nil
+	// Check if an identical spec already exists. If it does, there's nothing to do.
+	for _, e := range frameSpec.FlightRecorderEvents {
+		var ev FlightRecorderEventSpec
+		json.Unmarshal([]byte(e), &ev)
+		if ev.Expr == expr && ev.KeyExpr == keyExpr {
+			return frameSpec, nil
 		}
 	}
-	fi.Update().SetFlightRecorderEvents(append(fi.FlightRecorderEvents, spec)).SaveX(ctx)
-	return collectSpec, nil
+	log.Printf("!!! adding flight recorder event: %s", string(data))
+	frameSpec.Update().SetFlightRecorderEvents(append(frameSpec.FlightRecorderEvents, string(data))).SaveX(ctx)
+	log.Printf("!!! events for %s are now: %s", frameSpec.Frame, frameSpec.FlightRecorderEvents)
+	return frameSpec, nil
 }
 
 // RemoveFlightRecorderEventFromCollectSpec is the resolver for the removeFlightRecorderEventFromCollectSpec field.
-func (r *mutationResolver) RemoveFlightRecorderEventFromCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error) {
+func (r *mutationResolver) RemoveFlightRecorderEventFromCollectSpec(ctx context.Context, frame string, expr string, keyExpr string) (*ent.CollectSpec, error) {
 	log.Printf("!!! RemoveFlightRecorderEventFromCollectSpec resolver")
 	dbClient := ent.FromContext(ctx)
 	collectSpec := getOrCreateCollectSpec(ctx, dbClient)
@@ -196,7 +202,9 @@ func (r *mutationResolver) RemoveFlightRecorderEventFromCollectSpec(ctx context.
 	}
 	foundIndex := -1
 	for i, e := range fi.FlightRecorderEvents {
-		if e == spec {
+		var ev FlightRecorderEventSpec
+		json.Unmarshal([]byte(e), &ev)
+		if ev.Expr == expr && ev.KeyExpr == keyExpr {
 			foundIndex = i
 			break
 		}

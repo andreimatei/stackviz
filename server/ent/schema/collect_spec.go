@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 // CollectSpec describes what data should be collected together with a snapshot:
@@ -44,7 +45,7 @@ type FrameSpec struct {
 func (FrameSpec) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("frame"),
-		field.Int("parent").Comment("The parent collection spec"),
+		field.Int("collect_spec_id").Comment("The parent collection spec"),
 		// collect_expressions is the list of expressions to evaluate whenever this
 		// frame is encountered when taking a snapshot. Each expression is a string
 		// that is passed to Delve's `eval` function.
@@ -65,9 +66,15 @@ func (FrameSpec) Edges() []ent.Edge {
 		edge.From("parentCollection", CollectSpec.Type).
 			Comment("The parent collection spec").
 			Ref("frames").
-			Field("parent").
+			Field("collect_spec_id").
 			Unique().
 			Required(),
+	}
+}
+
+func (FrameSpec) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("collect_spec_id", "frame"),
 	}
 }
 

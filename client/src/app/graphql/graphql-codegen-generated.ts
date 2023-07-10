@@ -168,11 +168,11 @@ export type FrameInfo = {
 export type FrameSpec = Node & {
   __typename?: 'FrameSpec';
   collectExpressions: Array<Scalars['String']['output']>;
+  /** The parent collection spec */
+  collectSpecID: Scalars['ID']['output'];
   flightRecorderEvents: Array<Scalars['String']['output']>;
   frame: Scalars['String']['output'];
   id: Scalars['ID']['output'];
-  /** The parent collection spec */
-  parent: Scalars['ID']['output'];
   /** The parent collection spec */
   parentcollection: CollectSpec;
 };
@@ -183,6 +183,11 @@ export type FrameSpec = Node & {
  */
 export type FrameSpecWhereInput = {
   and?: InputMaybe<Array<FrameSpecWhereInput>>;
+  /** collect_spec_id field predicates */
+  collectSpecID?: InputMaybe<Scalars['ID']['input']>;
+  collectSpecIDIn?: InputMaybe<Array<Scalars['ID']['input']>>;
+  collectSpecIDNEQ?: InputMaybe<Scalars['ID']['input']>;
+  collectSpecIDNotIn?: InputMaybe<Array<Scalars['ID']['input']>>;
   /** frame field predicates */
   frame?: InputMaybe<Scalars['String']['input']>;
   frameContains?: InputMaybe<Scalars['String']['input']>;
@@ -211,11 +216,6 @@ export type FrameSpecWhereInput = {
   idNotIn?: InputMaybe<Array<Scalars['ID']['input']>>;
   not?: InputMaybe<FrameSpecWhereInput>;
   or?: InputMaybe<Array<FrameSpecWhereInput>>;
-  /** parent field predicates */
-  parent?: InputMaybe<Scalars['ID']['input']>;
-  parentIn?: InputMaybe<Array<Scalars['ID']['input']>>;
-  parentNEQ?: InputMaybe<Scalars['ID']['input']>;
-  parentNotIn?: InputMaybe<Array<Scalars['ID']['input']>>;
 };
 
 export type GoroutineInfo = {
@@ -242,7 +242,7 @@ export type Link = {
 export type Mutation = {
   __typename?: 'Mutation';
   addExprToCollectSpec: CollectSpec;
-  addFlightRecorderEventToCollectSpec: CollectSpec;
+  addFlightRecorderEventToFrameSpec: FrameSpec;
   collectCollection?: Maybe<Collection>;
   removeExprFromCollectSpec: CollectSpec;
   removeFlightRecorderEventFromCollectSpec: CollectSpec;
@@ -255,9 +255,11 @@ export type MutationAddExprToCollectSpecArgs = {
 };
 
 
-export type MutationAddFlightRecorderEventToCollectSpecArgs = {
+export type MutationAddFlightRecorderEventToFrameSpecArgs = {
+  collectSpecID: Scalars['ID']['input'];
+  expr: Scalars['String']['input'];
   frame: Scalars['String']['input'];
-  spec: Scalars['String']['input'];
+  keyExpr: Scalars['String']['input'];
 };
 
 
@@ -268,8 +270,9 @@ export type MutationRemoveExprFromCollectSpecArgs = {
 
 
 export type MutationRemoveFlightRecorderEventFromCollectSpecArgs = {
+  expr: Scalars['String']['input'];
   frame: Scalars['String']['input'];
-  spec: Scalars['String']['input'];
+  keyExpr: Scalars['String']['input'];
 };
 
 /**
@@ -492,7 +495,7 @@ export type AddExprToCollectSpecMutationVariables = Exact<{
 }>;
 
 
-export type AddExprToCollectSpecMutation = { __typename?: 'Mutation', addExprToCollectSpec: { __typename?: 'CollectSpec', frames?: Array<{ __typename?: 'FrameSpec', frame: string, collectExpressions: Array<string> }> | null } };
+export type AddExprToCollectSpecMutation = { __typename?: 'Mutation', addExprToCollectSpec: { __typename?: 'CollectSpec', frames?: Array<{ __typename?: 'FrameSpec', frame: string, collectExpressions: Array<string>, flightRecorderEvents: Array<string> }> | null } };
 
 export type RemoveExprFromCollectSpecMutationVariables = Exact<{
   frame: Scalars['String']['input'];
@@ -500,7 +503,26 @@ export type RemoveExprFromCollectSpecMutationVariables = Exact<{
 }>;
 
 
-export type RemoveExprFromCollectSpecMutation = { __typename?: 'Mutation', removeExprFromCollectSpec: { __typename?: 'CollectSpec', frames?: Array<{ __typename?: 'FrameSpec', frame: string, collectExpressions: Array<string> }> | null } };
+export type RemoveExprFromCollectSpecMutation = { __typename?: 'Mutation', removeExprFromCollectSpec: { __typename?: 'CollectSpec', frames?: Array<{ __typename?: 'FrameSpec', frame: string, collectExpressions: Array<string>, flightRecorderEvents: Array<string> }> | null } };
+
+export type AddFlightRecorderEventToCollectSpecMutationVariables = Exact<{
+  collectSpecID: Scalars['ID']['input'];
+  frame: Scalars['String']['input'];
+  expr: Scalars['String']['input'];
+  keyExpr: Scalars['String']['input'];
+}>;
+
+
+export type AddFlightRecorderEventToCollectSpecMutation = { __typename?: 'Mutation', addFlightRecorderEventToFrameSpec: { __typename?: 'FrameSpec', frame: string, collectExpressions: Array<string>, flightRecorderEvents: Array<string> } };
+
+export type RemoveFlightRecorderEventFromCollectSpecMutationVariables = Exact<{
+  frame: Scalars['String']['input'];
+  expr: Scalars['String']['input'];
+  keyExpr: Scalars['String']['input'];
+}>;
+
+
+export type RemoveFlightRecorderEventFromCollectSpecMutation = { __typename?: 'Mutation', removeFlightRecorderEventFromCollectSpec: { __typename?: 'CollectSpec', frames?: Array<{ __typename?: 'FrameSpec', frame: string, collectExpressions: Array<string>, flightRecorderEvents: Array<string> }> | null } };
 
 export type GetAvailableVariablesQueryVariables = Exact<{
   func: Scalars['String']['input'];
@@ -538,7 +560,7 @@ export type GetTreeQueryVariables = Exact<{
 export type GetTreeQuery = { __typename?: 'Query', getTree: string };
 
 export type GetFrameSpecsQueryVariables = Exact<{
-  collect_spec_id: Scalars['ID']['input'];
+  collectSpecID: Scalars['ID']['input'];
 }>;
 
 
@@ -612,6 +634,7 @@ export const AddExprToCollectSpecDocument = gql`
     frames {
       frame
       collectExpressions
+      flightRecorderEvents
     }
   }
 }
@@ -633,6 +656,7 @@ export const RemoveExprFromCollectSpecDocument = gql`
     frames {
       frame
       collectExpressions
+      flightRecorderEvents
     }
   }
 }
@@ -643,6 +667,57 @@ export const RemoveExprFromCollectSpecDocument = gql`
   })
   export class RemoveExprFromCollectSpecGQL extends Apollo.Mutation<RemoveExprFromCollectSpecMutation, RemoveExprFromCollectSpecMutationVariables> {
     override document = RemoveExprFromCollectSpecDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const AddFlightRecorderEventToCollectSpecDocument = gql`
+    mutation AddFlightRecorderEventToCollectSpec($collectSpecID: ID!, $frame: String!, $expr: String!, $keyExpr: String!) {
+  addFlightRecorderEventToFrameSpec(
+    collectSpecID: $collectSpecID
+    frame: $frame
+    expr: $expr
+    keyExpr: $keyExpr
+  ) {
+    frame
+    collectExpressions
+    flightRecorderEvents
+  }
+}
+    `;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class AddFlightRecorderEventToCollectSpecGQL extends Apollo.Mutation<AddFlightRecorderEventToCollectSpecMutation, AddFlightRecorderEventToCollectSpecMutationVariables> {
+    override document = AddFlightRecorderEventToCollectSpecDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const RemoveFlightRecorderEventFromCollectSpecDocument = gql`
+    mutation RemoveFlightRecorderEventFromCollectSpec($frame: String!, $expr: String!, $keyExpr: String!) {
+  removeFlightRecorderEventFromCollectSpec(
+    frame: $frame
+    expr: $expr
+    keyExpr: $keyExpr
+  ) {
+    frames {
+      frame
+      collectExpressions
+      flightRecorderEvents
+    }
+  }
+}
+    `;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class RemoveFlightRecorderEventFromCollectSpecGQL extends Apollo.Mutation<RemoveFlightRecorderEventFromCollectSpecMutation, RemoveFlightRecorderEventFromCollectSpecMutationVariables> {
+    override document = RemoveFlightRecorderEventFromCollectSpecDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);
@@ -777,8 +852,8 @@ export const GetTreeDocument = gql`
     }
   }
 export const GetFrameSpecsDocument = gql`
-    query GetFrameSpecs($collect_spec_id: ID!) {
-  frameSpecsWhere(where: {parent: $collect_spec_id}) {
+    query GetFrameSpecs($collectSpecID: ID!) {
+  frameSpecsWhere(where: {collectSpecID: $collectSpecID}) {
     id
     frame
     collectExpressions

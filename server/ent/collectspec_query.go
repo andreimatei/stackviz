@@ -409,7 +409,7 @@ func (csq *CollectSpecQuery) loadFrames(ctx context.Context, query *FrameSpecQue
 		}
 	}
 	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(framespec.FieldParent)
+		query.ctx.AppendFieldOnce(framespec.FieldCollectSpecID)
 	}
 	query.Where(predicate.FrameSpec(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(collectspec.FramesColumn), fks...))
@@ -419,10 +419,10 @@ func (csq *CollectSpecQuery) loadFrames(ctx context.Context, query *FrameSpecQue
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.Parent
+		fk := n.CollectSpecID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "parent" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "collect_spec_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

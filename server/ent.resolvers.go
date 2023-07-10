@@ -12,8 +12,7 @@ import (
 
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id int) (ent.Noder, error) {
-	dbClient := ent.FromContext(ctx)
-	return dbClient.Noder(ctx, id)
+	return r.dbClient.Noder(ctx, id)
 }
 
 // Nodes is the resolver for the nodes field.
@@ -28,8 +27,7 @@ func (r *queryResolver) CollectSpecs(ctx context.Context) ([]ent.CollectSpec, er
 
 // Collections is the resolver for the collections field.
 func (r *queryResolver) Collections(ctx context.Context) ([]ent.Collection, error) {
-	dbClient := ent.FromContext(ctx)
-	results, err := dbClient.Collection.Query().All(ctx)
+	results, err := r.dbClient.Collection.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +41,7 @@ func (r *queryResolver) FrameSpecs(ctx context.Context) ([]ent.FrameSpec, error)
 
 // ProcessSnapshots is the resolver for the processSnapshots field.
 func (r *queryResolver) ProcessSnapshots(ctx context.Context) ([]ent.ProcessSnapshot, error) {
-	dbClient := ent.FromContext(ctx)
-	results, err := dbClient.ProcessSnapshot.Query().All(ctx)
+	results, err := r.dbClient.ProcessSnapshot.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}

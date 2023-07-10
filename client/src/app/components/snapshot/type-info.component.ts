@@ -23,8 +23,8 @@ import { MatRadioModule } from "@angular/material/radio";
 // FlightRecorderEventSpec represents the specification used for recording data.
 // It is part of a FrameSpec.
 export interface FlightRecorderEventSpec {
-  expr: string;
-  keyExpr: string;
+  Expr: string;
+  KeyExpr: string;
 }
 
 @Component({
@@ -110,10 +110,10 @@ export class CheckedEvent {
   }
 }
 
-const goroutineIDKey = Symbol('goroutineID');
+export const goroutineIDKey = Symbol('goroutineID');
 
 export class FlightRecorderEvent {
-  constructor(public expr: string, public deleted: boolean, public key: string | typeof goroutineIDKey) {
+  constructor(public expr: string, public key: string | typeof goroutineIDKey, public deleted: boolean) {
   }
 }
 
@@ -133,6 +133,9 @@ export class TreeNode {
     // of the function. Parameters are shown in bold and get a flight-recorder
     // button.
     readonly formalParam: boolean,
+    // formalParamRecursive is set for formal parameters and their children,
+    // recursively. Nodes with this flag set get the flight-recorder button.
+    readonly formalParamRecursive: boolean,
     readonly loclistAvailable: boolean,
   ) {
     console.log("!!! TreeNode:", name, expr, type, expandable, checked, formalParam, loclistAvailable);
@@ -186,6 +189,7 @@ export class TypesDataSource implements DataSource<TreeNode> {
         v.Name, v.Name /* expr */, v.Type,
         expandable,
         checked,
+        v.FormalParameter,
         v.FormalParameter,
         v.LoclistAvailable,
       );
@@ -270,7 +274,8 @@ export class TypesDataSource implements DataSource<TreeNode> {
       const checked = exprs.includes(expr);
       const n: TreeNode = new TreeNode(
         f.Name, expr, f.Type, expandable, checked,
-        false, // formalParam - subfields are not function params
+        false, // formalParam
+        parent.formalParamRecursive,
         parent.loclistAvailable // if the parent is available, so is its field
       );
       res.push(n);
@@ -308,9 +313,9 @@ export class FlightRecorderDialog {
     console.log("closing dialog for var:", this.data.varName, this);
     this.dialogRef.close(new FlightRecorderEvent(
       this.data.varName,
+      this.keyOption == 'goroutineID' ? goroutineIDKey : this.customKeyExpr,
       // TODO(andrei): add delete button
       false,
-      this.keyOption == 'goroutineID' ? goroutineIDKey : this.customKeyExpr,
     ));
   }
 }

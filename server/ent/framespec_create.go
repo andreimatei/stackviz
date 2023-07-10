@@ -26,9 +26,9 @@ func (fsc *FrameSpecCreate) SetFrame(s string) *FrameSpecCreate {
 	return fsc
 }
 
-// SetParent sets the "parent" field.
-func (fsc *FrameSpecCreate) SetParent(i int) *FrameSpecCreate {
-	fsc.mutation.SetParent(i)
+// SetCollectSpecID sets the "collect_spec_id" field.
+func (fsc *FrameSpecCreate) SetCollectSpecID(i int) *FrameSpecCreate {
+	fsc.mutation.SetCollectSpecID(i)
 	return fsc
 }
 
@@ -92,8 +92,8 @@ func (fsc *FrameSpecCreate) check() error {
 	if _, ok := fsc.mutation.Frame(); !ok {
 		return &ValidationError{Name: "frame", err: errors.New(`ent: missing required field "FrameSpec.frame"`)}
 	}
-	if _, ok := fsc.mutation.Parent(); !ok {
-		return &ValidationError{Name: "parent", err: errors.New(`ent: missing required field "FrameSpec.parent"`)}
+	if _, ok := fsc.mutation.CollectSpecID(); !ok {
+		return &ValidationError{Name: "collect_spec_id", err: errors.New(`ent: missing required field "FrameSpec.collect_spec_id"`)}
 	}
 	if _, ok := fsc.mutation.CollectExpressions(); !ok {
 		return &ValidationError{Name: "collect_expressions", err: errors.New(`ent: missing required field "FrameSpec.collect_expressions"`)}
@@ -156,7 +156,7 @@ func (fsc *FrameSpecCreate) createSpec() (*FrameSpec, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.Parent = nodes[0]
+		_node.CollectSpecID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

@@ -35,9 +35,9 @@ func (fsu *FrameSpecUpdate) SetFrame(s string) *FrameSpecUpdate {
 	return fsu
 }
 
-// SetParent sets the "parent" field.
-func (fsu *FrameSpecUpdate) SetParent(i int) *FrameSpecUpdate {
-	fsu.mutation.SetParent(i)
+// SetCollectSpecID sets the "collect_spec_id" field.
+func (fsu *FrameSpecUpdate) SetCollectSpecID(i int) *FrameSpecUpdate {
+	fsu.mutation.SetCollectSpecID(i)
 	return fsu
 }
 
@@ -208,9 +208,9 @@ func (fsuo *FrameSpecUpdateOne) SetFrame(s string) *FrameSpecUpdateOne {
 	return fsuo
 }
 
-// SetParent sets the "parent" field.
-func (fsuo *FrameSpecUpdateOne) SetParent(i int) *FrameSpecUpdateOne {
-	fsuo.mutation.SetParent(i)
+// SetCollectSpecID sets the "collect_spec_id" field.
+func (fsuo *FrameSpecUpdateOne) SetCollectSpecID(i int) *FrameSpecUpdateOne {
+	fsuo.mutation.SetCollectSpecID(i)
 	return fsuo
 }
 

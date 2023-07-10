@@ -36,7 +36,7 @@ var (
 		{Name: "frame", Type: field.TypeString},
 		{Name: "collect_expressions", Type: field.TypeJSON},
 		{Name: "flight_recorder_events", Type: field.TypeJSON},
-		{Name: "parent", Type: field.TypeInt},
+		{Name: "collect_spec_id", Type: field.TypeInt},
 	}
 	// FrameSpecsTable holds the schema information for the "frame_specs" table.
 	FrameSpecsTable = &schema.Table{
@@ -49,6 +49,13 @@ var (
 				Columns:    []*schema.Column{FrameSpecsColumns[4]},
 				RefColumns: []*schema.Column{CollectSpecsColumns[0]},
 				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "framespec_collect_spec_id_frame",
+				Unique:  false,
+				Columns: []*schema.Column{FrameSpecsColumns[4], FrameSpecsColumns[1]},
 			},
 		},
 	}

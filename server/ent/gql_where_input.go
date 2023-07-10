@@ -424,11 +424,11 @@ type FrameSpecWhereInput struct {
 	FrameEqualFold    *string  `json:"frameEqualFold,omitempty"`
 	FrameContainsFold *string  `json:"frameContainsFold,omitempty"`
 
-	// "parent" field predicates.
-	Parent      *int  `json:"parent,omitempty"`
-	ParentNEQ   *int  `json:"parentNEQ,omitempty"`
-	ParentIn    []int `json:"parentIn,omitempty"`
-	ParentNotIn []int `json:"parentNotIn,omitempty"`
+	// "collect_spec_id" field predicates.
+	CollectSpecID      *int  `json:"collectSpecID,omitempty"`
+	CollectSpecIDNEQ   *int  `json:"collectSpecIDNEQ,omitempty"`
+	CollectSpecIDIn    []int `json:"collectSpecIDIn,omitempty"`
+	CollectSpecIDNotIn []int `json:"collectSpecIDNotIn,omitempty"`
 
 	// "parentCollection" edge predicates.
 	HasParentCollection     *bool                    `json:"hasParentCollection,omitempty"`
@@ -569,17 +569,17 @@ func (i *FrameSpecWhereInput) P() (predicate.FrameSpec, error) {
 	if i.FrameContainsFold != nil {
 		predicates = append(predicates, framespec.FrameContainsFold(*i.FrameContainsFold))
 	}
-	if i.Parent != nil {
-		predicates = append(predicates, framespec.ParentEQ(*i.Parent))
+	if i.CollectSpecID != nil {
+		predicates = append(predicates, framespec.CollectSpecIDEQ(*i.CollectSpecID))
 	}
-	if i.ParentNEQ != nil {
-		predicates = append(predicates, framespec.ParentNEQ(*i.ParentNEQ))
+	if i.CollectSpecIDNEQ != nil {
+		predicates = append(predicates, framespec.CollectSpecIDNEQ(*i.CollectSpecIDNEQ))
 	}
-	if len(i.ParentIn) > 0 {
-		predicates = append(predicates, framespec.ParentIn(i.ParentIn...))
+	if len(i.CollectSpecIDIn) > 0 {
+		predicates = append(predicates, framespec.CollectSpecIDIn(i.CollectSpecIDIn...))
 	}
-	if len(i.ParentNotIn) > 0 {
-		predicates = append(predicates, framespec.ParentNotIn(i.ParentNotIn...))
+	if len(i.CollectSpecIDNotIn) > 0 {
+		predicates = append(predicates, framespec.CollectSpecIDNotIn(i.CollectSpecIDNotIn...))
 	}
 
 	if i.HasParentCollection != nil {

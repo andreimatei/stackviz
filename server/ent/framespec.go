@@ -21,7 +21,7 @@ type FrameSpec struct {
 	// Frame holds the value of the "frame" field.
 	Frame string `json:"frame,omitempty"`
 	// The parent collection spec
-	Parent int `json:"parent,omitempty"`
+	CollectSpecID int `json:"collect_spec_id,omitempty"`
 	// CollectExpressions holds the value of the "collect_expressions" field.
 	CollectExpressions []string `json:"collect_expressions,omitempty"`
 	// FlightRecorderEvents holds the value of the "flight_recorder_events" field.
@@ -63,7 +63,7 @@ func (*FrameSpec) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case framespec.FieldCollectExpressions, framespec.FieldFlightRecorderEvents:
 			values[i] = new([]byte)
-		case framespec.FieldID, framespec.FieldParent:
+		case framespec.FieldID, framespec.FieldCollectSpecID:
 			values[i] = new(sql.NullInt64)
 		case framespec.FieldFrame:
 			values[i] = new(sql.NullString)
@@ -94,11 +94,11 @@ func (fs *FrameSpec) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				fs.Frame = value.String
 			}
-		case framespec.FieldParent:
+		case framespec.FieldCollectSpecID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field parent", values[i])
+				return fmt.Errorf("unexpected type %T for field collect_spec_id", values[i])
 			} else if value.Valid {
-				fs.Parent = int(value.Int64)
+				fs.CollectSpecID = int(value.Int64)
 			}
 		case framespec.FieldCollectExpressions:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -160,8 +160,8 @@ func (fs *FrameSpec) String() string {
 	builder.WriteString("frame=")
 	builder.WriteString(fs.Frame)
 	builder.WriteString(", ")
-	builder.WriteString("parent=")
-	builder.WriteString(fmt.Sprintf("%v", fs.Parent))
+	builder.WriteString("collect_spec_id=")
+	builder.WriteString(fmt.Sprintf("%v", fs.CollectSpecID))
 	builder.WriteString(", ")
 	builder.WriteString("collect_expressions=")
 	builder.WriteString(fmt.Sprintf("%v", fs.CollectExpressions))

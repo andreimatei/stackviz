@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
 import {
   AddExprToCollectSpecGQL,
+  AddFlightRecorderEventToCollectSpecGQL,
   FrameSpec,
   GetAvailableVariablesGQL,
   GetCollectionGQL,
@@ -17,6 +18,7 @@ import {
   CheckedEvent,
   FlightRecorderEvent,
   FlightRecorderEventSpec,
+  goroutineIDKey,
   TypeInfoComponent
 } from "./type-info.component";
 import { MatSelect, MatSelectModule } from "@angular/material/select";
@@ -88,7 +90,7 @@ class Frame {
 export class SnapshotComponent implements OnInit, AfterViewInit {
   // collectionID and snapshotID input properties are set by the router.
   @Input('colID') collectionID!: number;
-  // The id of the specification that produced the collectio.
+  // The id of the specification that produced the collection.
   protected collectSpecID!: number;
 
   protected snapshotID$ = new Subject<number>();
@@ -166,6 +168,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly addExpr: AddExprToCollectSpecGQL,
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
     private readonly frameSpecsQuery: GetFrameSpecsGQL,
+    private readonly addFlightRecorderEventSpecQuery: AddFlightRecorderEventToCollectSpecGQL,
     private readonly router: Router,
   ) {
   }
@@ -177,7 +180,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
         this.collectSpecID = results.data.collectionByID!.collectSpec;
         this.snapshots = results.data.collectionByID?.processSnapshots!;
 
-        this.frameSpecsQuery$ = this.frameSpecsQuery.fetch({collect_spec_id: this.collectSpecID}).pipe(
+        this.frameSpecsQuery$ = this.frameSpecsQuery.fetch({collectSpecID: this.collectSpecID}).pipe(
           map(val => val.data.frameSpecsWhere),
         )
         // !!!
@@ -267,9 +270,22 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   }
 
   flightRecorderChange(ev: FlightRecorderEvent) {
-    console.log("!!! got event: ", ev);
     if (ev.deleted) {
-
+      // !!! TODO
+    } else {
+      let key = ev.key == goroutineIDKey ? "goroutine_id" : ev.key;
+      this.addFlightRecorderEventSpecQuery
+        .mutate({
+          collectSpecID: this.collectSpecID,
+          frame: this.selectedFrame!.name,
+          expr: ev.expr,
+          keyExpr: key,
+        })
+        .subscribe({
+          next: value =>
+            console.log("flight recorder events are now: ",
+              value.data?.addFlightRecorderEventToFrameSpec.flightRecorderEvents)
+        })
     }
   }
 
@@ -289,7 +305,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.selectedFrame = new Frame(node.details, node.file, node.line);
     console.log("querying for available vars for func: %s off: %d", node.details, node.pcoff);
     this.loadingAvailableVars = true;
-    // this.typeInfo.flightRecorderEventSpecs = !!!
     this.typeInfo.dataSource.data = [];
     this.varsQuery.fetch({func: node.details, pcOff: node.pcoff})
       .subscribe(
@@ -300,18 +315,23 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
             console.log("err: ", results.error)
             return
           }
-          if (results.data.frameSpecsWhere.length != 1) {
-            console.log("expected exactly one frameSpec, got: ", results.data.frameSpecsWhere)
+          if (results.data.frameSpecsWhere.length > 1) {
+            console.log("expected at most one frameSpec, got: ", results.data.frameSpecsWhere)
             return
           }
           const frameSpec = results.data.frameSpecsWhere[0];
-          this.flightRecorderEventSpecs = frameSpec.flightRecorderEvents.map(
-            e => JSON.parse(e) as FlightRecorderEventSpec);
-          console.log("loaded flightRecorderEvents:", this.flightRecorderEventSpecs);
+          const collectExprs = frameSpec ? frameSpec.collectExpressions : [];
+          if (frameSpec) {
+            this.flightRecorderEventSpecs = frameSpec.flightRecorderEvents.map(
+              e => JSON.parse(e) as FlightRecorderEventSpec);
+            console.log("loaded flightRecorderEvents:", this.flightRecorderEventSpecs);
+          } else {
+            this.flightRecorderEventSpecs = [];
+          }
           this.typeInfo.dataSource.initData(
             results.data.availableVars.Vars,
             results.data.availableVars.Types,
-            frameSpec.collectExpressions,
+            collectExprs,
           )
         })
     this.frameDetailsSidebar.open();

@@ -1051,13 +1051,13 @@ func (m *FrameSpecMutation) ResetFrame() {
 	m.frame = nil
 }
 
-// SetParent sets the "parent" field.
-func (m *FrameSpecMutation) SetParent(i int) {
+// SetCollectSpecID sets the "collect_spec_id" field.
+func (m *FrameSpecMutation) SetCollectSpecID(i int) {
 	m.parentCollection = &i
 }
 
-// Parent returns the value of the "parent" field in the mutation.
-func (m *FrameSpecMutation) Parent() (r int, exists bool) {
+// CollectSpecID returns the value of the "collect_spec_id" field in the mutation.
+func (m *FrameSpecMutation) CollectSpecID() (r int, exists bool) {
 	v := m.parentCollection
 	if v == nil {
 		return
@@ -1065,25 +1065,25 @@ func (m *FrameSpecMutation) Parent() (r int, exists bool) {
 	return *v, true
 }
 
-// OldParent returns the old "parent" field's value of the FrameSpec entity.
+// OldCollectSpecID returns the old "collect_spec_id" field's value of the FrameSpec entity.
 // If the FrameSpec object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *FrameSpecMutation) OldParent(ctx context.Context) (v int, err error) {
+func (m *FrameSpecMutation) OldCollectSpecID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldParent is only allowed on UpdateOne operations")
+		return v, errors.New("OldCollectSpecID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldParent requires an ID field in the mutation")
+		return v, errors.New("OldCollectSpecID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldParent: %w", err)
+		return v, fmt.Errorf("querying old value for OldCollectSpecID: %w", err)
 	}
-	return oldValue.Parent, nil
+	return oldValue.CollectSpecID, nil
 }
 
-// ResetParent resets all changes to the "parent" field.
-func (m *FrameSpecMutation) ResetParent() {
+// ResetCollectSpecID resets all changes to the "collect_spec_id" field.
+func (m *FrameSpecMutation) ResetCollectSpecID() {
 	m.parentCollection = nil
 }
 
@@ -1267,7 +1267,7 @@ func (m *FrameSpecMutation) Fields() []string {
 		fields = append(fields, framespec.FieldFrame)
 	}
 	if m.parentCollection != nil {
-		fields = append(fields, framespec.FieldParent)
+		fields = append(fields, framespec.FieldCollectSpecID)
 	}
 	if m.collect_expressions != nil {
 		fields = append(fields, framespec.FieldCollectExpressions)
@@ -1285,8 +1285,8 @@ func (m *FrameSpecMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case framespec.FieldFrame:
 		return m.Frame()
-	case framespec.FieldParent:
-		return m.Parent()
+	case framespec.FieldCollectSpecID:
+		return m.CollectSpecID()
 	case framespec.FieldCollectExpressions:
 		return m.CollectExpressions()
 	case framespec.FieldFlightRecorderEvents:
@@ -1302,8 +1302,8 @@ func (m *FrameSpecMutation) OldField(ctx context.Context, name string) (ent.Valu
 	switch name {
 	case framespec.FieldFrame:
 		return m.OldFrame(ctx)
-	case framespec.FieldParent:
-		return m.OldParent(ctx)
+	case framespec.FieldCollectSpecID:
+		return m.OldCollectSpecID(ctx)
 	case framespec.FieldCollectExpressions:
 		return m.OldCollectExpressions(ctx)
 	case framespec.FieldFlightRecorderEvents:
@@ -1324,12 +1324,12 @@ func (m *FrameSpecMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFrame(v)
 		return nil
-	case framespec.FieldParent:
+	case framespec.FieldCollectSpecID:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetParent(v)
+		m.SetCollectSpecID(v)
 		return nil
 	case framespec.FieldCollectExpressions:
 		v, ok := value.([]string)
@@ -1400,8 +1400,8 @@ func (m *FrameSpecMutation) ResetField(name string) error {
 	case framespec.FieldFrame:
 		m.ResetFrame()
 		return nil
-	case framespec.FieldParent:
-		m.ResetParent()
+	case framespec.FieldCollectSpecID:
+		m.ResetCollectSpecID()
 		return nil
 	case framespec.FieldCollectExpressions:
 		m.ResetCollectExpressions()

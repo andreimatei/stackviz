@@ -199,3 +199,8 @@ func flatten[T any](src []*T) []T {
 	}
 	return res
 }
+
+type FlightRecorderEventSpec struct {
+	Expr    string
+	KeyExpr string
+}

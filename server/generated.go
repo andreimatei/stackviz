@@ -8,7 +8,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"log"
 	"stacksviz/ent"
 	"stacksviz/graph"
 	"strconv"
@@ -80,10 +79,10 @@ type ComplexityRoot struct {
 
 	FrameSpec struct {
 		CollectExpressions   func(childComplexity int) int
+		CollectSpecID        func(childComplexity int) int
 		FlightRecorderEvents func(childComplexity int) int
 		Frame                func(childComplexity int) int
 		ID                   func(childComplexity int) int
-		Parent               func(childComplexity int) int
 		ParentCollection     func(childComplexity int) int
 	}
 
@@ -107,10 +106,10 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddExprToCollectSpec                     func(childComplexity int, frame string, expr string) int
-		AddFlightRecorderEventToCollectSpec      func(childComplexity int, frame string, spec string) int
+		AddFlightRecorderEventToFrameSpec        func(childComplexity int, collectSpecID int, frame string, expr string, keyExpr string) int
 		CollectCollection                        func(childComplexity int) int
 		RemoveExprFromCollectSpec                func(childComplexity int, expr string, frame string) int
-		RemoveFlightRecorderEventFromCollectSpec func(childComplexity int, frame string, spec string) int
+		RemoveFlightRecorderEventFromCollectSpec func(childComplexity int, frame string, expr string, keyExpr string) int
 	}
 
 	PageInfo struct {
@@ -171,8 +170,8 @@ type MutationResolver interface {
 	CollectCollection(ctx context.Context) (*ent.Collection, error)
 	AddExprToCollectSpec(ctx context.Context, frame string, expr string) (*ent.CollectSpec, error)
 	RemoveExprFromCollectSpec(ctx context.Context, expr string, frame string) (*ent.CollectSpec, error)
-	AddFlightRecorderEventToCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error)
-	RemoveFlightRecorderEventFromCollectSpec(ctx context.Context, frame string, spec string) (*ent.CollectSpec, error)
+	AddFlightRecorderEventToFrameSpec(ctx context.Context, collectSpecID int, frame string, expr string, keyExpr string) (*ent.FrameSpec, error)
+	RemoveFlightRecorderEventFromCollectSpec(ctx context.Context, frame string, expr string, keyExpr string) (*ent.CollectSpec, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id int) (ent.Noder, error)
@@ -317,6 +316,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.FrameSpec.CollectExpressions(childComplexity), true
 
+	case "FrameSpec.collectSpecID":
+		if e.complexity.FrameSpec.CollectSpecID == nil {
+			break
+		}
+
+		return e.complexity.FrameSpec.CollectSpecID(childComplexity), true
+
 	case "FrameSpec.flightRecorderEvents":
 		if e.complexity.FrameSpec.FlightRecorderEvents == nil {
 			break
@@ -337,13 +343,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FrameSpec.ID(childComplexity), true
-
-	case "FrameSpec.parent":
-		if e.complexity.FrameSpec.Parent == nil {
-			break
-		}
-
-		return e.complexity.FrameSpec.Parent(childComplexity), true
 
 	case "FrameSpec.parentcollection":
 		if e.complexity.FrameSpec.ParentCollection == nil {
@@ -427,17 +426,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddExprToCollectSpec(childComplexity, args["frame"].(string), args["expr"].(string)), true
 
-	case "Mutation.addFlightRecorderEventToCollectSpec":
-		if e.complexity.Mutation.AddFlightRecorderEventToCollectSpec == nil {
+	case "Mutation.addFlightRecorderEventToFrameSpec":
+		if e.complexity.Mutation.AddFlightRecorderEventToFrameSpec == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_addFlightRecorderEventToCollectSpec_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addFlightRecorderEventToFrameSpec_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddFlightRecorderEventToCollectSpec(childComplexity, args["frame"].(string), args["spec"].(string)), true
+		return e.complexity.Mutation.AddFlightRecorderEventToFrameSpec(childComplexity, args["collectSpecID"].(int), args["frame"].(string), args["expr"].(string), args["keyExpr"].(string)), true
 
 	case "Mutation.collectCollection":
 		if e.complexity.Mutation.CollectCollection == nil {
@@ -468,7 +467,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemoveFlightRecorderEventFromCollectSpec(childComplexity, args["frame"].(string), args["spec"].(string)), true
+		return e.complexity.Mutation.RemoveFlightRecorderEventFromCollectSpec(childComplexity, args["frame"].(string), args["expr"].(string), args["keyExpr"].(string)), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -777,7 +776,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			first = false
 			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
 			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
-			log.Printf("!!! generated 2")
 			var buf bytes.Buffer
 			data.MarshalGQL(&buf)
 
@@ -855,27 +853,45 @@ func (ec *executionContext) field_Mutation_addExprToCollectSpec_args(ctx context
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_addFlightRecorderEventToCollectSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_addFlightRecorderEventToFrameSpec_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["frame"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frame"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg0 int
+	if tmp, ok := rawArgs["collectSpecID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecID"))
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["frame"] = arg0
+	args["collectSpecID"] = arg0
 	var arg1 string
-	if tmp, ok := rawArgs["spec"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spec"))
+	if tmp, ok := rawArgs["frame"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frame"))
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["spec"] = arg1
+	args["frame"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["expr"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expr"))
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["expr"] = arg2
+	var arg3 string
+	if tmp, ok := rawArgs["keyExpr"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyExpr"))
+		arg3, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["keyExpr"] = arg3
 	return args, nil
 }
 
@@ -916,14 +932,23 @@ func (ec *executionContext) field_Mutation_removeFlightRecorderEventFromCollectS
 	}
 	args["frame"] = arg0
 	var arg1 string
-	if tmp, ok := rawArgs["spec"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spec"))
+	if tmp, ok := rawArgs["expr"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expr"))
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["spec"] = arg1
+	args["expr"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["keyExpr"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyExpr"))
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["keyExpr"] = arg2
 	return args, nil
 }
 
@@ -1208,9 +1233,7 @@ func (ec *executionContext) fieldContext_CollectSpec_id(ctx context.Context, fie
 }
 
 func (ec *executionContext) _CollectSpec_frames(ctx context.Context, field graphql.CollectedField, obj *ent.CollectSpec) (ret graphql.Marshaler) {
-	log.Printf("!!! generated _CollectSpec_frames 1")
 	fc, err := ec.fieldContext_CollectSpec_frames(ctx, field)
-	log.Printf("!!! generated _CollectSpec_frames 2. err: %v", err)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1225,7 +1248,6 @@ func (ec *executionContext) _CollectSpec_frames(ctx context.Context, field graph
 		ctx = rctx // use context from middleware stack in children
 		return obj.Frames(ctx)
 	})
-	log.Printf("!!! generated _CollectSpec_frames 3. err: %v", err)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1250,8 +1272,8 @@ func (ec *executionContext) fieldContext_CollectSpec_frames(ctx context.Context,
 				return ec.fieldContext_FrameSpec_id(ctx, field)
 			case "frame":
 				return ec.fieldContext_FrameSpec_frame(ctx, field)
-			case "parent":
-				return ec.fieldContext_FrameSpec_parent(ctx, field)
+			case "collectSpecID":
+				return ec.fieldContext_FrameSpec_collectSpecID(ctx, field)
 			case "collectExpressions":
 				return ec.fieldContext_FrameSpec_collectExpressions(ctx, field)
 			case "flightRecorderEvents":
@@ -1940,8 +1962,8 @@ func (ec *executionContext) fieldContext_FrameSpec_frame(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _FrameSpec_parent(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_FrameSpec_parent(ctx, field)
+func (ec *executionContext) _FrameSpec_collectSpecID(ctx context.Context, field graphql.CollectedField, obj *ent.FrameSpec) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FrameSpec_collectSpecID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1954,7 +1976,7 @@ func (ec *executionContext) _FrameSpec_parent(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Parent, nil
+		return obj.CollectSpecID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1971,7 +1993,7 @@ func (ec *executionContext) _FrameSpec_parent(ctx context.Context, field graphql
 	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_FrameSpec_parent(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_FrameSpec_collectSpecID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "FrameSpec",
 		Field:      field,
@@ -2629,7 +2651,6 @@ func (ec *executionContext) _Mutation_addExprToCollectSpec(ctx context.Context, 
 	}
 	res := resTmp.(*ent.CollectSpec)
 	fc.Result = res
-	log.Printf("!!! generated 1")
 	return ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, field.Selections, res)
 }
 
@@ -2724,8 +2745,8 @@ func (ec *executionContext) fieldContext_Mutation_removeExprFromCollectSpec(ctx 
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_addFlightRecorderEventToCollectSpec(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_addFlightRecorderEventToCollectSpec(ctx, field)
+func (ec *executionContext) _Mutation_addFlightRecorderEventToFrameSpec(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addFlightRecorderEventToFrameSpec(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2738,7 +2759,7 @@ func (ec *executionContext) _Mutation_addFlightRecorderEventToCollectSpec(ctx co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddFlightRecorderEventToCollectSpec(rctx, fc.Args["frame"].(string), fc.Args["spec"].(string))
+		return ec.resolvers.Mutation().AddFlightRecorderEventToFrameSpec(rctx, fc.Args["collectSpecID"].(int), fc.Args["frame"].(string), fc.Args["expr"].(string), fc.Args["keyExpr"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2750,12 +2771,12 @@ func (ec *executionContext) _Mutation_addFlightRecorderEventToCollectSpec(ctx co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.CollectSpec)
+	res := resTmp.(*ent.FrameSpec)
 	fc.Result = res
-	return ec.marshalNCollectSpec2ᚖstacksvizᚋentᚐCollectSpec(ctx, field.Selections, res)
+	return ec.marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_addFlightRecorderEventToCollectSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_addFlightRecorderEventToFrameSpec(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -2764,11 +2785,19 @@ func (ec *executionContext) fieldContext_Mutation_addFlightRecorderEventToCollec
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_CollectSpec_id(ctx, field)
-			case "frames":
-				return ec.fieldContext_CollectSpec_frames(ctx, field)
+				return ec.fieldContext_FrameSpec_id(ctx, field)
+			case "frame":
+				return ec.fieldContext_FrameSpec_frame(ctx, field)
+			case "collectSpecID":
+				return ec.fieldContext_FrameSpec_collectSpecID(ctx, field)
+			case "collectExpressions":
+				return ec.fieldContext_FrameSpec_collectExpressions(ctx, field)
+			case "flightRecorderEvents":
+				return ec.fieldContext_FrameSpec_flightRecorderEvents(ctx, field)
+			case "parentcollection":
+				return ec.fieldContext_FrameSpec_parentcollection(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CollectSpec", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type FrameSpec", field.Name)
 		},
 	}
 	defer func() {
@@ -2778,7 +2807,7 @@ func (ec *executionContext) fieldContext_Mutation_addFlightRecorderEventToCollec
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_addFlightRecorderEventToCollectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_addFlightRecorderEventToFrameSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -2799,7 +2828,7 @@ func (ec *executionContext) _Mutation_removeFlightRecorderEventFromCollectSpec(c
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemoveFlightRecorderEventFromCollectSpec(rctx, fc.Args["frame"].(string), fc.Args["spec"].(string))
+		return ec.resolvers.Mutation().RemoveFlightRecorderEventFromCollectSpec(rctx, fc.Args["frame"].(string), fc.Args["expr"].(string), fc.Args["keyExpr"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3443,8 +3472,8 @@ func (ec *executionContext) fieldContext_Query_frameSpecs(ctx context.Context, f
 				return ec.fieldContext_FrameSpec_id(ctx, field)
 			case "frame":
 				return ec.fieldContext_FrameSpec_frame(ctx, field)
-			case "parent":
-				return ec.fieldContext_FrameSpec_parent(ctx, field)
+			case "collectSpecID":
+				return ec.fieldContext_FrameSpec_collectSpecID(ctx, field)
 			case "collectExpressions":
 				return ec.fieldContext_FrameSpec_collectExpressions(ctx, field)
 			case "flightRecorderEvents":
@@ -3907,8 +3936,8 @@ func (ec *executionContext) fieldContext_Query_frameSpecsWhere(ctx context.Conte
 				return ec.fieldContext_FrameSpec_id(ctx, field)
 			case "frame":
 				return ec.fieldContext_FrameSpec_frame(ctx, field)
-			case "parent":
-				return ec.fieldContext_FrameSpec_parent(ctx, field)
+			case "collectSpecID":
+				return ec.fieldContext_FrameSpec_collectSpecID(ctx, field)
 			case "collectExpressions":
 				return ec.fieldContext_FrameSpec_collectExpressions(ctx, field)
 			case "flightRecorderEvents":
@@ -7007,7 +7036,7 @@ func (ec *executionContext) unmarshalInputFrameSpecWhereInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "frame", "frameNEQ", "frameIn", "frameNotIn", "frameGT", "frameGTE", "frameLT", "frameLTE", "frameContains", "frameHasPrefix", "frameHasSuffix", "frameEqualFold", "frameContainsFold", "parent", "parentNEQ", "parentIn", "parentNotIn", "hasParentCollection", "hasParentCollectionWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "frame", "frameNEQ", "frameIn", "frameNotIn", "frameGT", "frameGTE", "frameLT", "frameLTE", "frameContains", "frameHasPrefix", "frameHasSuffix", "frameEqualFold", "frameContainsFold", "collectSpecID", "collectSpecIDNEQ", "collectSpecIDIn", "collectSpecIDNotIn", "hasParentCollection", "hasParentCollectionWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -7230,42 +7259,42 @@ func (ec *executionContext) unmarshalInputFrameSpecWhereInput(ctx context.Contex
 				return it, err
 			}
 			it.FrameContainsFold = data
-		case "parent":
+		case "collectSpecID":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parent"))
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecID"))
 			data, err := ec.unmarshalOID2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Parent = data
-		case "parentNEQ":
+			it.CollectSpecID = data
+		case "collectSpecIDNEQ":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parentNEQ"))
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecIDNEQ"))
 			data, err := ec.unmarshalOID2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ParentNEQ = data
-		case "parentIn":
+			it.CollectSpecIDNEQ = data
+		case "collectSpecIDIn":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parentIn"))
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecIDIn"))
 			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ParentIn = data
-		case "parentNotIn":
+			it.CollectSpecIDIn = data
+		case "collectSpecIDNotIn":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parentNotIn"))
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecIDNotIn"))
 			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ParentNotIn = data
+			it.CollectSpecIDNotIn = data
 		case "hasParentCollection":
 			var err error
 
@@ -8069,9 +8098,9 @@ func (ec *executionContext) _FrameSpec(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "parent":
+		case "collectSpecID":
 
-			out.Values[i] = ec._FrameSpec_parent(ctx, field, obj)
+			out.Values[i] = ec._FrameSpec_collectSpecID(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
@@ -8290,10 +8319,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "addFlightRecorderEventToCollectSpec":
+		case "addFlightRecorderEventToFrameSpec":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_addFlightRecorderEventToCollectSpec(ctx, field)
+				return ec._Mutation_addFlightRecorderEventToFrameSpec(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {

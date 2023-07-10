@@ -3,8 +3,8 @@ type Mutation {
   collectCollection: Collection
   addExprToCollectSpec(frame: String!, expr: String!): CollectSpec!
   removeExprFromCollectSpec(expr: String!, frame: String!): CollectSpec!
-  addFlightRecorderEventToCollectSpec(frame: String!, spec: String!): CollectSpec!
-  removeFlightRecorderEventFromCollectSpec(frame: String!, spec: String!): CollectSpec!
+  addFlightRecorderEventToFrameSpec(collectSpecID: ID!, frame: String!, expr: String!, keyExpr: String!): FrameSpec!
+  removeFlightRecorderEventFromCollectSpec(frame: String!, expr: String!, keyExpr: String!): CollectSpec!
 }
 
 extend type Query {

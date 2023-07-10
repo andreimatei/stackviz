@@ -59,9 +59,9 @@ func Frame(v string) predicate.FrameSpec {
 	return predicate.FrameSpec(sql.FieldEQ(FieldFrame, v))
 }
 
-// Parent applies equality check predicate on the "parent" field. It's identical to ParentEQ.
-func Parent(v int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldEQ(FieldParent, v))
+// CollectSpecID applies equality check predicate on the "collect_spec_id" field. It's identical to CollectSpecIDEQ.
+func CollectSpecID(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldEQ(FieldCollectSpecID, v))
 }
 
 // FrameEQ applies the EQ predicate on the "frame" field.
@@ -129,24 +129,24 @@ func FrameContainsFold(v string) predicate.FrameSpec {
 	return predicate.FrameSpec(sql.FieldContainsFold(FieldFrame, v))
 }
 
-// ParentEQ applies the EQ predicate on the "parent" field.
-func ParentEQ(v int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldEQ(FieldParent, v))
+// CollectSpecIDEQ applies the EQ predicate on the "collect_spec_id" field.
+func CollectSpecIDEQ(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldEQ(FieldCollectSpecID, v))
 }
 
-// ParentNEQ applies the NEQ predicate on the "parent" field.
-func ParentNEQ(v int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldNEQ(FieldParent, v))
+// CollectSpecIDNEQ applies the NEQ predicate on the "collect_spec_id" field.
+func CollectSpecIDNEQ(v int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldNEQ(FieldCollectSpecID, v))
 }
 
-// ParentIn applies the In predicate on the "parent" field.
-func ParentIn(vs ...int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldIn(FieldParent, vs...))
+// CollectSpecIDIn applies the In predicate on the "collect_spec_id" field.
+func CollectSpecIDIn(vs ...int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldIn(FieldCollectSpecID, vs...))
 }
 
-// ParentNotIn applies the NotIn predicate on the "parent" field.
-func ParentNotIn(vs ...int) predicate.FrameSpec {
-	return predicate.FrameSpec(sql.FieldNotIn(FieldParent, vs...))
+// CollectSpecIDNotIn applies the NotIn predicate on the "collect_spec_id" field.
+func CollectSpecIDNotIn(vs ...int) predicate.FrameSpec {
+	return predicate.FrameSpec(sql.FieldNotIn(FieldCollectSpecID, vs...))
 }
 
 // HasParentCollection applies the HasEdge predicate on the "parentCollection" edge.

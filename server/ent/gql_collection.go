@@ -189,19 +189,19 @@ func (fs *FrameSpecQuery) collectField(ctx context.Context, opCtx *graphql.Opera
 				return err
 			}
 			fs.withParentCollection = query
-			if _, ok := fieldSeen[framespec.FieldParent]; !ok {
-				selectedFields = append(selectedFields, framespec.FieldParent)
-				fieldSeen[framespec.FieldParent] = struct{}{}
+			if _, ok := fieldSeen[framespec.FieldCollectSpecID]; !ok {
+				selectedFields = append(selectedFields, framespec.FieldCollectSpecID)
+				fieldSeen[framespec.FieldCollectSpecID] = struct{}{}
 			}
 		case "frame":
 			if _, ok := fieldSeen[framespec.FieldFrame]; !ok {
 				selectedFields = append(selectedFields, framespec.FieldFrame)
 				fieldSeen[framespec.FieldFrame] = struct{}{}
 			}
-		case "parent":
-			if _, ok := fieldSeen[framespec.FieldParent]; !ok {
-				selectedFields = append(selectedFields, framespec.FieldParent)
-				fieldSeen[framespec.FieldParent] = struct{}{}
+		case "collectSpecID":
+			if _, ok := fieldSeen[framespec.FieldCollectSpecID]; !ok {
+				selectedFields = append(selectedFields, framespec.FieldCollectSpecID)
+				fieldSeen[framespec.FieldCollectSpecID] = struct{}{}
 			}
 		case "collectExpressions":
 			if _, ok := fieldSeen[framespec.FieldCollectExpressions]; !ok {

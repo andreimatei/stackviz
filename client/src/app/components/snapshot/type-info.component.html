@@ -4,7 +4,7 @@
     <mat-checkbox (change)="onCheckedChange($event, node)" checked={{node.checked}}>
     </mat-checkbox>
     <!-- The padding compensates for the absence of the expansion button. -->
-    <button *ngIf="node.formalParam" mat-raised-button (click)="openFlightRecorderDialog(node.name)">Flight recorder</button>
+    <button *ngIf="node.formalParamRecursive" mat-raised-button (click)="openFlightRecorderDialog(node.expr)">Flight recorder</button>
     <div style="padding-left: 58px" [style.color]="node.color"
          [style.fontWeight]="node.fontWeight">
       {{node.name}}:{{node.type}}
@@ -23,7 +23,7 @@
           </button>
         </div>
       </mat-checkbox>
-      <button *ngIf="node.formalParam" mat-raised-button (click)="openFlightRecorderDialog(node.name)">Flight recorder</button>
+      <button *ngIf="node.formalParamRecursive" mat-raised-button (click)="openFlightRecorderDialog(node.expr)">Flight recorder</button>
       <span [style.color]="node.color" [style.fontWeight]="node.fontWeight" style="white-space: nowrap">
                     {{node.name}}:{{node.type}}
       </span>

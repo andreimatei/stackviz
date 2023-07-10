@@ -121,7 +121,7 @@ type FrameSpec implements Node {
   id: ID!
   frame: String!
   """The parent collection spec"""
-  parent: ID!
+  collectSpecID: ID!
   collectExpressions: [String!]!
   flightRecorderEvents: [String!]!
   """The parent collection spec"""
@@ -158,11 +158,11 @@ input FrameSpecWhereInput {
   frameHasSuffix: String
   frameEqualFold: String
   frameContainsFold: String
-  """parent field predicates"""
-  parent: ID
-  parentNEQ: ID
-  parentIn: [ID!]
-  parentNotIn: [ID!]
+  """collect_spec_id field predicates"""
+  collectSpecID: ID
+  collectSpecIDNEQ: ID
+  collectSpecIDIn: [ID!]
+  collectSpecIDNotIn: [ID!]
   """parentCollection edge predicates"""
   hasParentCollection: Boolean
   hasParentCollectionWith: [CollectSpecWhereInput!]
