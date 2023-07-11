@@ -138,8 +138,8 @@ type ComplexityRoot struct {
 		Collections      func(childComplexity int) int
 		FrameSpecs       func(childComplexity int) int
 		FrameSpecsWhere  func(childComplexity int, where *ent.FrameSpecWhereInput) int
+		GetSnapshot      func(childComplexity int, colID int, snapID int, gID *int, filter *string) int
 		GetTree          func(childComplexity int, colID int, snapID int, gID *int, filter *string) int
-		Goroutines       func(childComplexity int, colID int, snapID int, gID *int, filter *string) int
 		Node             func(childComplexity int, id int) int
 		Nodes            func(childComplexity int, ids []int) int
 		ProcessSnapshots func(childComplexity int) int
@@ -190,7 +190,7 @@ type QueryResolver interface {
 	FrameSpecs(ctx context.Context) ([]ent.FrameSpec, error)
 	ProcessSnapshots(ctx context.Context) ([]ent.ProcessSnapshot, error)
 	CollectionByID(ctx context.Context, id int) (*ent.Collection, error)
-	Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error)
+	GetSnapshot(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error)
 	AvailableVars(ctx context.Context, funcArg string, pcOff int) (*graph.VarsAndTypes, error)
 	CollectSpec(ctx context.Context) (*ent.CollectSpec, error)
 	TypeInfo(ctx context.Context, name string) (*graph.TypeInfo, error)
@@ -621,6 +621,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.FrameSpecsWhere(childComplexity, args["where"].(*ent.FrameSpecWhereInput)), true
 
+	case "Query.getSnapshot":
+		if e.complexity.Query.GetSnapshot == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getSnapshot_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetSnapshot(childComplexity, args["colID"].(int), args["snapID"].(int), args["gID"].(*int), args["filter"].(*string)), true
+
 	case "Query.getTree":
 		if e.complexity.Query.GetTree == nil {
 			break
@@ -632,18 +644,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetTree(childComplexity, args["colID"].(int), args["snapID"].(int), args["gID"].(*int), args["filter"].(*string)), true
-
-	case "Query.goroutines":
-		if e.complexity.Query.Goroutines == nil {
-			break
-		}
-
-		args, err := ec.field_Query_goroutines_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.Goroutines(childComplexity, args["colID"].(int), args["snapID"].(int), args["gID"].(*int), args["filter"].(*string)), true
 
 	case "Query.node":
 		if e.complexity.Query.Node == nil {
@@ -1075,7 +1075,7 @@ func (ec *executionContext) field_Query_frameSpecsWhere_args(ctx context.Context
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_getTree_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_getSnapshot_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
@@ -1117,7 +1117,7 @@ func (ec *executionContext) field_Query_getTree_args(ctx context.Context, rawArg
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_goroutines_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_getTree_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
@@ -3754,8 +3754,8 @@ func (ec *executionContext) fieldContext_Query_collectionByID(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_goroutines(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_goroutines(ctx, field)
+func (ec *executionContext) _Query_getSnapshot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_getSnapshot(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -3768,7 +3768,7 @@ func (ec *executionContext) _Query_goroutines(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Goroutines(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int), fc.Args["gID"].(*int), fc.Args["filter"].(*string))
+		return ec.resolvers.Query().GetSnapshot(rctx, fc.Args["colID"].(int), fc.Args["snapID"].(int), fc.Args["gID"].(*int), fc.Args["filter"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3785,7 +3785,7 @@ func (ec *executionContext) _Query_goroutines(ctx context.Context, field graphql
 	return ec.marshalNSnapshotInfo2ᚖstacksvizᚋgraphᚐSnapshotInfo(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_goroutines(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_getSnapshot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -3810,7 +3810,7 @@ func (ec *executionContext) fieldContext_Query_goroutines(ctx context.Context, f
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_goroutines_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_getSnapshot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -8839,7 +8839,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
-		case "goroutines":
+		case "getSnapshot":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -8848,7 +8848,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_goroutines(ctx, field)
+				res = ec._Query_getSnapshot(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

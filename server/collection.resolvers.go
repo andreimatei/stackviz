@@ -260,9 +260,9 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 	return dbClient.Collection.Query().Where(collection.ID(id)).Only(ctx)
 }
 
-// Goroutines is the resolver for the goroutines field.
-func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error) {
-	log.Printf("!!! Goroutines resolver")
+// GetSnapshot is the resolver for the getSnapshot field.
+func (r *queryResolver) GetSnapshot(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error) {
+	log.Printf("!!! GetSnapshot resolver")
 	snap, err := r.loadSnapshot(ctx, colID, snapID)
 	if err != nil {
 		return nil, err

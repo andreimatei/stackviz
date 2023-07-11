@@ -105,8 +105,8 @@ query GetTypeInfo($name: String!) {
   }
 }
 
-query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
-  goroutines(colID: $colID, snapID: $snapID,  gID: $gID, filter: $filter) {
+query GetSnapshot($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
+  getSnapshot(colID: $colID, snapID: $snapID,  gID: $gID, filter: $filter) {
     Raw {
       ID
       Frames {

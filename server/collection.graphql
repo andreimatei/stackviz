@@ -12,7 +12,7 @@ type Mutation {
 
 extend type Query {
   collectionByID(id: ID!): Collection
-  goroutines(colID: Int!, snapID: Int!, gID: Int, filter: String): SnapshotInfo!
+  getSnapshot(colID: Int!, snapID: Int!, gID: Int, filter: String): SnapshotInfo!
   availableVars(func: String!, pcOff: Int!): VarsAndTypes!
   # collectSpec returns the specification of what is being collected. If func is
   # specified, only the expressions for the respective function are returned.

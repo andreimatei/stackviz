@@ -6,10 +6,11 @@ import {
   GetAvailableVariablesGQL,
   GetCollectionGQL,
   GetFrameSpecsGQL,
-  GetGoroutinesGQL,
+  GetSnapshotGQL,
   GetTreeGQL,
   ProcessSnapshot,
-  RemoveExprFromCollectSpecGQL, SyncFlightRecorderGQL
+  RemoveExprFromCollectSpecGQL,
+  SyncFlightRecorderGQL
 } from "../../graphql/graphql-codegen-generated";
 import { Router, RouterLink } from "@angular/router";
 import { MatDrawer, MatSidenavModule } from "@angular/material/sidenav";
@@ -157,12 +158,12 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected loadingAvailableVars: boolean = false;
 
   private treeQuery!: ReturnType<GetTreeGQL["watch"]>;
-  private goroutinesQuery!: ReturnType<GetGoroutinesGQL["watch"]>;
+  private goroutinesQuery!: ReturnType<GetSnapshotGQL["watch"]>;
   protected frameSpecsQuery$!: Observable<Partial<FrameSpec>[]>;
 
   constructor(
     private readonly getCollectionQuery: GetCollectionGQL,
-    private readonly getGoroutinesQuery: GetGoroutinesGQL,
+    private readonly getGoroutinesQuery: GetSnapshotGQL,
     private readonly varsQuery: GetAvailableVariablesGQL,
     private readonly getTreeQuery: GetTreeGQL,
     private readonly addExpr: AddExprToCollectSpecGQL,
@@ -226,7 +227,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
 
     this.capturedData$ = this.goroutinesQuery.valueChanges.pipe(
       map(res =>
-        res.data.goroutines.Raw
+        res.data.getSnapshot.Raw
           .filter(g => g.Vars && g.Vars.length > 0)
           .map(g => ({gid: g.ID, vars: g.Vars}))
       ),
@@ -242,18 +243,18 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.stacks.data$ = this.goroutinesQuery.valueChanges.pipe(
       tap(res => {
         console.log("loading flight recorder data:",
-          typeof res.data.goroutines.FlightRecorderData,
-          res.data.goroutines.FlightRecorderData,
-          );
+          typeof res.data.getSnapshot.FlightRecorderData,
+          res.data.getSnapshot.FlightRecorderData,
+        );
 
-        const u = res.data.goroutines.FlightRecorderData;
+        const u = res.data.getSnapshot.FlightRecorderData;
         const m = new Map(Object.entries(u));
         console.log("m:", m);
         console.log("u:", u);
         console.log("m:", m.get('2312'));
 
       }),
-      map(res => res.data.goroutines)
+      map(res => res.data.getSnapshot)
     );
 
 

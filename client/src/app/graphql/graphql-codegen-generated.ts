@@ -398,8 +398,8 @@ export type Query = {
   collections: Array<Collection>;
   frameSpecs: Array<FrameSpec>;
   frameSpecsWhere: Array<FrameSpec>;
+  getSnapshot: SnapshotInfo;
   getTree: Scalars['String']['output'];
-  goroutines: SnapshotInfo;
   /** Fetches an object given its ID. */
   node?: Maybe<Node>;
   /** Lookup nodes by a list of IDs. */
@@ -425,7 +425,7 @@ export type QueryFrameSpecsWhereArgs = {
 };
 
 
-export type QueryGetTreeArgs = {
+export type QueryGetSnapshotArgs = {
   colID: Scalars['Int']['input'];
   filter?: InputMaybe<Scalars['String']['input']>;
   gID?: InputMaybe<Scalars['Int']['input']>;
@@ -433,7 +433,7 @@ export type QueryGetTreeArgs = {
 };
 
 
-export type QueryGoroutinesArgs = {
+export type QueryGetTreeArgs = {
   colID: Scalars['Int']['input'];
   filter?: InputMaybe<Scalars['String']['input']>;
   gID?: InputMaybe<Scalars['Int']['input']>;
@@ -557,7 +557,7 @@ export type GetTypeInfoQueryVariables = Exact<{
 
 export type GetTypeInfoQuery = { __typename?: 'Query', typeInfo: { __typename?: 'TypeInfo', Name: string, FieldsNotLoaded: boolean, Fields?: Array<{ __typename?: 'FieldInfo', Name: string, Type: string, Embedded: boolean }> | null } };
 
-export type GetGoroutinesQueryVariables = Exact<{
+export type GetSnapshotQueryVariables = Exact<{
   colID: Scalars['Int']['input'];
   snapID: Scalars['Int']['input'];
   gID?: InputMaybe<Scalars['Int']['input']>;
@@ -565,7 +565,7 @@ export type GetGoroutinesQueryVariables = Exact<{
 }>;
 
 
-export type GetGoroutinesQuery = { __typename?: 'Query', goroutines: { __typename?: 'SnapshotInfo', FlightRecorderData?: any | null, Raw: Array<{ __typename?: 'GoroutineInfo', ID: number, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }>, Aggregated: Array<{ __typename?: 'GoroutinesGroup', IDs: Array<number>, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }> } };
+export type GetSnapshotQuery = { __typename?: 'Query', getSnapshot: { __typename?: 'SnapshotInfo', FlightRecorderData?: any | null, Raw: Array<{ __typename?: 'GoroutineInfo', ID: number, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }>, Aggregated: Array<{ __typename?: 'GoroutinesGroup', IDs: Array<number>, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }> } };
 
 export type GetTreeQueryVariables = Exact<{
   colID: Scalars['Int']['input'];
@@ -818,9 +818,9 @@ export const GetTypeInfoDocument = gql`
       super(apollo);
     }
   }
-export const GetGoroutinesDocument = gql`
-    query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
-  goroutines(colID: $colID, snapID: $snapID, gID: $gID, filter: $filter) {
+export const GetSnapshotDocument = gql`
+    query GetSnapshot($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
+  getSnapshot(colID: $colID, snapID: $snapID, gID: $gID, filter: $filter) {
     Raw {
       ID
       Frames {
@@ -863,8 +863,8 @@ export const GetGoroutinesDocument = gql`
   @Injectable({
     providedIn: 'root'
   })
-  export class GetGoroutinesGQL extends Apollo.Query<GetGoroutinesQuery, GetGoroutinesQueryVariables> {
-    override document = GetGoroutinesDocument;
+  export class GetSnapshotGQL extends Apollo.Query<GetSnapshotQuery, GetSnapshotQueryVariables> {
+    override document = GetSnapshotDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);
