@@ -18,8 +18,8 @@ query GetCollection($colID: ID!) {
   }
 }
 
-mutation CollectCollection {
-  collectCollection {
+mutation CollectServiceSnapshots {
+  collectServiceSnapshots {
     id
   }
 }
@@ -60,6 +60,10 @@ mutation RemoveFlightRecorderEventFromCollectSpec($frame: String!, $expr: String
       flightRecorderEvents
     }
   }
+}
+
+mutation SyncFlightRecorder($collectSpecID: ID!) {
+  syncFlightRecorder(collectSpecID: $collectSpecID)
 }
 
 query GetAvailableVariables($func: String!, $pcOff: Int!) {
@@ -137,6 +141,7 @@ query GetGoroutines($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
         }
       }
     }
+    FlightRecorderData
   }
 }
 

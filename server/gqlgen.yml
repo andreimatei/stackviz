@@ -26,10 +26,19 @@ models:
     model:
       - github.com/99designs/gqlgen/graphql.IntID
       - github.com/99designs/gqlgen/graphql.Boolean
+  Map:
+    model:
+      - github.com/99designs/gqlgen/graphql.Map
   Node:
     model:
       - stacksviz/ent.Noder
       - stacksviz/ent/collection.Noder
+#  CategoryConfig:
+#    model:
+#      - stacksviz/ent/schema/schematype.CategoryConfig
+#  FlightRecorderData:
+#    model:
+#      - stacksviz/ent/schema.FlightRecorderData
 
 omit_slice_element_pointers: true
 

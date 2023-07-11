@@ -70,9 +70,10 @@ func (c *FrameSpecCreate) SetInput(i CreateFrameSpecInput) *FrameSpecCreate {
 
 // CreateProcessSnapshotInput represents a mutation input for creating processsnapshots.
 type CreateProcessSnapshotInput struct {
-	ProcessID        string
-	Snapshot         string
-	FramesOfInterest *string
+	ProcessID          string
+	Snapshot           string
+	FramesOfInterest   *string
+	FlightRecorderData map[string][]string
 }
 
 // Mutate applies the CreateProcessSnapshotInput on the ProcessSnapshotMutation builder.
@@ -81,6 +82,9 @@ func (i *CreateProcessSnapshotInput) Mutate(m *ProcessSnapshotMutation) {
 	m.SetSnapshot(i.Snapshot)
 	if v := i.FramesOfInterest; v != nil {
 		m.SetFramesOfInterest(*v)
+	}
+	if v := i.FlightRecorderData; v != nil {
+		m.SetFlightRecorderData(v)
 	}
 }
 

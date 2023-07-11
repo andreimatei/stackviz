@@ -273,6 +273,16 @@ func FramesOfInterestContainsFold(v string) predicate.ProcessSnapshot {
 	return predicate.ProcessSnapshot(sql.FieldContainsFold(FieldFramesOfInterest, v))
 }
 
+// FlightRecorderDataIsNil applies the IsNil predicate on the "flight_recorder_data" field.
+func FlightRecorderDataIsNil() predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldIsNull(FieldFlightRecorderData))
+}
+
+// FlightRecorderDataNotNil applies the NotNil predicate on the "flight_recorder_data" field.
+func FlightRecorderDataNotNil() predicate.ProcessSnapshot {
+	return predicate.ProcessSnapshot(sql.FieldNotNull(FieldFlightRecorderData))
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.ProcessSnapshot) predicate.ProcessSnapshot {
 	return predicate.ProcessSnapshot(func(s *sql.Selector) {

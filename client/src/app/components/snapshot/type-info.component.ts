@@ -138,7 +138,6 @@ export class TreeNode {
     readonly formalParamRecursive: boolean,
     readonly loclistAvailable: boolean,
   ) {
-    console.log("!!! TreeNode:", name, expr, type, expandable, checked, formalParam, loclistAvailable);
     this.color = loclistAvailable ? 'black' : 'gray';
     this.fontWeight = formalParam ? 'bold' : 'normal';
     this.children = [];

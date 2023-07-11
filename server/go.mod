@@ -9,7 +9,6 @@ require (
 	github.com/andreimatei/delve-agent v0.1.0
 	github.com/go-delve/delve v1.20.2
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/kr/pretty v0.2.1
 	github.com/maruel/panicparse/v2 v2.3.1
 	github.com/mattn/go-sqlite3 v1.14.16
@@ -30,6 +29,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/kr/text v0.2.0 // indirect

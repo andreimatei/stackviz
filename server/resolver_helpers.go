@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/go-delve/delve/service/debugger"
 	pp "github.com/maruel/panicparse/v2/stack"
 	"io"
@@ -10,6 +12,7 @@ import (
 	"net/rpc"
 	"stacksviz/ent"
 	"stacksviz/graph"
+	"stacksviz/stacks"
 	"strings"
 
 	"github.com/andreimatei/delve-agent/agentrpc"
@@ -31,14 +34,16 @@ func (r *mutationResolver) getSnapshotFromPprof(targetURL string) (string, error
 	return string(snap), nil
 }
 
-func (r *mutationResolver) getSnapshotFromDelveAgent(ctx context.Context, agentAddr string, spec *ent.CollectSpec) (agentrpc.Snapshot, error) {
+func (r *mutationResolver) getSnapshotFromDelveAgent(
+	ctx context.Context, agentAddr string, spec *ent.CollectSpec,
+) (agentrpc.Snapshot, error) {
 	client, err := rpc.DialHTTP("tcp", agentAddr)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
 
-	frames, err := spec.QueryFrames().All(ctx)
-	//frames, err := spec.Frames(ctx)
+	// Load the spec for the frame of interests.
+	frames, err := spec.Frames(ctx)
 	if err != nil {
 		return agentrpc.Snapshot{}, err
 	}
@@ -50,20 +55,13 @@ func (r *mutationResolver) getSnapshotFromDelveAgent(ctx context.Context, agentA
 	}
 	args := &agentrpc.GetSnapshotIn{FramesSpec: framesSpec}
 
+	// Call the Delve agent asking for a snapshot with the specified frames of
+	// interest.
 	var res = &agentrpc.GetSnapshotOut{}
 	err = client.Call("Agent.GetSnapshot", args, &res)
 	if err != nil {
 		log.Fatal("call to agent failed: ", err)
 	}
-	//pretty.Print(res) // !!!
-
-	//var sb strings.Builder
-	//for _, stack := range res.Snapshot.Stacks {
-	//	sb.WriteString(stack)
-	//	sb.WriteRune('\n')
-	//}
-	//
-	//return sb.String(), nil
 	return res.Snapshot, nil
 }
 
@@ -82,6 +80,7 @@ func reconcileFlightRecorder(ctx context.Context, agentAddr string, events []Fli
 		})
 	}
 
+	log.Printf("calling Agent.ReconcileFlightRecorder with events: %#v", eventsIn)
 	out := agentrpc.ReconcileFLightRecorderOut{}
 	return client.Call("Agent.ReconcileFlightRecorder", &agentrpc.ReconcileFlightRecorderIn{
 		Events: eventsIn,
@@ -104,7 +103,7 @@ func (r *queryResolver) getAvailableVarsFromDelveAgent(agentAddr string, fn stri
 	return res.Vars, res.Types, nil
 }
 
-func snapToString(s agentrpc.Snapshot) string {
+func stacksToString(s agentrpc.Snapshot) string {
 	var sb strings.Builder
 	for _, stack := range s.Stacks {
 		sb.WriteString(stack)
@@ -174,6 +173,28 @@ func (r *queryResolver) getTypeInfoFromDelveAgent(agentAddr string, typeName str
 	return fields, nil
 }
 
+type target struct {
+	serviceName, processName, URL string
+}
+
+func (r *Resolver) getTargets() []target {
+	var svcName string
+	for serviceName, _ := range r.conf.Targets {
+		// TODO(andrei): deal with multiple services
+		svcName = serviceName
+		break
+	}
+	res := make([]target, 0, len(r.conf.Targets[svcName]))
+	for processName, url := range r.conf.Targets[svcName] {
+		res = append(res, target{
+			serviceName: svcName,
+			processName: processName,
+			URL:         url,
+		})
+	}
+	return res
+}
+
 func stackMatchesFilter(g *pp.Goroutine, filter string) bool {
 	for i := range g.Stack.Calls {
 		if strings.Contains(g.Stack.Calls[i].Func.Complete, filter) {
@@ -181,6 +202,71 @@ func stackMatchesFilter(g *pp.Goroutine, filter string) bool {
 		}
 	}
 	return false
+}
+
+type Snapshot struct {
+	stacks             *pp.Snapshot
+	framesOfInterest   stacks.FOIS
+	flightRecorderData map[string][]string
+}
+
+func (r *Resolver) loadSnapshot(
+	ctx context.Context, collectionID int, snapshotID int,
+) (Snapshot, error) {
+	// Load the snapshot from the database.
+	snapRec := r.dbClient.ProcessSnapshot.GetX(ctx, snapshotID)
+
+	// Parse the stacks.
+	opts := pp.DefaultOpts()
+	opts.ParsePC = true
+	snap, _, err := pp.ScanSnapshot(strings.NewReader(snapRec.Snapshot), io.Discard, opts)
+	if err != nil && err != io.EOF {
+		return Snapshot{}, err
+	}
+	if snap == nil {
+		return Snapshot{}, fmt.Errorf("failed to parse any stacks")
+	}
+
+	var rawFois stacks.FramesOfInterest
+	if snapRec.FramesOfInterest != "" {
+		if err = json.Unmarshal([]byte(snapRec.FramesOfInterest), &rawFois); err != nil {
+			return Snapshot{}, fmt.Errorf("failed to unmarshal frames of interest: %w", err)
+		}
+	} else {
+		log.Printf("!!! snapshot %d does not have any frames of interest", snapshotID)
+	}
+
+	// Load all snapshots in this collection and find links between the captured variables.
+	c := r.dbClient.Collection.GetX(ctx, collectionID)
+	allSnaps, err := c.ProcessSnapshots(ctx)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	varToLinks := stacks.ComputeLinks(allSnaps)
+	fois := make(stacks.FOIS)
+	for gid, frameIdxToVars := range rawFois {
+		frameIdxToFOI := make(map[int]stacks.ProcessedFOI)
+		for idx, vars := range frameIdxToVars {
+			var pf stacks.ProcessedFOI
+			pf.Vars = make([]graph.CollectedVar, len(vars))
+			for i, v := range vars {
+				pf.Vars[i] = graph.CollectedVar{
+					Expr:  v.Expr,
+					Value: v.Val,
+					Links: stacks.LinksExcludingSelf(varToLinks[v.Val], gid),
+				}
+			}
+			frameIdxToFOI[idx] = pf
+		}
+		fois[gid] = frameIdxToFOI
+	}
+
+	return Snapshot{
+		stacks:             snap,
+		framesOfInterest:   fois,
+		flightRecorderData: snapRec.FlightRecorderData,
+	}, nil
 }
 
 // filterStacks returns a new Snapshot containing the goroutines in snap that

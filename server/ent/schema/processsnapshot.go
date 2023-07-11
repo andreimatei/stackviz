@@ -18,6 +18,15 @@ func (ProcessSnapshot) Fields() []ent.Field {
 		field.String("process_id"),
 		field.Text("snapshot"),
 		field.Text("frames_of_interest").Optional(),
+		//field.JSON("flight_recorder_data", FlightRecorderData{}).Optional(), //.Annotations(entgql.Type("xxx")),
+		//field.Other("config", &schematype.CategoryConfig{}).
+		//	SchemaType(map[string]string{
+		//		dialect.SQLite: "json",
+		//	}).
+		//	Optional().Annotations(entgql.Type("String")),
+		field.JSON("flight_recorder_data", map[string][]string{}).
+			Optional().
+			Annotations(entgql.Type("Map")),
 	}
 }
 

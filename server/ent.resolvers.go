@@ -10,6 +10,11 @@ import (
 	"stacksviz/ent"
 )
 
+// FlightRecorderData is the resolver for the flightRecorderData field.
+func (r *processSnapshotResolver) FlightRecorderData(ctx context.Context, obj *ent.ProcessSnapshot) (map[string]interface{}, error) {
+	panic(fmt.Errorf("not implemented: FlightRecorderData - flightRecorderData"))
+}
+
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id int) (ent.Noder, error) {
 	return r.dbClient.Noder(ctx, id)
@@ -48,7 +53,22 @@ func (r *queryResolver) ProcessSnapshots(ctx context.Context) ([]ent.ProcessSnap
 	return flatten(results), nil
 }
 
+// FlightRecorderData is the resolver for the flightRecorderData field.
+func (r *createProcessSnapshotInputResolver) FlightRecorderData(ctx context.Context, obj *ent.CreateProcessSnapshotInput, data map[string]interface{}) error {
+	panic(fmt.Errorf("not implemented: FlightRecorderData - flightRecorderData"))
+}
+
+// ProcessSnapshot returns ProcessSnapshotResolver implementation.
+func (r *Resolver) ProcessSnapshot() ProcessSnapshotResolver { return &processSnapshotResolver{r} }
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// CreateProcessSnapshotInput returns CreateProcessSnapshotInputResolver implementation.
+func (r *Resolver) CreateProcessSnapshotInput() CreateProcessSnapshotInputResolver {
+	return &createProcessSnapshotInputResolver{r}
+}
+
+type processSnapshotResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type createProcessSnapshotInputResolver struct{ *Resolver }

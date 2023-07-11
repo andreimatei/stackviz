@@ -1,10 +1,13 @@
 type Mutation {
   # collect snapshots from all the nodes
-  collectCollection: Collection
+  collectServiceSnapshots: Collection
   addExprToCollectSpec(frame: String!, expr: String!): CollectSpec!
   removeExprFromCollectSpec(expr: String!, frame: String!): CollectSpec!
   addFlightRecorderEventToFrameSpec(collectSpecID: ID!, frame: String!, expr: String!, keyExpr: String!): FrameSpec!
   removeFlightRecorderEventFromCollectSpec(frame: String!, expr: String!, keyExpr: String!): CollectSpec!
+
+  # No return value
+  syncFlightRecorder(collectSpecID: ID!): Boolean
 }
 
 extend type Query {
@@ -61,6 +64,7 @@ type GoroutinesGroup {
 type SnapshotInfo {
   Raw: [GoroutineInfo!]!
   Aggregated: [GoroutinesGroup!]!
+  FlightRecorderData: Map
 }
 
 type FrameInfo {

@@ -39,8 +39,9 @@ type Link struct {
 }
 
 type SnapshotInfo struct {
-	Raw        []GoroutineInfo   `json:"Raw"`
-	Aggregated []GoroutinesGroup `json:"Aggregated"`
+	Raw                []GoroutineInfo        `json:"Raw"`
+	Aggregated         []GoroutinesGroup      `json:"Aggregated"`
+	FlightRecorderData map[string]interface{} `json:"FlightRecorderData,omitempty"`
 }
 
 type TypeInfo struct {

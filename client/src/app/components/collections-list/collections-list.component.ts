@@ -3,12 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from "@angular/router";
 import {
   AllCollectionsGQL,
-  CollectCollectionGQL,
-  Collection, Query
+  Collection,
+  CollectServiceSnapshotsGQL
 } from "src/app/graphql/graphql-codegen-generated";
 import { MatButtonModule } from "@angular/material/button";
 import { QueryRef } from "apollo-angular";
-import { map, tap, Observable } from "rxjs";
+import { map, Observable, tap } from "rxjs";
 
 @Component({
   selector: 'collections-list',
@@ -25,7 +25,7 @@ export class CollectionsListComponent implements OnInit {
 
   constructor(
     private readonly collectionsQuery: AllCollectionsGQL,
-    private readonly newCollectionQuery: CollectCollectionGQL,
+    private readonly newCollectionQuery: CollectServiceSnapshotsGQL,
   ) {
     this.loading = false;
   }
@@ -40,7 +40,7 @@ export class CollectionsListComponent implements OnInit {
   }
 
   collectSnapshots(): void {
-    console.log("!!! CollectCollection");
+    console.log("!!! collecting snapshots");
     this.newCollectionQuery.mutate().subscribe({
       next: (res) => {
         this.collectionsQueryInstance!.refetch().then(

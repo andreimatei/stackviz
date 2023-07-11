@@ -1490,16 +1490,17 @@ func (m *FrameSpecMutation) ResetEdge(name string) error {
 // ProcessSnapshotMutation represents an operation that mutates the ProcessSnapshot nodes in the graph.
 type ProcessSnapshotMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *int
-	process_id         *string
-	snapshot           *string
-	frames_of_interest *string
-	clearedFields      map[string]struct{}
-	done               bool
-	oldValue           func(context.Context) (*ProcessSnapshot, error)
-	predicates         []predicate.ProcessSnapshot
+	op                   Op
+	typ                  string
+	id                   *int
+	process_id           *string
+	snapshot             *string
+	frames_of_interest   *string
+	flight_recorder_data *map[string][]string
+	clearedFields        map[string]struct{}
+	done                 bool
+	oldValue             func(context.Context) (*ProcessSnapshot, error)
+	predicates           []predicate.ProcessSnapshot
 }
 
 var _ ent.Mutation = (*ProcessSnapshotMutation)(nil)
@@ -1721,6 +1722,55 @@ func (m *ProcessSnapshotMutation) ResetFramesOfInterest() {
 	delete(m.clearedFields, processsnapshot.FieldFramesOfInterest)
 }
 
+// SetFlightRecorderData sets the "flight_recorder_data" field.
+func (m *ProcessSnapshotMutation) SetFlightRecorderData(value map[string][]string) {
+	m.flight_recorder_data = &value
+}
+
+// FlightRecorderData returns the value of the "flight_recorder_data" field in the mutation.
+func (m *ProcessSnapshotMutation) FlightRecorderData() (r map[string][]string, exists bool) {
+	v := m.flight_recorder_data
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFlightRecorderData returns the old "flight_recorder_data" field's value of the ProcessSnapshot entity.
+// If the ProcessSnapshot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProcessSnapshotMutation) OldFlightRecorderData(ctx context.Context) (v map[string][]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFlightRecorderData is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFlightRecorderData requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFlightRecorderData: %w", err)
+	}
+	return oldValue.FlightRecorderData, nil
+}
+
+// ClearFlightRecorderData clears the value of the "flight_recorder_data" field.
+func (m *ProcessSnapshotMutation) ClearFlightRecorderData() {
+	m.flight_recorder_data = nil
+	m.clearedFields[processsnapshot.FieldFlightRecorderData] = struct{}{}
+}
+
+// FlightRecorderDataCleared returns if the "flight_recorder_data" field was cleared in this mutation.
+func (m *ProcessSnapshotMutation) FlightRecorderDataCleared() bool {
+	_, ok := m.clearedFields[processsnapshot.FieldFlightRecorderData]
+	return ok
+}
+
+// ResetFlightRecorderData resets all changes to the "flight_recorder_data" field.
+func (m *ProcessSnapshotMutation) ResetFlightRecorderData() {
+	m.flight_recorder_data = nil
+	delete(m.clearedFields, processsnapshot.FieldFlightRecorderData)
+}
+
 // Where appends a list predicates to the ProcessSnapshotMutation builder.
 func (m *ProcessSnapshotMutation) Where(ps ...predicate.ProcessSnapshot) {
 	m.predicates = append(m.predicates, ps...)
@@ -1755,7 +1805,7 @@ func (m *ProcessSnapshotMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProcessSnapshotMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m.process_id != nil {
 		fields = append(fields, processsnapshot.FieldProcessID)
 	}
@@ -1764,6 +1814,9 @@ func (m *ProcessSnapshotMutation) Fields() []string {
 	}
 	if m.frames_of_interest != nil {
 		fields = append(fields, processsnapshot.FieldFramesOfInterest)
+	}
+	if m.flight_recorder_data != nil {
+		fields = append(fields, processsnapshot.FieldFlightRecorderData)
 	}
 	return fields
 }
@@ -1779,6 +1832,8 @@ func (m *ProcessSnapshotMutation) Field(name string) (ent.Value, bool) {
 		return m.Snapshot()
 	case processsnapshot.FieldFramesOfInterest:
 		return m.FramesOfInterest()
+	case processsnapshot.FieldFlightRecorderData:
+		return m.FlightRecorderData()
 	}
 	return nil, false
 }
@@ -1794,6 +1849,8 @@ func (m *ProcessSnapshotMutation) OldField(ctx context.Context, name string) (en
 		return m.OldSnapshot(ctx)
 	case processsnapshot.FieldFramesOfInterest:
 		return m.OldFramesOfInterest(ctx)
+	case processsnapshot.FieldFlightRecorderData:
+		return m.OldFlightRecorderData(ctx)
 	}
 	return nil, fmt.Errorf("unknown ProcessSnapshot field %s", name)
 }
@@ -1823,6 +1880,13 @@ func (m *ProcessSnapshotMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFramesOfInterest(v)
+		return nil
+	case processsnapshot.FieldFlightRecorderData:
+		v, ok := value.(map[string][]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFlightRecorderData(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ProcessSnapshot field %s", name)
@@ -1857,6 +1921,9 @@ func (m *ProcessSnapshotMutation) ClearedFields() []string {
 	if m.FieldCleared(processsnapshot.FieldFramesOfInterest) {
 		fields = append(fields, processsnapshot.FieldFramesOfInterest)
 	}
+	if m.FieldCleared(processsnapshot.FieldFlightRecorderData) {
+		fields = append(fields, processsnapshot.FieldFlightRecorderData)
+	}
 	return fields
 }
 
@@ -1874,6 +1941,9 @@ func (m *ProcessSnapshotMutation) ClearField(name string) error {
 	case processsnapshot.FieldFramesOfInterest:
 		m.ClearFramesOfInterest()
 		return nil
+	case processsnapshot.FieldFlightRecorderData:
+		m.ClearFlightRecorderData()
+		return nil
 	}
 	return fmt.Errorf("unknown ProcessSnapshot nullable field %s", name)
 }
@@ -1890,6 +1960,9 @@ func (m *ProcessSnapshotMutation) ResetField(name string) error {
 		return nil
 	case processsnapshot.FieldFramesOfInterest:
 		m.ResetFramesOfInterest()
+		return nil
+	case processsnapshot.FieldFlightRecorderData:
+		m.ResetFlightRecorderData()
 		return nil
 	}
 	return fmt.Errorf("unknown ProcessSnapshot field %s", name)

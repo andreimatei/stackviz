@@ -17,6 +17,8 @@ const (
 	FieldSnapshot = "snapshot"
 	// FieldFramesOfInterest holds the string denoting the frames_of_interest field in the database.
 	FieldFramesOfInterest = "frames_of_interest"
+	// FieldFlightRecorderData holds the string denoting the flight_recorder_data field in the database.
+	FieldFlightRecorderData = "flight_recorder_data"
 	// Table holds the table name of the processsnapshot in the database.
 	Table = "process_snapshots"
 )
@@ -27,6 +29,7 @@ var Columns = []string{
 	FieldProcessID,
 	FieldSnapshot,
 	FieldFramesOfInterest,
+	FieldFlightRecorderData,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "process_snapshots"

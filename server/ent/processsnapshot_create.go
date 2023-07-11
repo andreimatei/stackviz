@@ -45,6 +45,12 @@ func (psc *ProcessSnapshotCreate) SetNillableFramesOfInterest(s *string) *Proces
 	return psc
 }
 
+// SetFlightRecorderData sets the "flight_recorder_data" field.
+func (psc *ProcessSnapshotCreate) SetFlightRecorderData(m map[string][]string) *ProcessSnapshotCreate {
+	psc.mutation.SetFlightRecorderData(m)
+	return psc
+}
+
 // Mutation returns the ProcessSnapshotMutation object of the builder.
 func (psc *ProcessSnapshotCreate) Mutation() *ProcessSnapshotMutation {
 	return psc.mutation
@@ -122,6 +128,10 @@ func (psc *ProcessSnapshotCreate) createSpec() (*ProcessSnapshot, *sqlgraph.Crea
 	if value, ok := psc.mutation.FramesOfInterest(); ok {
 		_spec.SetField(processsnapshot.FieldFramesOfInterest, field.TypeString, value)
 		_node.FramesOfInterest = value
+	}
+	if value, ok := psc.mutation.FlightRecorderData(); ok {
+		_spec.SetField(processsnapshot.FieldFlightRecorderData, field.TypeJSON, value)
+		_node.FlightRecorderData = value
 	}
 	return _node, _spec
 }

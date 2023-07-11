@@ -9,7 +9,7 @@ import {
   GetGoroutinesGQL,
   GetTreeGQL,
   ProcessSnapshot,
-  RemoveExprFromCollectSpecGQL
+  RemoveExprFromCollectSpecGQL, SyncFlightRecorderGQL
 } from "../../graphql/graphql-codegen-generated";
 import { Router, RouterLink } from "@angular/router";
 import { MatDrawer, MatSidenavModule } from "@angular/material/sidenav";
@@ -169,6 +169,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     private readonly removeExpr: RemoveExprFromCollectSpecGQL,
     private readonly frameSpecsQuery: GetFrameSpecsGQL,
     private readonly addFlightRecorderEventSpecQuery: AddFlightRecorderEventToCollectSpecGQL,
+    private readonly syncFlightRecorderQuery: SyncFlightRecorderGQL,
     private readonly router: Router,
   ) {
   }
@@ -239,8 +240,22 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       map(res => JSON.parse(res.data.getTree))
     );
     this.stacks.data$ = this.goroutinesQuery.valueChanges.pipe(
+      tap(res => {
+        console.log("loading flight recorder data:",
+          typeof res.data.goroutines.FlightRecorderData,
+          res.data.goroutines.FlightRecorderData,
+          );
+
+        const u = res.data.goroutines.FlightRecorderData;
+        const m = new Map(Object.entries(u));
+        console.log("m:", m);
+        console.log("u:", u);
+        console.log("m:", m.get('2312'));
+
+      }),
       map(res => res.data.goroutines)
     );
+
 
     // TODO(andrei): update the sidebar in response to snapshotID changes
   }
@@ -273,6 +288,7 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     if (ev.deleted) {
       // !!! TODO
     } else {
+      console.log("adding flight recorder event:, frame:", ev, this.selectedFrame!.name);
       let key = ev.key == goroutineIDKey ? "goroutine_id" : ev.key;
       this.addFlightRecorderEventSpecQuery
         .mutate({
@@ -287,6 +303,15 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
               value.data?.addFlightRecorderEventToFrameSpec.flightRecorderEvents)
         })
     }
+  }
+
+  syncFlightRecorder() {
+    console.log("syncing flight recorder");
+    this.syncFlightRecorderQuery.mutate({collectSpecID: this.collectSpecID}).subscribe({
+      next: value => {
+        console.log("sync done");
+      }
+    });
   }
 
   public style: object = {

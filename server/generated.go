@@ -40,7 +40,9 @@ type Config struct {
 
 type ResolverRoot interface {
 	Mutation() MutationResolver
+	ProcessSnapshot() ProcessSnapshotResolver
 	Query() QueryResolver
+	CreateProcessSnapshotInput() CreateProcessSnapshotInputResolver
 }
 
 type DirectiveRoot struct {
@@ -107,9 +109,10 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddExprToCollectSpec                     func(childComplexity int, frame string, expr string) int
 		AddFlightRecorderEventToFrameSpec        func(childComplexity int, collectSpecID int, frame string, expr string, keyExpr string) int
-		CollectCollection                        func(childComplexity int) int
+		CollectServiceSnapshots                  func(childComplexity int) int
 		RemoveExprFromCollectSpec                func(childComplexity int, expr string, frame string) int
 		RemoveFlightRecorderEventFromCollectSpec func(childComplexity int, frame string, expr string, keyExpr string) int
+		SyncFlightRecorder                       func(childComplexity int, collectSpecID int) int
 	}
 
 	PageInfo struct {
@@ -120,10 +123,11 @@ type ComplexityRoot struct {
 	}
 
 	ProcessSnapshot struct {
-		FramesOfInterest func(childComplexity int) int
-		ID               func(childComplexity int) int
-		ProcessID        func(childComplexity int) int
-		Snapshot         func(childComplexity int) int
+		FlightRecorderData func(childComplexity int) int
+		FramesOfInterest   func(childComplexity int) int
+		ID                 func(childComplexity int) int
+		ProcessID          func(childComplexity int) int
+		Snapshot           func(childComplexity int) int
 	}
 
 	Query struct {
@@ -143,8 +147,9 @@ type ComplexityRoot struct {
 	}
 
 	SnapshotInfo struct {
-		Aggregated func(childComplexity int) int
-		Raw        func(childComplexity int) int
+		Aggregated         func(childComplexity int) int
+		FlightRecorderData func(childComplexity int) int
+		Raw                func(childComplexity int) int
 	}
 
 	TypeInfo struct {
@@ -167,11 +172,15 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CollectCollection(ctx context.Context) (*ent.Collection, error)
+	CollectServiceSnapshots(ctx context.Context) (*ent.Collection, error)
 	AddExprToCollectSpec(ctx context.Context, frame string, expr string) (*ent.CollectSpec, error)
 	RemoveExprFromCollectSpec(ctx context.Context, expr string, frame string) (*ent.CollectSpec, error)
 	AddFlightRecorderEventToFrameSpec(ctx context.Context, collectSpecID int, frame string, expr string, keyExpr string) (*ent.FrameSpec, error)
 	RemoveFlightRecorderEventFromCollectSpec(ctx context.Context, frame string, expr string, keyExpr string) (*ent.CollectSpec, error)
+	SyncFlightRecorder(ctx context.Context, collectSpecID int) (*bool, error)
+}
+type ProcessSnapshotResolver interface {
+	FlightRecorderData(ctx context.Context, obj *ent.ProcessSnapshot) (map[string]interface{}, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id int) (ent.Noder, error)
@@ -187,6 +196,10 @@ type QueryResolver interface {
 	TypeInfo(ctx context.Context, name string) (*graph.TypeInfo, error)
 	GetTree(ctx context.Context, colID int, snapID int, gID *int, filter *string) (string, error)
 	FrameSpecsWhere(ctx context.Context, where *ent.FrameSpecWhereInput) ([]ent.FrameSpec, error)
+}
+
+type CreateProcessSnapshotInputResolver interface {
+	FlightRecorderData(ctx context.Context, obj *ent.CreateProcessSnapshotInput, data map[string]interface{}) error
 }
 
 type executableSchema struct {
@@ -438,12 +451,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddFlightRecorderEventToFrameSpec(childComplexity, args["collectSpecID"].(int), args["frame"].(string), args["expr"].(string), args["keyExpr"].(string)), true
 
-	case "Mutation.collectCollection":
-		if e.complexity.Mutation.CollectCollection == nil {
+	case "Mutation.collectServiceSnapshots":
+		if e.complexity.Mutation.CollectServiceSnapshots == nil {
 			break
 		}
 
-		return e.complexity.Mutation.CollectCollection(childComplexity), true
+		return e.complexity.Mutation.CollectServiceSnapshots(childComplexity), true
 
 	case "Mutation.removeExprFromCollectSpec":
 		if e.complexity.Mutation.RemoveExprFromCollectSpec == nil {
@@ -468,6 +481,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveFlightRecorderEventFromCollectSpec(childComplexity, args["frame"].(string), args["expr"].(string), args["keyExpr"].(string)), true
+
+	case "Mutation.syncFlightRecorder":
+		if e.complexity.Mutation.SyncFlightRecorder == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_syncFlightRecorder_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SyncFlightRecorder(childComplexity, args["collectSpecID"].(int)), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -496,6 +521,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
+
+	case "ProcessSnapshot.flightRecorderData":
+		if e.complexity.ProcessSnapshot.FlightRecorderData == nil {
+			break
+		}
+
+		return e.complexity.ProcessSnapshot.FlightRecorderData(childComplexity), true
 
 	case "ProcessSnapshot.framesOfInterest":
 		if e.complexity.ProcessSnapshot.FramesOfInterest == nil {
@@ -662,6 +694,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SnapshotInfo.Aggregated(childComplexity), true
+
+	case "SnapshotInfo.FlightRecorderData":
+		if e.complexity.SnapshotInfo.FlightRecorderData == nil {
+			break
+		}
+
+		return e.complexity.SnapshotInfo.FlightRecorderData(childComplexity), true
 
 	case "SnapshotInfo.Raw":
 		if e.complexity.SnapshotInfo.Raw == nil {
@@ -949,6 +988,21 @@ func (ec *executionContext) field_Mutation_removeFlightRecorderEventFromCollectS
 		}
 	}
 	args["keyExpr"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_syncFlightRecorder_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["collectSpecID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collectSpecID"))
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["collectSpecID"] = arg0
 	return args, nil
 }
 
@@ -1603,6 +1657,8 @@ func (ec *executionContext) fieldContext_Collection_processSnapshots(ctx context
 				return ec.fieldContext_ProcessSnapshot_snapshot(ctx, field)
 			case "framesOfInterest":
 				return ec.fieldContext_ProcessSnapshot_framesOfInterest(ctx, field)
+			case "flightRecorderData":
+				return ec.fieldContext_ProcessSnapshot_flightRecorderData(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProcessSnapshot", field.Name)
 		},
@@ -2572,8 +2628,8 @@ func (ec *executionContext) fieldContext_Link_FrameIdx(ctx context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_collectCollection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_collectCollection(ctx, field)
+func (ec *executionContext) _Mutation_collectServiceSnapshots(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_collectServiceSnapshots(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2586,7 +2642,7 @@ func (ec *executionContext) _Mutation_collectCollection(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CollectCollection(rctx)
+		return ec.resolvers.Mutation().CollectServiceSnapshots(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2600,7 +2656,7 @@ func (ec *executionContext) _Mutation_collectCollection(ctx context.Context, fie
 	return ec.marshalOCollection2ᚖstacksvizᚋentᚐCollection(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_collectCollection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_collectServiceSnapshots(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -2869,6 +2925,58 @@ func (ec *executionContext) fieldContext_Mutation_removeFlightRecorderEventFromC
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeFlightRecorderEventFromCollectSpec_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_syncFlightRecorder(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_syncFlightRecorder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SyncFlightRecorder(rctx, fc.Args["collectSpecID"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_syncFlightRecorder(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_syncFlightRecorder_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -3218,6 +3326,47 @@ func (ec *executionContext) fieldContext_ProcessSnapshot_framesOfInterest(ctx co
 	return fc, nil
 }
 
+func (ec *executionContext) _ProcessSnapshot_flightRecorderData(ctx context.Context, field graphql.CollectedField, obj *ent.ProcessSnapshot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProcessSnapshot_flightRecorderData(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProcessSnapshot().FlightRecorderData(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProcessSnapshot_flightRecorderData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProcessSnapshot",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_node(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_node(ctx, field)
 	if err != nil {
@@ -3534,6 +3683,8 @@ func (ec *executionContext) fieldContext_Query_processSnapshots(ctx context.Cont
 				return ec.fieldContext_ProcessSnapshot_snapshot(ctx, field)
 			case "framesOfInterest":
 				return ec.fieldContext_ProcessSnapshot_framesOfInterest(ctx, field)
+			case "flightRecorderData":
+				return ec.fieldContext_ProcessSnapshot_flightRecorderData(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProcessSnapshot", field.Name)
 		},
@@ -3646,6 +3797,8 @@ func (ec *executionContext) fieldContext_Query_goroutines(ctx context.Context, f
 				return ec.fieldContext_SnapshotInfo_Raw(ctx, field)
 			case "Aggregated":
 				return ec.fieldContext_SnapshotInfo_Aggregated(ctx, field)
+			case "FlightRecorderData":
+				return ec.fieldContext_SnapshotInfo_FlightRecorderData(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SnapshotInfo", field.Name)
 		},
@@ -4190,6 +4343,47 @@ func (ec *executionContext) fieldContext_SnapshotInfo_Aggregated(ctx context.Con
 				return ec.fieldContext_GoroutinesGroup_Vars(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GoroutinesGroup", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SnapshotInfo_FlightRecorderData(ctx context.Context, field graphql.CollectedField, obj *graph.SnapshotInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SnapshotInfo_FlightRecorderData(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FlightRecorderData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SnapshotInfo_FlightRecorderData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SnapshotInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
 		},
 	}
 	return fc, nil
@@ -6989,7 +7183,7 @@ func (ec *executionContext) unmarshalInputCreateProcessSnapshotInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"processID", "snapshot", "framesOfInterest"}
+	fieldsInOrder := [...]string{"processID", "snapshot", "framesOfInterest", "flightRecorderData"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -7023,6 +7217,17 @@ func (ec *executionContext) unmarshalInputCreateProcessSnapshotInput(ctx context
 				return it, err
 			}
 			it.FramesOfInterest = data
+		case "flightRecorderData":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("flightRecorderData"))
+			data, err := ec.unmarshalOMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.CreateProcessSnapshotInput().FlightRecorderData(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -8295,10 +8500,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
-		case "collectCollection":
+		case "collectServiceSnapshots":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_collectCollection(ctx, field)
+				return ec._Mutation_collectServiceSnapshots(ctx, field)
 			})
 
 		case "addExprToCollectSpec":
@@ -8337,6 +8542,12 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "syncFlightRecorder":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_syncFlightRecorder(ctx, field)
+			})
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8406,26 +8617,43 @@ func (ec *executionContext) _ProcessSnapshot(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ProcessSnapshot_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "processID":
 
 			out.Values[i] = ec._ProcessSnapshot_processID(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "snapshot":
 
 			out.Values[i] = ec._ProcessSnapshot_snapshot(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "framesOfInterest":
 
 			out.Values[i] = ec._ProcessSnapshot_framesOfInterest(ctx, field, obj)
 
+		case "flightRecorderData":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProcessSnapshot_flightRecorderData(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8796,6 +9024,10 @@ func (ec *executionContext) _SnapshotInfo(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "FlightRecorderData":
+
+			out.Values[i] = ec._SnapshotInfo_FlightRecorderData(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10647,6 +10879,22 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 		return graphql.Null
 	}
 	res := graphql.MarshalInt(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOMap2map(ctx context.Context, v interface{}) (map[string]interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalMap(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]interface{}) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalMap(v)
 	return res
 }
 

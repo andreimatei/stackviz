@@ -84,6 +84,9 @@
         Collection <a routerLink="/collections"> {{ collectionName }} </a>
         <br>
         Snapshot ID: {{snapshotID}}
+        <button (click)="syncFlightRecorder()">
+          Sync flight recorder
+        </button>
       </p>
       <mat-form-field>
         <mat-label>Snapshots</mat-label>

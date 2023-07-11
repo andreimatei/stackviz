@@ -290,6 +290,11 @@ func (ps *ProcessSnapshotQuery) collectField(ctx context.Context, opCtx *graphql
 				selectedFields = append(selectedFields, processsnapshot.FieldFramesOfInterest)
 				fieldSeen[processsnapshot.FieldFramesOfInterest] = struct{}{}
 			}
+		case "flightRecorderData":
+			if _, ok := fieldSeen[processsnapshot.FieldFlightRecorderData]; !ok {
+				selectedFields = append(selectedFields, processsnapshot.FieldFlightRecorderData)
+				fieldSeen[processsnapshot.FieldFlightRecorderData] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:

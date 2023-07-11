@@ -59,6 +59,18 @@ func (psu *ProcessSnapshotUpdate) ClearFramesOfInterest() *ProcessSnapshotUpdate
 	return psu
 }
 
+// SetFlightRecorderData sets the "flight_recorder_data" field.
+func (psu *ProcessSnapshotUpdate) SetFlightRecorderData(m map[string][]string) *ProcessSnapshotUpdate {
+	psu.mutation.SetFlightRecorderData(m)
+	return psu
+}
+
+// ClearFlightRecorderData clears the value of the "flight_recorder_data" field.
+func (psu *ProcessSnapshotUpdate) ClearFlightRecorderData() *ProcessSnapshotUpdate {
+	psu.mutation.ClearFlightRecorderData()
+	return psu
+}
+
 // Mutation returns the ProcessSnapshotMutation object of the builder.
 func (psu *ProcessSnapshotUpdate) Mutation() *ProcessSnapshotMutation {
 	return psu.mutation
@@ -112,6 +124,12 @@ func (psu *ProcessSnapshotUpdate) sqlSave(ctx context.Context) (n int, err error
 	if psu.mutation.FramesOfInterestCleared() {
 		_spec.ClearField(processsnapshot.FieldFramesOfInterest, field.TypeString)
 	}
+	if value, ok := psu.mutation.FlightRecorderData(); ok {
+		_spec.SetField(processsnapshot.FieldFlightRecorderData, field.TypeJSON, value)
+	}
+	if psu.mutation.FlightRecorderDataCleared() {
+		_spec.ClearField(processsnapshot.FieldFlightRecorderData, field.TypeJSON)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, psu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{processsnapshot.Label}
@@ -161,6 +179,18 @@ func (psuo *ProcessSnapshotUpdateOne) SetNillableFramesOfInterest(s *string) *Pr
 // ClearFramesOfInterest clears the value of the "frames_of_interest" field.
 func (psuo *ProcessSnapshotUpdateOne) ClearFramesOfInterest() *ProcessSnapshotUpdateOne {
 	psuo.mutation.ClearFramesOfInterest()
+	return psuo
+}
+
+// SetFlightRecorderData sets the "flight_recorder_data" field.
+func (psuo *ProcessSnapshotUpdateOne) SetFlightRecorderData(m map[string][]string) *ProcessSnapshotUpdateOne {
+	psuo.mutation.SetFlightRecorderData(m)
+	return psuo
+}
+
+// ClearFlightRecorderData clears the value of the "flight_recorder_data" field.
+func (psuo *ProcessSnapshotUpdateOne) ClearFlightRecorderData() *ProcessSnapshotUpdateOne {
+	psuo.mutation.ClearFlightRecorderData()
 	return psuo
 }
 
@@ -246,6 +276,12 @@ func (psuo *ProcessSnapshotUpdateOne) sqlSave(ctx context.Context) (_node *Proce
 	}
 	if psuo.mutation.FramesOfInterestCleared() {
 		_spec.ClearField(processsnapshot.FieldFramesOfInterest, field.TypeString)
+	}
+	if value, ok := psuo.mutation.FlightRecorderData(); ok {
+		_spec.SetField(processsnapshot.FieldFlightRecorderData, field.TypeJSON, value)
+	}
+	if psuo.mutation.FlightRecorderDataCleared() {
+		_spec.ClearField(processsnapshot.FieldFlightRecorderData, field.TypeJSON)
 	}
 	_node = &ProcessSnapshot{config: psuo.config}
 	_spec.Assign = _node.assignValues

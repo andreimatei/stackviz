@@ -9,7 +9,7 @@ import (
 )
 
 type Config struct {
-	// Map from process name to URL.
+	// Map from service name to map from process name to URL.
 	Targets map[string]map[string]string `yaml:"targets"`
 }
 

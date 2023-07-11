@@ -111,6 +111,7 @@ input CreateProcessSnapshotInput {
   processID: String!
   snapshot: String!
   framesOfInterest: String
+  flightRecorderData: Map
 }
 """
 Define a Relay Cursor type:
@@ -167,6 +168,8 @@ input FrameSpecWhereInput {
   hasParentCollection: Boolean
   hasParentCollectionWith: [CollectSpecWhereInput!]
 }
+"""The builtin Map type"""
+scalar Map
 """
 An object with an ID.
 Follows the [Relay Global Object Identification Specification](https://relay.dev/graphql/objectidentification.htm)
@@ -201,6 +204,7 @@ type ProcessSnapshot implements Node {
   processID: String!
   snapshot: String!
   framesOfInterest: String
+  flightRecorderData: Map
 }
 """
 ProcessSnapshotWhereInput is used for filtering ProcessSnapshot objects.

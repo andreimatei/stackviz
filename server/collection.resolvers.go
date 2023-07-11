@@ -21,10 +21,9 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// CollectCollection is the resolver for the collectCollection field.
-func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collection, error) {
+// CollectServiceSnapshots is the resolver for the collectServiceSnapshots field.
+func (r *mutationResolver) CollectServiceSnapshots(ctx context.Context) (*ent.Collection, error) {
 	dbClient := ent.FromContext(ctx)
-	i := 0
 	psIDs := make([]int, 0, len(r.conf.Targets))
 
 	// Read the name of the first (and only) service.
@@ -32,22 +31,13 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 		return nil, fmt.Errorf("expected exactly one service")
 	}
 
-	var svcName string
-	for serviceName, _ := range r.conf.Targets {
-		// TODO(andrei): deal with multiple services
-		svcName = serviceName
-	}
-
-	var g errgroup.Group
 	spec := getOrCreateCollectSpec(ctx, dbClient)
-	for processName, url := range r.conf.Targets[svcName] {
-		i++
-		processName := processName
-		url := url
+	var g errgroup.Group
+	for i, target := range r.getTargets() {
+		target := target
 		g.Go(func() error {
-			log.Printf("collecting snapshot from process %d: %s-%s - %s", i, svcName, processName, url)
-			// !!! snap, err := r.getSnapshotFromPprof(url)
-			snap, err := r.getSnapshotFromDelveAgent(ctx, url, spec)
+			log.Printf("collecting snapshot from process %d: %s - %s", i, target.processName, target.URL)
+			snap, err := r.getSnapshotFromDelveAgent(ctx, target.URL, spec)
 			if err != nil {
 				return err
 			}
@@ -61,10 +51,12 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 				framesOfInterest = string(b)
 			}
 
-			log.Printf("!!! creating snapshot with frames of interest: %s", framesOfInterest)
+			log.Printf("!!! creating snapshot with %d stacks\nframes of interest: %s\nflight recorder data: %v",
+				len(snap.Stacks), framesOfInterest, snap.FlightRecorderData)
 			input := ent.CreateProcessSnapshotInput{
-				ProcessID: processName,
-				Snapshot:  snapToString(snap),
+				ProcessID:          target.processName,
+				Snapshot:           stacksToString(snap),
+				FlightRecorderData: snap.FlightRecorderData,
 			}
 			if framesOfInterest != "" {
 				input.FramesOfInterest = &framesOfInterest
@@ -83,7 +75,7 @@ func (r *mutationResolver) CollectCollection(ctx context.Context) (*ent.Collecti
 
 	const timeFormat = "Monday, 02-Jan-06 15:04:05 MST"
 	return dbClient.Collection.Create().
-		SetName(fmt.Sprintf("%s - %s", svcName, time.Now().Format(timeFormat))).
+		SetName(fmt.Sprintf("%s - %s", r.getTargets()[0].serviceName, time.Now().Format(timeFormat))).
 		SetCollectSpec(spec.ID).
 		AddProcessSnapshotIDs(psIDs...).
 		Save(ctx)
@@ -149,17 +141,21 @@ func (r *mutationResolver) RemoveExprFromCollectSpec(ctx context.Context, expr s
 
 // AddFlightRecorderEventToFrameSpec is the resolver for the addFlightRecorderEventToFrameSpec field.
 func (r *mutationResolver) AddFlightRecorderEventToFrameSpec(ctx context.Context, collectSpecID int, frame string, expr string, keyExpr string) (*ent.FrameSpec, error) {
+	log.Printf("!!! AddFlightRecorderEventToFrameSpec resolver: %s - %s (%s)", frame, expr, keyExpr)
 	dbClient := ent.FromContext(ctx)
-	ev := FlightRecorderEventSpec{
-		Expr:    expr,
-		KeyExpr: keyExpr,
+	ev := FlightRecorderEventSpecFull{
+		Frame: frame,
+		FlightRecorderEventSpec: FlightRecorderEventSpec{
+			Expr:    expr,
+			KeyExpr: keyExpr,
+		},
 	}
 	data, err := json.Marshal(ev)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create of update the frame info.
+	// Create or update the frame info.
 	frameSpec, err := dbClient.FrameSpec.Query().Where(
 		framespec.CollectSpecID(collectSpecID), framespec.Frame(frame),
 	).Only(ctx)
@@ -188,34 +184,11 @@ func (r *mutationResolver) AddFlightRecorderEventToFrameSpec(ctx context.Context
 	frameSpec.Update().SetFlightRecorderEvents(append(frameSpec.FlightRecorderEvents, string(data))).SaveX(ctx)
 	log.Printf("!!! events for %s are now: %s", frameSpec.Frame, frameSpec.FlightRecorderEvents)
 
-	fs := dbClient.FrameSpec.Query().AllX(ctx)
-	var evSpecs []FlightRecorderEventSpecFull
-	for _, frameSpec := range fs {
-		for _, evSpec := range frameSpec.FlightRecorderEvents {
-			var ev FlightRecorderEventSpecFull
-			err := json.Unmarshal([]byte(evSpec), &ev)
-			if err != nil {
-				return nil, err
-			}
-			evSpecs = append(evSpecs, ev)
-		}
+	_, err = r.SyncFlightRecorder(ctx, collectSpecID)
+	if err != nil {
+		return nil, err
 	}
 
-	var svcName string
-	for serviceName, _ := range r.conf.Targets {
-		// TODO(andrei): deal with multiple services
-		svcName = serviceName
-	}
-	for processName, url := range r.conf.Targets[svcName] {
-		processName := processName
-		url := url
-		log.Printf("reconciling breakpoints for process %s-%s - %s", svcName, processName, url)
-		err := reconcileFlightRecorder(ctx, url, evSpecs)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("!!! delve agent returned")
-	}
 	return frameSpec, nil
 }
 
@@ -246,6 +219,37 @@ func (r *mutationResolver) RemoveFlightRecorderEventFromCollectSpec(ctx context.
 	return collectSpec, nil
 }
 
+// SyncFlightRecorder is the resolver for the syncFlightRecorder field.
+func (r *mutationResolver) SyncFlightRecorder(ctx context.Context, collectSpecID int) (*bool, error) {
+	log.Printf("!!! SyncFlightRecorder resolver")
+	dbClient := ent.FromContext(ctx)
+	colSpec := dbClient.CollectSpec.GetX(ctx, collectSpecID)
+	frames, err := colSpec.Frames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var evSpecs []FlightRecorderEventSpecFull
+	for _, frameSpec := range frames {
+		for _, evSpec := range frameSpec.FlightRecorderEvents {
+			var ev FlightRecorderEventSpecFull
+			err := json.Unmarshal([]byte(evSpec), &ev)
+			if err != nil {
+				return nil, err
+			}
+			evSpecs = append(evSpecs, ev)
+		}
+	}
+
+	for _, target := range r.getTargets() {
+		log.Printf("reconciling breakpoints for process %s - %s", target.processName, target.URL)
+		err := reconcileFlightRecorder(ctx, target.URL, evSpecs)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
 // CollectionByID is the resolver for the collectionByID field.
 func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collection, error) {
 	log.Printf("!!! querying collection by ID: %d", id)
@@ -259,15 +263,15 @@ func (r *queryResolver) CollectionByID(ctx context.Context, id int) (*ent.Collec
 // Goroutines is the resolver for the goroutines field.
 func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, gID *int, filter *string) (*graph.SnapshotInfo, error) {
 	log.Printf("!!! Goroutines resolver")
-	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
+	snap, err := r.loadSnapshot(ctx, colID, snapID)
 	if err != nil {
 		return nil, err
 	}
-	snap = filterStacks(snap, gID, filter)
-	agg := snap.Aggregate(pp.AnyValue)
+	snap.stacks = filterStacks(snap.stacks, gID, filter)
+	agg := snap.stacks.Aggregate(pp.AnyValue)
 
-	gMap := make(map[int]graph.GoroutineInfo, len(snap.Goroutines))
-	for _, g := range snap.Goroutines {
+	gMap := make(map[int]graph.GoroutineInfo, len(snap.stacks.Goroutines))
+	for _, g := range snap.stacks.Goroutines {
 		frames := make([]graph.FrameInfo, len(g.Stack.Calls))
 		for j, c := range g.Stack.Calls {
 			frames[j] = graph.FrameInfo{
@@ -279,16 +283,8 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 
 		// Flatten all the collected variables, across all the frames.
 		var flatVars []graph.CollectedVar
-		for _, frames := range fois[g.ID] {
+		for _, frames := range snap.framesOfInterest[g.ID] {
 			flatVars = append(flatVars, frames.Vars...)
-			// !!!
-			//for _, v := range frames.Vars {
-			//	flatVars = append(flatVars, graph.CollectedVar{
-			//		Expr:  v.Expr,
-			//		Value: v.Value,
-			//		Links: stacks.LinksExcludingSelf(v.Links, g.ID),
-			//	})
-			//}
 		}
 		gMap[g.ID] = graph.GoroutineInfo{
 			ID:     g.ID,
@@ -296,20 +292,6 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 			Vars:   flatVars,
 		}
 	}
-
-	// !!!
-	//if gID != nil {
-	//	log.Printf("!!! filtering for goroutine: %d", *gID)
-	//	if gi := gMap[*gID]; gi != nil {
-	//		return &SnapshotInfo{
-	//			Raw:        []*GoroutineInfo{gi},
-	//			Aggregated: nil,
-	//		}, nil
-	//	}
-	//	return nil, nil
-	//} else {
-	//	log.Printf("!!! not filtering for a specific goroutine")
-	//}
 
 	allGs := make([]graph.GoroutineInfo, 0, len(gMap))
 	for _, gi := range gMap {
@@ -338,29 +320,21 @@ func (r *queryResolver) Goroutines(ctx context.Context, colID int, snapID int, g
 		}
 	}
 
+	frDataUntyped := make(map[string]any, len(snap.flightRecorderData))
+	for k, v := range snap.flightRecorderData {
+		frDataUntyped[k] = v
+	}
 	si := &graph.SnapshotInfo{
-		Raw:        allGs,
-		Aggregated: groups,
+		Raw:                allGs,
+		Aggregated:         groups,
+		FlightRecorderData: frDataUntyped,
 	}
 	return si, nil
 }
 
 // AvailableVars is the resolver for the availableVars field.
 func (r *queryResolver) AvailableVars(ctx context.Context, funcArg string, pcOff int) (*graph.VarsAndTypes, error) {
-	log.Printf("!!! AvailableVars resolver")
-	var svcName string
-	for serviceName, _ := range r.conf.Targets {
-		// TODO(andrei): deal with multiple services
-		svcName = serviceName
-	}
-
-	var agentURL string
-	for _, url := range r.conf.Targets[svcName] {
-		agentURL = url
-		break
-	}
-
-	log.Printf("!!! calling AvailableVars on Delve agent")
+	agentURL := r.getTargets()[0].URL
 	vars, types, err := r.getAvailableVarsFromDelveAgent(agentURL, funcArg, int64(pcOff))
 	if err != nil {
 		return nil, err
@@ -419,19 +393,7 @@ func (r *queryResolver) CollectSpec(ctx context.Context) (*ent.CollectSpec, erro
 
 // TypeInfo is the resolver for the typeInfo field.
 func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*graph.TypeInfo, error) {
-	log.Printf("!!! TypeInfo resolver")
-	var svcName string
-	for serviceName, _ := range r.conf.Targets {
-		// TODO(andrei): deal with multiple services
-		svcName = serviceName
-	}
-
-	var agentURL string
-	for _, url := range r.conf.Targets[svcName] {
-		agentURL = url
-		break
-	}
-
+	agentURL := r.getTargets()[0].URL
 	fields, err := r.getTypeInfoFromDelveAgent(agentURL, name)
 	if err != nil {
 		return nil, err
@@ -446,27 +408,23 @@ func (r *queryResolver) TypeInfo(ctx context.Context, name string) (*graph.TypeI
 // GetTree is the resolver for the getTree field.
 func (r *queryResolver) GetTree(ctx context.Context, colID int, snapID int, gID *int, filter *string) (string, error) {
 	log.Printf("!!! GetTree resolver")
-	snap, fois, err := r.stacksFetcher.Fetch(ctx, colID, snapID)
+	snap, err := r.loadSnapshot(ctx, colID, snapID)
 	if err != nil {
 		return "", err
 	}
-	snap = filterStacks(snap, gID, filter)
-	tree := stacks.BuildTree(snap, fois)
+	stacksSnap := filterStacks(snap.stacks, gID, filter)
+	tree := stacks.BuildTree(stacksSnap, snap.framesOfInterest)
 	return tree.ToJSON(), nil
 }
 
 // FrameSpecsWhere is the resolver for the frameSpecsWhere field.
 func (r *queryResolver) FrameSpecsWhere(ctx context.Context, where *ent.FrameSpecWhereInput) ([]ent.FrameSpec, error) {
-	log.Printf("!!! FrameSpecsWhere: %+v", where)
 	dbClient := r.dbClient
 	pred, err := where.P()
 	if err != nil {
 		return nil, err
 	}
 	rows := dbClient.FrameSpec.Query().Where(pred).AllX(ctx)
-	//if err != nil {
-	//	return nil, err
-	//}
 	return flatten(rows), nil
 }
 
