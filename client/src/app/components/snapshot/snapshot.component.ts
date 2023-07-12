@@ -127,10 +127,15 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
   protected filterDebounced$ = this.filter$.pipe(
     debounceTime(400),
     distinctUntilChanged(),
-    tap(val => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('filter', val);
-      window.history.replaceState(null, "", url);
+    // Navigate to apply the new filter value.
+    tap(filterVal => {
+      this.router.navigate(
+        ['/collections', this.collectionID, 'snap',this.snapshotID],
+        {
+          queryParams:{filter: filterVal},
+          replaceUrl: true,
+        }
+      )
     })
   );
   protected filterVal?: string;
