@@ -73,11 +73,8 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
 })
 export class StacksComponent {
   @Input({required: true}) colID!: number;
-  // !!! @Input({required: true}) snapID: number | null = null;
 
   protected goroutines?: GoroutineInfo[];
-  // !!! protected goroutineGroups?: GoroutinesGroup[];
-
   protected goroutineGroups?: groupInfo[];
 
   @Input() set data$(val$: Observable<SnapshotInfo>) {
@@ -98,20 +95,6 @@ export class StacksComponent {
         this.goroutines = [];
         setTimeout(() => {
           this.goroutines = si.Raw;
-          // !!!
-          // this.goroutines = si.Raw.map(
-          //   g => {
-          //     let gData: string[] | undefined;
-          //     if (si.FlightRecorderData) {
-          //       gData = si.FlightRecorderData[g.ID.toString()];
-          //     }
-          //     const flightRecorderData = new Map(Object.entries(si.FlightRecorderData));
-          //     return {
-          //       goroutineInfo: g,
-          //       flightRecorderData: gData,
-          //     };
-          //   }
-          // );
         }, 0);
       }
     )
