@@ -92,7 +92,6 @@ export class StacksComponent {
             vars: group.Data.reduce((prev, v) => prev.concat(v.Vars), [] as CollectedVar[])
           })
         )
-        si.Aggregated[0].Frames
         // Updating all the tables can take a few seconds, so in order to make
         // the user experience better, we first clear them, and only then create
         // the new ones.

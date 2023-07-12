@@ -74,7 +74,7 @@ export class FlamegraphComponent implements AfterViewInit {
       .onClick(this.onClick)
       .onCtrlClick(this.onCtrlClick.bind(this))
       // !!! .differential(false)
-      .selfValue(false);
+      .selfValue(false);  // a node's value includes the values of its children
     console.log("!!! height", this.flameGraph.height());
   }
 

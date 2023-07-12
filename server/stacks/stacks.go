@@ -117,15 +117,12 @@ type TreeNode struct {
 	// Goroutine ID to list of variables captured in that goroutine.
 	Vars     map[int][]graph.CollectedVar
 	children []TreeNode
-	// NumLeafGoroutines counts how many goroutines have this node as their leaf
-	// function. This results in the "self magnitude" of the node when rendered
-	// as a flame graph - i.e. how much weight it needs to have in addition to
-	// the sum of the children's weights.
-	NumLeafGoroutines int
-	NumGoroutines     int
+	// NumGoroutines is the number of goroutines that have this function on their
+	// stack. It's 1 plus the sum of the NumGoroutines of the children.
+	NumGoroutines int
 }
 
-func (t *TreeNode) prettyPrint() {
+func (t *TreeNode) PrettyPrint() {
 	t.prettyPrintInner(0)
 }
 
@@ -134,7 +131,7 @@ func (t *TreeNode) prettyPrintInner(indent int) {
 	for i := 0; i < indent; i++ {
 		sb.WriteRune('\t')
 	}
-	fmt.Printf("%s(%d) %s (%s:%d)\n", sb.String(), t.NumLeafGoroutines, t.Function.Complete, t.File, t.Line)
+	fmt.Printf("%s(%d) %s (%s:%d)\n", sb.String(), t.NumGoroutines, t.Function.Complete, t.File, t.Line)
 	for i := range t.children {
 		t.children[i].prettyPrintInner(indent + 1)
 	}
@@ -155,12 +152,11 @@ func (t *TreeNode) findChild(file string, line int) *TreeNode {
 // addStack adds the stack to the tree rooted at t, creating new nodes for calls
 // that don't yet exist.
 func (t *TreeNode) addStack(gid int, stack []Frame) {
-	t.NumGoroutines++
 	if len(stack) == 0 {
 		// t is a leaf for the stack that we just finished processing.
-		t.NumLeafGoroutines++
 		return
 	}
+	t.NumGoroutines++
 	child := t.findChild(stack[0].call.RemoteSrcPath, stack[0].call.Line)
 	if child != nil {
 		if len(stack[0].vars) > 0 {
@@ -175,10 +171,8 @@ func (t *TreeNode) addStack(gid int, stack []Frame) {
 // createPath adds children to t recursively such that the tree gets the path
 // t -> stack[0] -> stack[1] -> ...
 func (t *TreeNode) createPath(gid int, stack []Frame) {
-	t.NumGoroutines++
 	if len(stack) == 0 {
 		// The stack had t as a leaf function.
-		t.NumLeafGoroutines++
 		return
 	}
 	call := &stack[0].call
@@ -187,13 +181,13 @@ func (t *TreeNode) createPath(gid int, stack []Frame) {
 		vars[gid] = stack[0].vars
 	}
 	t.children = append(t.children, TreeNode{
-		Function:          call.Func,
-		File:              call.RemoteSrcPath,
-		Line:              call.Line,
-		PcOffset:          call.PCOffset,
-		children:          nil,
-		NumLeafGoroutines: 0,
-		Vars:              vars,
+		Function:      call.Func,
+		File:          call.RemoteSrcPath,
+		Line:          call.Line,
+		PcOffset:      call.PCOffset,
+		children:      nil,
+		NumGoroutines: 1,
+		Vars:          vars,
 	})
 	t.children[len(t.children)-1].createPath(gid, stack[1:])
 }

@@ -32,6 +32,7 @@ import { MatChipListbox, MatChipsModule } from "@angular/material/chips";
           <a
             [routerLink]="['/collections', collectionID, 'snap', snapshotID]"
             [queryParams]="{filter: 'gid=' + goroutine.gid}"
+            click="$event.stopPropagation() // stop bubbling that colapses the map-panel"
           >goroutine {{goroutine.gid}}</a>
         </mat-panel-title>
       </mat-expansion-panel-header>
