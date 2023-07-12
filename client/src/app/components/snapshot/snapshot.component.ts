@@ -228,8 +228,8 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     this.capturedData$ = this.goroutinesQuery.valueChanges.pipe(
       map(res =>
         res.data.getSnapshot.Raw
-          .filter(g => g.Vars && g.Vars.length > 0)
-          .map(g => ({gid: g.ID, vars: g.Vars}))
+          .filter(g => g.Data.Vars.length > 0)
+          .map(g => ({gid: g.ID, vars: g.Data.Vars}))
       ),
       tap(v => console.log("!!! captured data update:", v)),
     );
@@ -241,19 +241,6 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       map(res => JSON.parse(res.data.getTree))
     );
     this.stacks.data$ = this.goroutinesQuery.valueChanges.pipe(
-      tap(res => {
-        console.log("loading flight recorder data:",
-          typeof res.data.getSnapshot.FlightRecorderData,
-          res.data.getSnapshot.FlightRecorderData,
-        );
-
-        const u = res.data.getSnapshot.FlightRecorderData;
-        const m = new Map(Object.entries(u));
-        console.log("m:", m);
-        console.log("u:", u);
-        console.log("m:", m.get('2312'));
-
-      }),
       map(res => res.data.getSnapshot)
     );
 

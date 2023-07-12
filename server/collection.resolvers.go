@@ -15,6 +15,7 @@ import (
 	"stacksviz/ent/framespec"
 	"stacksviz/graph"
 	"stacksviz/stacks"
+	"strconv"
 	"time"
 
 	pp "github.com/maruel/panicparse/v2/stack"
@@ -289,7 +290,12 @@ func (r *queryResolver) GetSnapshot(ctx context.Context, colID int, snapID int, 
 		gMap[g.ID] = graph.GoroutineInfo{
 			ID:     g.ID,
 			Frames: frames,
-			Vars:   flatVars,
+			Data: &graph.GoroutineData{
+				Vars: flatVars,
+				// TODO(andrei): identify flight recorder data keyed by a goroutine ID
+				// more explicitly.
+				FlightRecorderData: snap.flightRecorderData[strconv.Itoa(g.ID)],
+			},
 		}
 	}
 
@@ -315,19 +321,18 @@ func (r *queryResolver) GetSnapshot(ctx context.Context, colID int, snapID int, 
 
 		for _, gID := range b.IDs {
 			if gi, ok := gMap[gID]; ok {
-				groups[i].Vars = append(groups[i].Vars, gi.Vars...)
+				groups[i].Data = append(groups[i].Data, *gi.Data)
+			} else {
+				panic(fmt.Sprintf("!!! missing goroutine %d", gID))
 			}
 		}
 	}
 
-	frDataUntyped := make(map[string]any, len(snap.flightRecorderData))
-	for k, v := range snap.flightRecorderData {
-		frDataUntyped[k] = v
-	}
+	// TODO(andrei): the flight recorder data that's not keyed on a goroutine ID
+	// is currently not reflected in the result.
 	si := &graph.SnapshotInfo{
-		Raw:                allGs,
-		Aggregated:         groups,
-		FlightRecorderData: frDataUntyped,
+		Raw:        allGs,
+		Aggregated: groups,
 	}
 	return si, nil
 }

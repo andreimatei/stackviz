@@ -221,18 +221,24 @@ export type FrameSpecWhereInput = {
   or?: InputMaybe<Array<FrameSpecWhereInput>>;
 };
 
+export type GoroutineData = {
+  __typename?: 'GoroutineData';
+  FlightRecorderData: Array<Scalars['String']['output']>;
+  Vars: Array<CollectedVar>;
+};
+
 export type GoroutineInfo = {
   __typename?: 'GoroutineInfo';
+  Data: GoroutineData;
   Frames: Array<FrameInfo>;
   ID: Scalars['Int']['output'];
-  Vars: Array<CollectedVar>;
 };
 
 export type GoroutinesGroup = {
   __typename?: 'GoroutinesGroup';
+  Data: Array<GoroutineData>;
   Frames: Array<FrameInfo>;
   IDs: Array<Scalars['Int']['output']>;
-  Vars: Array<CollectedVar>;
 };
 
 export type Link = {
@@ -458,7 +464,6 @@ export type QueryTypeInfoArgs = {
 export type SnapshotInfo = {
   __typename?: 'SnapshotInfo';
   Aggregated: Array<GoroutinesGroup>;
-  FlightRecorderData?: Maybe<Scalars['Map']['output']>;
   Raw: Array<GoroutineInfo>;
 };
 
@@ -565,7 +570,7 @@ export type GetSnapshotQueryVariables = Exact<{
 }>;
 
 
-export type GetSnapshotQuery = { __typename?: 'Query', getSnapshot: { __typename?: 'SnapshotInfo', FlightRecorderData?: any | null, Raw: Array<{ __typename?: 'GoroutineInfo', ID: number, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }>, Aggregated: Array<{ __typename?: 'GoroutinesGroup', IDs: Array<number>, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }> } };
+export type GetSnapshotQuery = { __typename?: 'Query', getSnapshot: { __typename?: 'SnapshotInfo', Raw: Array<{ __typename?: 'GoroutineInfo', ID: number, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Data: { __typename?: 'GoroutineData', FlightRecorderData: Array<string>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> } }>, Aggregated: Array<{ __typename?: 'GoroutinesGroup', IDs: Array<number>, Frames: Array<{ __typename?: 'FrameInfo', Func: string, File: string, Line: number }>, Data: Array<{ __typename?: 'GoroutineData', FlightRecorderData: Array<string>, Vars: Array<{ __typename?: 'CollectedVar', Expr: string, Value: string, Links: Array<{ __typename?: 'Link', SnapshotID: number, GoroutineID: number, FrameIdx: number }> }> }> }> } };
 
 export type GetTreeQueryVariables = Exact<{
   colID: Scalars['Int']['input'];
@@ -828,14 +833,17 @@ export const GetSnapshotDocument = gql`
         File
         Line
       }
-      Vars {
-        Expr
-        Value
-        Links {
-          SnapshotID
-          GoroutineID
-          FrameIdx
+      Data {
+        Vars {
+          Expr
+          Value
+          Links {
+            SnapshotID
+            GoroutineID
+            FrameIdx
+          }
         }
+        FlightRecorderData
       }
     }
     Aggregated {
@@ -845,17 +853,19 @@ export const GetSnapshotDocument = gql`
         File
         Line
       }
-      Vars {
-        Expr
-        Value
-        Links {
-          SnapshotID
-          GoroutineID
-          FrameIdx
+      Data {
+        Vars {
+          Expr
+          Value
+          Links {
+            SnapshotID
+            GoroutineID
+            FrameIdx
+          }
         }
+        FlightRecorderData
       }
     }
-    FlightRecorderData
   }
 }
     `;

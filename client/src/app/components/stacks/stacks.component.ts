@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { MatTabsModule, } from '@angular/material/tabs'
 import { Observable } from "rxjs";
 import {
+  CollectedVar,
+  FrameInfo,
   GoroutineInfo,
-  GoroutinesGroup,
   SnapshotInfo
 } from "../../graphql/graphql-codegen-generated";
 import { MatTableModule } from "@angular/material/table";
@@ -26,10 +27,10 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
         <mat-tab label="Aggregated">
           <ng-template matTabContent>
             <ul>
-              <li *ngFor="let g of goroutineGroups">
-                {{g.IDs.length}} goroutines in goroutine group
-                Goroutine IDs {{g.IDs}}
-                <app-backtrace [vars]="g.Vars" [frames]="g.Frames"
+              <li *ngFor="let group of goroutineGroups">
+                {{group.goroutineIDs.length}} goroutines in goroutine group
+                Goroutine IDs {{group.goroutineIDs}}
+                <app-backtrace [vars]="group.vars" [frames]="group.frames"
                                [collectionID]="colID"></app-backtrace>
               </li>
             </ul>
@@ -38,19 +39,19 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
 
         <mat-tab label="Raw">
           <ul>
-            <li *ngFor="let g of goroutines" id="g_{{g.goroutineInfo.ID}}">
-              <a id="g_{{g.goroutineInfo.ID}}">Goroutine {{ g.goroutineInfo.ID }}</a>
+            <li *ngFor="let g of goroutines" id="g_{{g.ID}}">
+              <a id="g_{{g.ID}}">Goroutine {{ g.ID }}</a>
 
-              <div *ngIf="g.flightRecorderData">
+              <div *ngIf="g.Data.FlightRecorderData">
                 Recorded data:
                 <ul>
-                  <li *ngFor="let recData of g.flightRecorderData">
+                  <li *ngFor="let recData of g.Data.FlightRecorderData">
                     {{ recData }}
                   </li>
                 </ul>
               </div>
 
-              <app-backtrace [vars]="g.goroutineInfo.Vars" [frames]="g.goroutineInfo.Frames"
+              <app-backtrace [vars]="g.Data.Vars" [frames]="g.Frames"
                              [collectionID]="colID"></app-backtrace>
             </li>
           </ul>
@@ -74,32 +75,44 @@ export class StacksComponent {
   @Input({required: true}) colID!: number;
   // !!! @Input({required: true}) snapID: number | null = null;
 
-  protected goroutines?: goroutineInfoWithFlightRecorderData[];
-  protected goroutineGroups?: GoroutinesGroup[];
+  protected goroutines?: GoroutineInfo[];
+  // !!! protected goroutineGroups?: GoroutinesGroup[];
+
+  protected goroutineGroups?: groupInfo[];
 
   @Input() set data$(val$: Observable<SnapshotInfo>) {
     val$.subscribe(
       si => {
         console.log("stacks got value: ", si);
-        this.goroutineGroups = si.Aggregated;
+        this.goroutineGroups = si.Aggregated.map(
+          group => ({
+            goroutineIDs: group.IDs,
+            frames: group.Frames,
+            // Flatten the variables in each group.
+            vars: group.Data.reduce((prev, v) => prev.concat(v.Vars), [] as CollectedVar[])
+          })
+        )
+        si.Aggregated[0].Frames
         // Updating all the tables can take a few seconds, so in order to make
         // the user experience better, we first clear them, and only then create
         // the new ones.
         this.goroutines = [];
         setTimeout(() => {
-          this.goroutines = si.Raw.map(
-            g => {
-              let gData: string[] | undefined;
-              if (si.FlightRecorderData) {
-                gData = si.FlightRecorderData[g.ID.toString()];
-              }
-              const flightRecorderData = new Map(Object.entries(si.FlightRecorderData));
-              return {
-                goroutineInfo: g,
-                flightRecorderData: gData,
-              };
-            }
-          );
+          this.goroutines = si.Raw;
+          // !!!
+          // this.goroutines = si.Raw.map(
+          //   g => {
+          //     let gData: string[] | undefined;
+          //     if (si.FlightRecorderData) {
+          //       gData = si.FlightRecorderData[g.ID.toString()];
+          //     }
+          //     const flightRecorderData = new Map(Object.entries(si.FlightRecorderData));
+          //     return {
+          //       goroutineInfo: g,
+          //       flightRecorderData: gData,
+          //     };
+          //   }
+          // );
         }, 0);
       }
     )
@@ -109,7 +122,8 @@ export class StacksComponent {
   }
 }
 
-interface goroutineInfoWithFlightRecorderData {
-  goroutineInfo: GoroutineInfo;
-  flightRecorderData?: string[];
+interface groupInfo {
+  goroutineIDs: number[];
+  vars: CollectedVar[];
+  frames: FrameInfo[];
 }

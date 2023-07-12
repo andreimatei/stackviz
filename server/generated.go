@@ -88,16 +88,21 @@ type ComplexityRoot struct {
 		ParentCollection     func(childComplexity int) int
 	}
 
+	GoroutineData struct {
+		FlightRecorderData func(childComplexity int) int
+		Vars               func(childComplexity int) int
+	}
+
 	GoroutineInfo struct {
+		Data   func(childComplexity int) int
 		Frames func(childComplexity int) int
 		ID     func(childComplexity int) int
-		Vars   func(childComplexity int) int
 	}
 
 	GoroutinesGroup struct {
+		Data   func(childComplexity int) int
 		Frames func(childComplexity int) int
 		IDs    func(childComplexity int) int
-		Vars   func(childComplexity int) int
 	}
 
 	Link struct {
@@ -147,9 +152,8 @@ type ComplexityRoot struct {
 	}
 
 	SnapshotInfo struct {
-		Aggregated         func(childComplexity int) int
-		FlightRecorderData func(childComplexity int) int
-		Raw                func(childComplexity int) int
+		Aggregated func(childComplexity int) int
+		Raw        func(childComplexity int) int
 	}
 
 	TypeInfo struct {
@@ -364,6 +368,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.FrameSpec.ParentCollection(childComplexity), true
 
+	case "GoroutineData.FlightRecorderData":
+		if e.complexity.GoroutineData.FlightRecorderData == nil {
+			break
+		}
+
+		return e.complexity.GoroutineData.FlightRecorderData(childComplexity), true
+
+	case "GoroutineData.Vars":
+		if e.complexity.GoroutineData.Vars == nil {
+			break
+		}
+
+		return e.complexity.GoroutineData.Vars(childComplexity), true
+
+	case "GoroutineInfo.Data":
+		if e.complexity.GoroutineInfo.Data == nil {
+			break
+		}
+
+		return e.complexity.GoroutineInfo.Data(childComplexity), true
+
 	case "GoroutineInfo.Frames":
 		if e.complexity.GoroutineInfo.Frames == nil {
 			break
@@ -378,12 +403,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GoroutineInfo.ID(childComplexity), true
 
-	case "GoroutineInfo.Vars":
-		if e.complexity.GoroutineInfo.Vars == nil {
+	case "GoroutinesGroup.Data":
+		if e.complexity.GoroutinesGroup.Data == nil {
 			break
 		}
 
-		return e.complexity.GoroutineInfo.Vars(childComplexity), true
+		return e.complexity.GoroutinesGroup.Data(childComplexity), true
 
 	case "GoroutinesGroup.Frames":
 		if e.complexity.GoroutinesGroup.Frames == nil {
@@ -398,13 +423,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GoroutinesGroup.IDs(childComplexity), true
-
-	case "GoroutinesGroup.Vars":
-		if e.complexity.GoroutinesGroup.Vars == nil {
-			break
-		}
-
-		return e.complexity.GoroutinesGroup.Vars(childComplexity), true
 
 	case "Link.FrameIdx":
 		if e.complexity.Link.FrameIdx == nil {
@@ -694,13 +712,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SnapshotInfo.Aggregated(childComplexity), true
-
-	case "SnapshotInfo.FlightRecorderData":
-		if e.complexity.SnapshotInfo.FlightRecorderData == nil {
-			break
-		}
-
-		return e.complexity.SnapshotInfo.FlightRecorderData(childComplexity), true
 
 	case "SnapshotInfo.Raw":
 		if e.complexity.SnapshotInfo.Raw == nil {
@@ -2200,6 +2211,102 @@ func (ec *executionContext) fieldContext_FrameSpec_parentcollection(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _GoroutineData_Vars(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutineData) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutineData_Vars(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Vars, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]graph.CollectedVar)
+	fc.Result = res
+	return ec.marshalNCollectedVar2ᚕstacksvizᚋgraphᚐCollectedVarᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GoroutineData_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GoroutineData",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Expr":
+				return ec.fieldContext_CollectedVar_Expr(ctx, field)
+			case "Value":
+				return ec.fieldContext_CollectedVar_Value(ctx, field)
+			case "Links":
+				return ec.fieldContext_CollectedVar_Links(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CollectedVar", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GoroutineData_FlightRecorderData(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutineData) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutineData_FlightRecorderData(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FlightRecorderData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GoroutineData_FlightRecorderData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GoroutineData",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GoroutineInfo_ID(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutineInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GoroutineInfo_ID(ctx, field)
 	if err != nil {
@@ -2296,8 +2403,8 @@ func (ec *executionContext) fieldContext_GoroutineInfo_Frames(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _GoroutineInfo_Vars(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutineInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GoroutineInfo_Vars(ctx, field)
+func (ec *executionContext) _GoroutineInfo_Data(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutineInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutineInfo_Data(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2310,7 +2417,7 @@ func (ec *executionContext) _GoroutineInfo_Vars(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Vars, nil
+		return obj.Data, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2322,12 +2429,12 @@ func (ec *executionContext) _GoroutineInfo_Vars(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]graph.CollectedVar)
+	res := resTmp.(*graph.GoroutineData)
 	fc.Result = res
-	return ec.marshalNCollectedVar2ᚕstacksvizᚋgraphᚐCollectedVarᚄ(ctx, field.Selections, res)
+	return ec.marshalNGoroutineData2ᚖstacksvizᚋgraphᚐGoroutineData(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GoroutineInfo_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GoroutineInfo_Data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GoroutineInfo",
 		Field:      field,
@@ -2335,14 +2442,12 @@ func (ec *executionContext) fieldContext_GoroutineInfo_Vars(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "Expr":
-				return ec.fieldContext_CollectedVar_Expr(ctx, field)
-			case "Value":
-				return ec.fieldContext_CollectedVar_Value(ctx, field)
-			case "Links":
-				return ec.fieldContext_CollectedVar_Links(ctx, field)
+			case "Vars":
+				return ec.fieldContext_GoroutineData_Vars(ctx, field)
+			case "FlightRecorderData":
+				return ec.fieldContext_GoroutineData_FlightRecorderData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CollectedVar", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GoroutineData", field.Name)
 		},
 	}
 	return fc, nil
@@ -2444,8 +2549,8 @@ func (ec *executionContext) fieldContext_GoroutinesGroup_Frames(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _GoroutinesGroup_Vars(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutinesGroup) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GoroutinesGroup_Vars(ctx, field)
+func (ec *executionContext) _GoroutinesGroup_Data(ctx context.Context, field graphql.CollectedField, obj *graph.GoroutinesGroup) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GoroutinesGroup_Data(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2458,7 +2563,7 @@ func (ec *executionContext) _GoroutinesGroup_Vars(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Vars, nil
+		return obj.Data, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2470,12 +2575,12 @@ func (ec *executionContext) _GoroutinesGroup_Vars(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]graph.CollectedVar)
+	res := resTmp.([]graph.GoroutineData)
 	fc.Result = res
-	return ec.marshalNCollectedVar2ᚕstacksvizᚋgraphᚐCollectedVarᚄ(ctx, field.Selections, res)
+	return ec.marshalNGoroutineData2ᚕstacksvizᚋgraphᚐGoroutineDataᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GoroutinesGroup_Vars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GoroutinesGroup_Data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GoroutinesGroup",
 		Field:      field,
@@ -2483,14 +2588,12 @@ func (ec *executionContext) fieldContext_GoroutinesGroup_Vars(ctx context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "Expr":
-				return ec.fieldContext_CollectedVar_Expr(ctx, field)
-			case "Value":
-				return ec.fieldContext_CollectedVar_Value(ctx, field)
-			case "Links":
-				return ec.fieldContext_CollectedVar_Links(ctx, field)
+			case "Vars":
+				return ec.fieldContext_GoroutineData_Vars(ctx, field)
+			case "FlightRecorderData":
+				return ec.fieldContext_GoroutineData_FlightRecorderData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CollectedVar", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GoroutineData", field.Name)
 		},
 	}
 	return fc, nil
@@ -3797,8 +3900,6 @@ func (ec *executionContext) fieldContext_Query_getSnapshot(ctx context.Context, 
 				return ec.fieldContext_SnapshotInfo_Raw(ctx, field)
 			case "Aggregated":
 				return ec.fieldContext_SnapshotInfo_Aggregated(ctx, field)
-			case "FlightRecorderData":
-				return ec.fieldContext_SnapshotInfo_FlightRecorderData(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SnapshotInfo", field.Name)
 		},
@@ -4287,8 +4388,8 @@ func (ec *executionContext) fieldContext_SnapshotInfo_Raw(ctx context.Context, f
 				return ec.fieldContext_GoroutineInfo_ID(ctx, field)
 			case "Frames":
 				return ec.fieldContext_GoroutineInfo_Frames(ctx, field)
-			case "Vars":
-				return ec.fieldContext_GoroutineInfo_Vars(ctx, field)
+			case "Data":
+				return ec.fieldContext_GoroutineInfo_Data(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GoroutineInfo", field.Name)
 		},
@@ -4339,51 +4440,10 @@ func (ec *executionContext) fieldContext_SnapshotInfo_Aggregated(ctx context.Con
 				return ec.fieldContext_GoroutinesGroup_IDs(ctx, field)
 			case "Frames":
 				return ec.fieldContext_GoroutinesGroup_Frames(ctx, field)
-			case "Vars":
-				return ec.fieldContext_GoroutinesGroup_Vars(ctx, field)
+			case "Data":
+				return ec.fieldContext_GoroutinesGroup_Data(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GoroutinesGroup", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SnapshotInfo_FlightRecorderData(ctx context.Context, field graphql.CollectedField, obj *graph.SnapshotInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SnapshotInfo_FlightRecorderData(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FlightRecorderData, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(map[string]interface{})
-	fc.Result = res
-	return ec.marshalOMap2map(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SnapshotInfo_FlightRecorderData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SnapshotInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Map does not have child fields")
 		},
 	}
 	return fc, nil
@@ -8355,6 +8415,41 @@ func (ec *executionContext) _FrameSpec(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var goroutineDataImplementors = []string{"GoroutineData"}
+
+func (ec *executionContext) _GoroutineData(ctx context.Context, sel ast.SelectionSet, obj *graph.GoroutineData) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, goroutineDataImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GoroutineData")
+		case "Vars":
+
+			out.Values[i] = ec._GoroutineData_Vars(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "FlightRecorderData":
+
+			out.Values[i] = ec._GoroutineData_FlightRecorderData(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var goroutineInfoImplementors = []string{"GoroutineInfo"}
 
 func (ec *executionContext) _GoroutineInfo(ctx context.Context, sel ast.SelectionSet, obj *graph.GoroutineInfo) graphql.Marshaler {
@@ -8379,9 +8474,9 @@ func (ec *executionContext) _GoroutineInfo(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "Vars":
+		case "Data":
 
-			out.Values[i] = ec._GoroutineInfo_Vars(ctx, field, obj)
+			out.Values[i] = ec._GoroutineInfo_Data(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -8421,9 +8516,9 @@ func (ec *executionContext) _GoroutinesGroup(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "Vars":
+		case "Data":
 
-			out.Values[i] = ec._GoroutinesGroup_Vars(ctx, field, obj)
+			out.Values[i] = ec._GoroutinesGroup_Data(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -9024,10 +9119,6 @@ func (ec *executionContext) _SnapshotInfo(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "FlightRecorderData":
-
-			out.Values[i] = ec._SnapshotInfo_FlightRecorderData(ctx, field, obj)
-
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9772,6 +9863,64 @@ func (ec *executionContext) marshalNFrameSpec2ᚖstacksvizᚋentᚐFrameSpec(ctx
 func (ec *executionContext) unmarshalNFrameSpecWhereInput2ᚖstacksvizᚋentᚐFrameSpecWhereInput(ctx context.Context, v interface{}) (*ent.FrameSpecWhereInput, error) {
 	res, err := ec.unmarshalInputFrameSpecWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNGoroutineData2stacksvizᚋgraphᚐGoroutineData(ctx context.Context, sel ast.SelectionSet, v graph.GoroutineData) graphql.Marshaler {
+	return ec._GoroutineData(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGoroutineData2ᚕstacksvizᚋgraphᚐGoroutineDataᚄ(ctx context.Context, sel ast.SelectionSet, v []graph.GoroutineData) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGoroutineData2stacksvizᚋgraphᚐGoroutineData(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNGoroutineData2ᚖstacksvizᚋgraphᚐGoroutineData(ctx context.Context, sel ast.SelectionSet, v *graph.GoroutineData) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GoroutineData(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGoroutineInfo2stacksvizᚋgraphᚐGoroutineInfo(ctx context.Context, sel ast.SelectionSet, v graph.GoroutineInfo) graphql.Marshaler {

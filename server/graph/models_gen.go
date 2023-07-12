@@ -20,16 +20,21 @@ type FrameInfo struct {
 	Line int    `json:"Line"`
 }
 
+type GoroutineData struct {
+	Vars               []CollectedVar `json:"Vars"`
+	FlightRecorderData []string       `json:"FlightRecorderData"`
+}
+
 type GoroutineInfo struct {
 	ID     int            `json:"ID"`
 	Frames []FrameInfo    `json:"Frames"`
-	Vars   []CollectedVar `json:"Vars"`
+	Data   *GoroutineData `json:"Data"`
 }
 
 type GoroutinesGroup struct {
-	IDs    []int          `json:"IDs"`
-	Frames []FrameInfo    `json:"Frames"`
-	Vars   []CollectedVar `json:"Vars"`
+	IDs    []int           `json:"IDs"`
+	Frames []FrameInfo     `json:"Frames"`
+	Data   []GoroutineData `json:"Data"`
 }
 
 type Link struct {
@@ -39,9 +44,8 @@ type Link struct {
 }
 
 type SnapshotInfo struct {
-	Raw                []GoroutineInfo        `json:"Raw"`
-	Aggregated         []GoroutinesGroup      `json:"Aggregated"`
-	FlightRecorderData map[string]interface{} `json:"FlightRecorderData,omitempty"`
+	Raw        []GoroutineInfo   `json:"Raw"`
+	Aggregated []GoroutinesGroup `json:"Aggregated"`
 }
 
 type TypeInfo struct {

@@ -114,14 +114,17 @@ query GetSnapshot($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
         File
         Line
       }
-      Vars {
-        Expr
-        Value
-        Links {
-          SnapshotID
-          GoroutineID
-          FrameIdx
+      Data {
+        Vars {
+          Expr
+          Value
+          Links {
+            SnapshotID
+            GoroutineID
+            FrameIdx
+          }
         }
+        FlightRecorderData
       }
     }
     Aggregated {
@@ -131,17 +134,19 @@ query GetSnapshot($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
         File
         Line
       }
-      Vars {
-        Expr
-        Value
-        Links {
-          SnapshotID
-          GoroutineID
-          FrameIdx
+      Data {
+        Vars {
+          Expr
+          Value
+          Links {
+            SnapshotID
+            GoroutineID
+            FrameIdx
+          }
         }
+        FlightRecorderData
       }
     }
-    FlightRecorderData
   }
 }
 

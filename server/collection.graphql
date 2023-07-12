@@ -50,21 +50,28 @@ type FieldInfo {
 type GoroutineInfo {
   ID: Int!
   Frames: [FrameInfo!]!
+  Data: GoroutineData!
+}
+
+type GoroutineData {
   Vars: [CollectedVar!]!
+  # FlightRecorderData is the flight recorder data that was keyed on this
+  # goroutine ID.
+  FlightRecorderData: [String!]!
 }
 
 type GoroutinesGroup {
   IDs: [Int!]!
   Frames: [FrameInfo!]!
-  # All the vars collected for all the goroutines in the group.
-  # TODO(andrei): group by goroutine
-  Vars: [CollectedVar!]!
+  # # All the vars collected for all the goroutines in the group.
+  # # TODO(andrei): group by goroutine
+  # Vars: [CollectedVar!]!
+  Data: [GoroutineData!]!
 }
 
 type SnapshotInfo {
   Raw: [GoroutineInfo!]!
   Aggregated: [GoroutinesGroup!]!
-  FlightRecorderData: Map
 }
 
 type FrameInfo {
