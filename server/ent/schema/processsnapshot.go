@@ -17,13 +17,8 @@ func (ProcessSnapshot) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("process_id"),
 		field.Text("snapshot"),
-		field.Text("frames_of_interest").Optional(),
-		//field.JSON("flight_recorder_data", FlightRecorderData{}).Optional(), //.Annotations(entgql.Type("xxx")),
-		//field.Other("config", &schematype.CategoryConfig{}).
-		//	SchemaType(map[string]string{
-		//		dialect.SQLite: "json",
-		//	}).
-		//	Optional().Annotations(entgql.Type("String")),
+		field.Text("frames_of_interest").Optional().Comment("JSON map of goroutine ID to " +
+			"map from frame index to array of CapturedExpr."),
 		field.JSON("flight_recorder_data", map[string][]string{}).
 			Optional().
 			Annotations(entgql.Type("Map")),

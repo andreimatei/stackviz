@@ -3,9 +3,10 @@
 package graph
 
 type CollectedVar struct {
-	Expr  string `json:"Expr"`
-	Value string `json:"Value"`
-	Links []Link `json:"Links"`
+	Expr     string `json:"Expr"`
+	Value    string `json:"Value"`
+	Links    []Link `json:"Links"`
+	FrameIdx int    `json:"FrameIdx"`
 }
 
 type FieldInfo struct {

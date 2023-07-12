@@ -118,6 +118,7 @@ query GetSnapshot($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
         Vars {
           Expr
           Value
+          FrameIdx
           Links {
             SnapshotID
             GoroutineID
@@ -138,6 +139,7 @@ query GetSnapshot($colID: Int!, $snapID: Int!, $gID: Int, $filter: String) {
         Vars {
           Expr
           Value
+          FrameIdx
           Links {
             SnapshotID
             GoroutineID

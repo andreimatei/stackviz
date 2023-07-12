@@ -51,6 +51,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { AsyncPipe, KeyValuePipe, NgFor, NgIf, NgStyle } from '@angular/common';
+import { VarListComponent } from "src/app/components/var-list/var-list.component";
+import { MatCardModule } from "@angular/material/card";
 
 class Frame {
   constructor(public name: string, public file: string, public line: number) {
@@ -86,6 +88,8 @@ class Frame {
     StacksComponent,
     AsyncPipe,
     KeyValuePipe,
+    VarListComponent,
+    MatCardModule,
   ],
 })
 export class SnapshotComponent implements OnInit, AfterViewInit {
@@ -229,7 +233,11 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
       map(res =>
         res.data.getSnapshot.Raw
           .filter(g => g.Data.Vars.length > 0)
-          .map(g => ({gid: g.ID, vars: g.Data.Vars}))
+          .map(g => ({
+            gid: g.ID,
+            vars: g.Data.Vars,
+            frames: g.Frames,
+          }))
       ),
       tap(v => console.log("!!! captured data update:", v)),
     );

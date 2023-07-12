@@ -2,84 +2,51 @@ import { Component, Input, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatExpansionModule } from "@angular/material/expansion";
 import { combineLatest, map, Observable, startWith, tap } from "rxjs";
-import { CollectedVar, FrameSpec } from "../../graphql/graphql-codegen-generated";
+import { CollectedVar, FrameInfo, FrameSpec } from "../../graphql/graphql-codegen-generated";
 import { MatTableModule } from "@angular/material/table";
 import { RouterLink } from "@angular/router";
 import { MatChipListbox, MatChipsModule } from "@angular/material/chips";
+import {
+  CapturedDataGoroutineComponent
+} from "src/app/components/captured-data-goroutine/captured-data-goroutine.component";
 
 // CapturedDataComponent is a component that displays the captured data for a
-// single frame in a single goroutine.
+// list of goroutines.
 @Component({
   selector: 'app-captured-data',
   standalone: true,
-  imports: [CommonModule, MatExpansionModule, MatTableModule, RouterLink, MatChipsModule],
+  imports: [CommonModule, MatExpansionModule, MatTableModule, RouterLink, MatChipsModule, CapturedDataGoroutineComponent],
   template: `
     <mat-chip-listbox #expressionChips multiple>
       <ng-container *ngFor="let frameSpec of (frameSpecs$ | async)">
         <mat-chip-option
-          selected
-          id={{expr}}
-          *ngFor="let expr of frameSpec.collectExpressions">
+            selected
+            id={{expr}}
+            *ngFor="let expr of frameSpec.collectExpressions">
           {{expr}}
         </mat-chip-option>
       </ng-container>
     </mat-chip-listbox>
 
-    <mat-expansion-panel expanded *ngFor="let goroutine of (filteredData$ | async)">
-      <mat-expansion-panel-header>
-        <mat-panel-title class="header">
-          Captured data for&nbsp;
-          <a
-            [routerLink]="['/collections', collectionID, 'snap', snapshotID]"
-            [queryParams]="{filter: 'gid=' + goroutine.gid}"
-            click="$event.stopPropagation() // stop bubbling that colapses the map-panel"
-          >goroutine {{goroutine.gid}}</a>
-        </mat-panel-title>
-      </mat-expansion-panel-header>
-      <table mat-table [dataSource]="goroutine.vars">
-        <ng-container matColumnDef="expr">
-          <th mat-header-cell *matHeaderCellDef>Expression</th>
-          <td mat-cell *matCellDef="let v">
-            {{v.Expr}}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="val">
-          <th mat-header-cell *matHeaderCellDef>Value</th>
-          <td mat-cell *matCellDef="let v">
-            {{v.Value}}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="links">
-          <th mat-header-cell *matHeaderCellDef>Links</th>
-          <td mat-cell *matCellDef="let v">
-            <div *ngIf="v.Links?.length > 0">
-              <ul>
-                <li *ngFor="let l of v.Links">
-                  <a
-                    [routerLink]="['/collections', collectionID, 'snap',l.SnapshotID]"
-                    [queryParams]="{filter: 'gid=' + l.GoroutineID}"
-                  >
-                    Snapshot: {{l.SnapshotID}} Goroutine: {{l.GoroutineID}}
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="['expr', 'val', 'links']"></tr>
-        <tr mat-row *matRowDef="let rowData; columns: ['expr','val', 'links']"></tr>
-      </table>
-    </mat-expansion-panel>
+    <app-captured-data-goroutine *ngFor="let goroutine of (filteredData$ | async)"
+                                 [collectionID]="collectionID"
+                                 [snapshotID]="snapshotID"
+                                 [goroutineID]="goroutine.gid"
+                                 [data]="goroutine"
+    ></app-captured-data-goroutine>
   `,
   styleUrls: ['./captured-data.component.css']
 })
 export class CapturedDataComponent {
   @Input({required: true}) data$!: Observable<GoroutineData[]>;
   @Input({required: true}) frameSpecs$!: Observable<Partial<FrameSpec>[]>;
-  @ViewChild('expressionChips') expressionChips!: MatChipListbox;
-  protected filteredData$!: Observable<GoroutineData[]>;
   @Input({required: true}) collectionID!: number;
   @Input({required: true}) snapshotID!: number;
+
+  @ViewChild('expressionChips') expressionChips!: MatChipListbox;
+  // filteredData$ filters the data$ for the goroutines that have some captured
+  // data.
+  protected filteredData$!: Observable<GoroutineData[]>;
 
   constructor() {
   }
@@ -120,5 +87,6 @@ export class CapturedDataComponent {
 
 export interface GoroutineData {
   gid: number,
+  frames: FrameInfo[],
   vars: CollectedVar[],
 }

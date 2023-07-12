@@ -54,15 +54,15 @@ func (r *mutationResolver) CollectServiceSnapshots(ctx context.Context) (*ent.Co
 
 			log.Printf("!!! creating snapshot with %d stacks\nframes of interest: %s\nflight recorder data: %v",
 				len(snap.Stacks), framesOfInterest, snap.FlightRecorderData)
-			input := ent.CreateProcessSnapshotInput{
-				ProcessID:          target.processName,
-				Snapshot:           stacksToString(snap),
-				FlightRecorderData: snap.FlightRecorderData,
-			}
+
+			create := dbClient.ProcessSnapshot.Create().
+				SetProcessID(target.processName).
+				SetSnapshot(stacksToString(snap)).
+				SetFlightRecorderData(snap.FlightRecorderData)
 			if framesOfInterest != "" {
-				input.FramesOfInterest = &framesOfInterest
+				create.SetFramesOfInterest(framesOfInterest)
 			}
-			ps, err := dbClient.ProcessSnapshot.Create().SetInput(input).Save(ctx)
+			ps, err := create.Save(ctx)
 			if err != nil {
 				return err
 			}

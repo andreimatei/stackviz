@@ -21,7 +21,7 @@ type ProcessSnapshot struct {
 	ProcessID string `json:"process_id,omitempty"`
 	// Snapshot holds the value of the "snapshot" field.
 	Snapshot string `json:"snapshot,omitempty"`
-	// FramesOfInterest holds the value of the "frames_of_interest" field.
+	// JSON map of goroutine ID to map from frame index to array of CapturedExpr.
 	FramesOfInterest string `json:"frames_of_interest,omitempty"`
 	// FlightRecorderData holds the value of the "flight_recorder_data" field.
 	FlightRecorderData           map[string][]string `json:"flight_recorder_data,omitempty"`

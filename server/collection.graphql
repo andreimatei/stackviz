@@ -18,6 +18,8 @@ extend type Query {
   # specified, only the expressions for the respective function are returned.
   collectSpec: CollectSpec!
   typeInfo(name: String!): TypeInfo!
+  # getTree returns the trie of stack traces that will be rendered as a
+  # flamegraph. The output is a JSON string; see the definition of TreeNode.
   getTree(colID: Int!, snapID: Int!, gID: Int, filter: String): String!
 
   frameSpecsWhere(where: FrameSpecWhereInput): [FrameSpec!]!
@@ -84,6 +86,7 @@ type CollectedVar {
   Expr: String!
   Value: String!
   Links: [Link!]!
+  FrameIdx: Int!
 }
 
 type Link {

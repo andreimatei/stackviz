@@ -26,6 +26,7 @@ export interface Frame {
 export interface VarInfo {
   Expr: string;
   Value: string;
+  FrameIdx: number;
   Links: Link[];
 }
 
@@ -36,7 +37,7 @@ export interface VarInfo {
   template: `
     <div #flamegraph id="flamegraph" class="flamegraph-container" (resized)="onResized($event)">
     </div>
-    <div #details>
+    <div #details style="height: 20px">
     </div>
   `,
   styleUrls: ['flamegraph.component.css'],
@@ -55,7 +56,7 @@ export class FlamegraphComponent implements AfterViewInit {
     );
   }
 
-  @Output() ctrlClick: EventEmitter<Frame> = new EventEmitter<any>();
+  @Output() ctrlClick: EventEmitter<Frame> = new EventEmitter<Frame>();
 
   @ViewChild('details') details!: ElementRef;
   @ViewChild('flamegraph') flameGraphElement!: ElementRef;

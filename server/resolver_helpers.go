@@ -252,9 +252,10 @@ func (r *Resolver) loadSnapshot(
 			pf.Vars = make([]graph.CollectedVar, len(vars))
 			for i, v := range vars {
 				pf.Vars[i] = graph.CollectedVar{
-					Expr:  v.Expr,
-					Value: v.Val,
-					Links: stacks.LinksExcludingSelf(varToLinks[v.Val], gid),
+					Expr:     v.Expr,
+					Value:    v.Val,
+					Links:    stacks.LinksExcludingSelf(varToLinks[v.Val], gid),
+					FrameIdx: idx,
 				}
 			}
 			frameIdxToFOI[idx] = pf

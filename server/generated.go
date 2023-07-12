@@ -55,9 +55,10 @@ type ComplexityRoot struct {
 	}
 
 	CollectedVar struct {
-		Expr  func(childComplexity int) int
-		Links func(childComplexity int) int
-		Value func(childComplexity int) int
+		Expr     func(childComplexity int) int
+		FrameIdx func(childComplexity int) int
+		Links    func(childComplexity int) int
+		Value    func(childComplexity int) int
 	}
 
 	Collection struct {
@@ -241,6 +242,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CollectedVar.Expr(childComplexity), true
+
+	case "CollectedVar.FrameIdx":
+		if e.complexity.CollectedVar.FrameIdx == nil {
+			break
+		}
+
+		return e.complexity.CollectedVar.FrameIdx(childComplexity), true
 
 	case "CollectedVar.Links":
 		if e.complexity.CollectedVar.Links == nil {
@@ -1492,6 +1500,50 @@ func (ec *executionContext) fieldContext_CollectedVar_Links(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _CollectedVar_FrameIdx(ctx context.Context, field graphql.CollectedField, obj *graph.CollectedVar) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CollectedVar_FrameIdx(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FrameIdx, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CollectedVar_FrameIdx(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CollectedVar",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Collection_id(ctx context.Context, field graphql.CollectedField, obj *ent.Collection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Collection_id(ctx, field)
 	if err != nil {
@@ -2256,6 +2308,8 @@ func (ec *executionContext) fieldContext_GoroutineData_Vars(ctx context.Context,
 				return ec.fieldContext_CollectedVar_Value(ctx, field)
 			case "Links":
 				return ec.fieldContext_CollectedVar_Links(ctx, field)
+			case "FrameIdx":
+				return ec.fieldContext_CollectedVar_FrameIdx(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CollectedVar", field.Name)
 		},
@@ -8181,6 +8235,13 @@ func (ec *executionContext) _CollectedVar(ctx context.Context, sel ast.Selection
 		case "Links":
 
 			out.Values[i] = ec._CollectedVar_Links(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "FrameIdx":
+
+			out.Values[i] = ec._CollectedVar_FrameIdx(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
