@@ -53,6 +53,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { AsyncPipe, KeyValuePipe, NgFor, NgIf, NgStyle } from '@angular/common';
 import { VarListComponent } from "src/app/components/var-list/var-list.component";
 import { MatCardModule } from "@angular/material/card";
+import { FrameDataComponent } from "src/app/components/frame-data/frame-data";
 
 class Frame {
   constructor(public name: string, public file: string, public line: number) {
@@ -90,6 +91,7 @@ class Frame {
     KeyValuePipe,
     VarListComponent,
     MatCardModule,
+    FrameDataComponent,
   ],
 })
 export class SnapshotComponent implements OnInit, AfterViewInit {
@@ -130,9 +132,9 @@ export class SnapshotComponent implements OnInit, AfterViewInit {
     // Navigate to apply the new filter value.
     tap(filterVal => {
       this.router.navigate(
-        ['/collections', this.collectionID, 'snap',this.snapshotID],
+        ['/collections', this.collectionID, 'snap', this.snapshotID],
         {
-          queryParams:{filter: filterVal},
+          queryParams: {filter: filterVal},
           replaceUrl: true,
         }
       )
