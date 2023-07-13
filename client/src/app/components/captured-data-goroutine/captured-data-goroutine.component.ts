@@ -39,8 +39,7 @@ import { VarListComponent } from "src/app/components/var-list/var-list.component
         <ng-container matColumnDef="vars">
           <th mat-header-cell *matHeaderCellDef>Vars</th>
           <td mat-cell *matCellDef="let f">
-            <app-var-list [collectionID]="collectionID" [snapshotID]="snapshotID"
-                          [vars]="f.Vars"></app-var-list>
+            <app-var-list [collectionID]="collectionID" [vars]="f.Vars"></app-var-list>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="['frameIdx', 'vars']"></tr>

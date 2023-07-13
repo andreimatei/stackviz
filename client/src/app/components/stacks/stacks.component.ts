@@ -30,7 +30,7 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
               <li *ngFor="let group of goroutineGroups">
                 {{group.goroutineIDs.length}} goroutines in goroutine group
                 Goroutine IDs {{group.goroutineIDs}}
-                <app-backtrace [vars]="group.vars" [frames]="group.frames"
+                <app-backtrace [data]="{vars: group.vars, frames: group.frames}"
                                [collectionID]="colID"></app-backtrace>
               </li>
             </ul>
@@ -51,7 +51,7 @@ import { BacktraceComponent } from "../backtrace/backtrace.component";
                 </ul>
               </div>
 
-              <app-backtrace [vars]="g.Data.Vars" [frames]="g.Frames"
+              <app-backtrace [data]="{vars: g.Data.Vars, frames: g.Frames}"
                              [collectionID]="colID"></app-backtrace>
             </li>
           </ul>

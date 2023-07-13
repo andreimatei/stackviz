@@ -31,6 +31,5 @@ import { CommonModule } from "@angular/common";
 })
 export class VarListComponent {
   @Input({required: true}) collectionID!: number;
-  @Input({required: true}) snapshotID!: number;
   @Input({required: true}) vars!: CollectedVar[];
 }
